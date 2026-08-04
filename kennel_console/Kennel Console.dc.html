@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#0a0d12;color:#dbe2ea;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#4aa8d8;text-decoration:none}
+a:hover{color:#7cc6ec}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#232b36;border-radius:5px}
+::-webkit-scrollbar-track{background:transparent}
+input,select,textarea,button{font-family:'IBM Plex Mono',ui-monospace,monospace}
+select{appearance:none}
+@keyframes kcFlash{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}
+@keyframes kcPulse{0%{opacity:.55}50%{opacity:1}100%{opacity:.55}}
+</style>
+</helmet>
+<div style="display:flex;height:100vh;width:100vw;overflow:hidden;background:#0a0d12">
+
+  <div style="width:172px;flex:none;background:#0c1016;border-right:1px solid #1b222c;display:flex;flex-direction:column">
+    <div style="padding:16px 14px 14px;border-bottom:1px solid #1b222c">
+      <div style="font:600 13px 'IBM Plex Sans';letter-spacing:.02em;color:#dbe2ea">Kennel Console</div>
+      <div style="font:400 10px 'IBM Plex Mono';color:#5d6875;margin-top:3px">go2 · sim control room</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;padding:10px 8px">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+        <div onClick="{{ n.onClick }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:5px;cursor:pointer;background:{{ n.bg }};border-left:2px solid {{ n.mark }}" style-hover="background:#141a23">
+          <div style="width:9px;height:9px;flex:none;border:1px solid {{ n.dot }};background:{{ n.dotFill }}"></div>
+          <div style="font:500 12px 'IBM Plex Sans';color:{{ n.fg }}">{{ n.label }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="margin-top:auto;padding:12px 14px;border-top:1px solid #1b222c">
+      <div style="font:400 9px 'IBM Plex Mono';color:#4b5563;line-height:1.6">DataSource<br><span style="color:#7c8794">MockDataSource</span><br>10 Hz · scripted</div>
+    </div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <div style="flex:1;min-height:0;overflow:hidden;position:relative">
+
+      <sc-if value="{{ isCompose }}" hint-placeholder-val="{{ true }}">
+      <div style="height:100%;overflow:auto;padding:18px 20px 40px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:16px">
+          <div>
+            <div style="font:600 15px 'IBM Plex Sans'">Compose experiment</div>
+            <div style="font:400 11px 'IBM Plex Mono';color:#6f7a88;margin-top:3px">builds run manifest · emits sim.yaml + pipeline.yaml · never launches processes</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select value="{{ presetSel }}" onChange="{{ onPresetLoad }}" style="background:#12181f;border:1px solid #232b36;color:#a8b3c0;font-size:11px;padding:6px 10px;border-radius:4px">
+              <option value="">load preset…</option>
+              <sc-for list="{{ presets }}" as="p" hint-placeholder-count="2"><option value="{{ p.v }}">{{ p.label }}</option></sc-for>
+            </select>
+            <div onClick="{{ onPresetSave }}" style="padding:6px 12px;border:1px solid #232b36;border-radius:4px;font:500 11px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757;color:#dbe2ea">save preset</div>
+            <div onClick="{{ onOpenYaml }}" style="padding:6px 12px;border:1px solid #232b36;border-radius:4px;font:500 11px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757;color:#dbe2ea">load YAML</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start">
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="background:#0f141b;border:1px solid #1f2731;border-radius:6px">
+              <div style="padding:10px 12px;border-bottom:1px solid #1f2731;font:600 11px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Map</div>
+              <div style="padding:12px;display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ maps }}" as="m" hint-placeholder-count="3">
+                  <div onClick="{{ m.onClick }}" style="border:1px solid {{ m.border }};background:{{ m.bg }};border-radius:5px;padding:10px 12px;cursor:pointer">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                      <div style="font:600 12px 'IBM Plex Sans';color:#dbe2ea">{{ m.name }}</div>
+                      <div style="font:400 9px 'IBM Plex Mono';color:{{ m.tagFg }}">{{ m.tag }}</div>
+                    </div>
+                    <div style="font:400 10px/1.5 'IBM Plex Mono';color:#6f7a88;margin-top:4px">{{ m.desc }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="background:#0f141b;border:1px solid #1f2731;border-radius:6px">
+              <div style="padding:10px 12px;border-bottom:1px solid #1f2731;font:600 11px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Sim options</div>
+              <div style="padding:12px;display:flex;flex-direction:column;gap:10px">
+                <sc-for list="{{ simFields }}" as="f" hint-placeholder-count="6">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                    <div style="font:400 11px 'IBM Plex Mono';color:#9aa5b1">{{ f.label }}</div>
+                    <sc-if value="{{ f.isNum }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex;align-items:center;gap:6px">
+                        <input type="number" step="{{ f.step }}" value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:78px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:4px 6px;border-radius:3px;text-align:right">
+                        <div style="font:400 10px 'IBM Plex Mono';color:#5d6875;width:26px">{{ f.unit }}</div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ f.isBool }}" hint-placeholder-val="{{ true }}">
+                      <div onClick="{{ f.onToggle }}" style="width:38px;height:20px;border-radius:10px;background:{{ f.trackBg }};border:1px solid {{ f.trackBorder }};position:relative;cursor:pointer;flex:none">
+                        <div style="position:absolute;top:2px;left:{{ f.knobLeft }};width:14px;height:14px;border-radius:7px;background:{{ f.knobBg }};transition:left .12s"></div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+            <div style="background:#0f141b;border:1px solid #1f2731;border-radius:6px">
+              <div style="padding:10px 12px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+                <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Pipeline composer</div>
+                <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">click a block to edit parameters</div>
+              </div>
+              <div style="padding:20px 18px;overflow-x:auto">
+                <div style="display:flex;align-items:center;gap:0;min-width:760px">
+                  <sc-for list="{{ chain }}" as="b" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center">
+                      <div onClick="{{ b.onOpen }}" style="width:212px;background:#12181f;border:1px solid {{ b.border }};border-radius:6px;padding:11px 12px;cursor:pointer" style-hover="border-color:#3b4757">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                          <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.05em;text-transform:uppercase;color:#dbe2ea">{{ b.name }}</div>
+                          <sc-if value="{{ b.modified }}" hint-placeholder-val="{{ true }}">
+                            <div style="font:500 9px 'IBM Plex Mono';color:#e0a63c;border:1px solid #4a3a1c;background:#231b0e;padding:1px 5px;border-radius:3px;white-space:nowrap">{{ b.modLabel }}</div>
+                          </sc-if>
+                        </div>
+                        <div style="font:400 9px 'IBM Plex Mono';color:#5d6875;margin-top:3px">{{ b.topic }}</div>
+                        <select value="{{ b.impl }}" onChange="{{ b.onImpl }}" onClick="{{ stop }}" style="width:100%;margin-top:9px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px">
+                          <sc-for list="{{ b.impls }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                        </select>
+                        <div style="font:400 9px/1.6 'IBM Plex Mono';color:#6f7a88;margin-top:8px">{{ b.summary }}</div>
+                      </div>
+                      <sc-if value="{{ b.arrow }}" hint-placeholder-val="{{ true }}">
+                        <div style="width:38px;display:flex;align-items:center">
+                          <div style="flex:1;height:1px;background:#39465a"></div>
+                          <div style="width:0;height:0;border-left:6px solid #39465a;border-top:4px solid transparent;border-bottom:4px solid transparent"></div>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:0;min-width:760px;margin-top:14px;padding-left:0">
+                  <sc-for list="{{ branch }}" as="b" hint-placeholder-count="2">
+                    <div style="display:flex;align-items:center">
+                      <div onClick="{{ b.onOpen }}" style="width:212px;background:#12181f;border:1px solid {{ b.border }};border-radius:6px;padding:11px 12px;cursor:pointer" style-hover="border-color:#3b4757">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                          <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.05em;text-transform:uppercase;color:#dbe2ea">{{ b.name }}</div>
+                          <sc-if value="{{ b.modified }}" hint-placeholder-val="{{ true }}">
+                            <div style="font:500 9px 'IBM Plex Mono';color:#e0a63c;border:1px solid #4a3a1c;background:#231b0e;padding:1px 5px;border-radius:3px;white-space:nowrap">{{ b.modLabel }}</div>
+                          </sc-if>
+                        </div>
+                        <div style="font:400 9px 'IBM Plex Mono';color:#5d6875;margin-top:3px">{{ b.topic }}</div>
+                        <select value="{{ b.impl }}" onChange="{{ b.onImpl }}" onClick="{{ stop }}" style="width:100%;margin-top:9px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px">
+                          <sc-for list="{{ b.impls }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                        </select>
+                        <div style="font:400 9px/1.6 'IBM Plex Mono';color:#6f7a88;margin-top:8px">{{ b.summary }}</div>
+                      </div>
+                      <sc-if value="{{ b.arrow }}" hint-placeholder-val="{{ true }}">
+                        <div style="width:38px;display:flex;align-items:center">
+                          <div style="flex:1;height:1px;background:#39465a"></div>
+                          <div style="width:0;height:0;border-left:6px solid #39465a;border-top:4px solid transparent;border-bottom:4px solid transparent"></div>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                  <div style="width:38px;display:flex;align-items:center">
+                    <div style="flex:1;height:1px;background:#39465a"></div>
+                    <div style="width:0;height:0;border-left:6px solid #39465a;border-top:4px solid transparent;border-bottom:4px solid transparent"></div>
+                  </div>
+                  <div style="font:400 10px 'IBM Plex Mono';color:#6f7a88;border:1px dashed #2b3543;border-radius:4px;padding:6px 10px">joins WBC ↑ (contact set + foot targets)</div>
+                </div>
+
+                <div style="margin-top:16px;min-width:760px">
+                  <sc-for list="{{ adapt }}" as="b" hint-placeholder-count="1">
+                    <div style="display:flex;align-items:stretch;gap:14px">
+                      <div onClick="{{ b.onOpen }}" style="width:212px;background:#12181f;border:1px dashed {{ b.border }};border-radius:6px;padding:11px 12px;cursor:pointer" style-hover="border-color:#3b4757">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                          <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.05em;text-transform:uppercase;color:#dbe2ea">{{ b.name }}</div>
+                          <sc-if value="{{ b.modified }}" hint-placeholder-val="{{ true }}">
+                            <div style="font:500 9px 'IBM Plex Mono';color:#e0a63c;border:1px solid #4a3a1c;background:#231b0e;padding:1px 5px;border-radius:3px;white-space:nowrap">{{ b.modLabel }}</div>
+                          </sc-if>
+                        </div>
+                        <div style="font:400 9px 'IBM Plex Mono';color:#5d6875;margin-top:3px">{{ b.topic }}</div>
+                        <select value="{{ b.impl }}" onChange="{{ b.onImpl }}" onClick="{{ stop }}" style="width:100%;margin-top:9px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px">
+                          <sc-for list="{{ b.impls }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                        </select>
+                        <div style="font:400 9px/1.6 'IBM Plex Mono';color:#6f7a88;margin-top:8px">{{ b.summary }}</div>
+                      </div>
+                      <div style="flex:1;border:1px dashed #2b3543;border-radius:6px;display:flex;align-items:center;padding:0 14px;gap:14px">
+                        <div style="font:400 10px 'IBM Plex Mono';color:#6f7a88">broadcasts inertial + CoM estimate →</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                          <sc-for list="{{ adaptTargets }}" as="t" hint-placeholder-count="5">
+                            <div style="font:400 9px 'IBM Plex Mono';color:#8b93a0;border:1px solid #232b36;border-radius:3px;padding:2px 7px;background:#0d1219">{{ t.label }}</div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#0f141b;border:1px solid #1f2731;border-radius:6px">
+              <div style="padding:10px 12px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+                <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Generate run</div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">{{ nextRunId }}</div>
+                  <div onClick="{{ onGenerate }}" style="padding:6px 14px;border:1px solid #2f5d78;background:#14283a;border-radius:4px;font:600 11px 'IBM Plex Mono';color:#8fc9ea;cursor:pointer" style-hover="background:#1a3448">save manifest</div>
+                </div>
+              </div>
+              <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div>
+                  <div style="display:flex;gap:8px;margin-bottom:8px">
+                    <sc-for list="{{ yamlTabs }}" as="y" hint-placeholder-count="2">
+                      <div onClick="{{ y.onClick }}" style="font:500 10px 'IBM Plex Mono';padding:4px 9px;border-radius:3px;cursor:pointer;color:{{ y.fg }};background:{{ y.bg }};border:1px solid {{ y.border }}">{{ y.label }}</div>
+                    </sc-for>
+                    <div onClick="{{ onCopyYaml }}" style="margin-left:auto;font:500 10px 'IBM Plex Mono';padding:4px 9px;border-radius:3px;cursor:pointer;color:#8b93a0;border:1px solid #232b36">{{ copyYamlLabel }}</div>
+                  </div>
+                  <pre style="margin:0;background:#0a0e14;border:1px solid #1f2731;border-radius:4px;padding:12px;font:400 10px/1.65 'IBM Plex Mono';color:#a8b3c0;max-height:280px;overflow:auto;white-space:pre">{{ yamlText }}</pre>
+                </div>
+                <div>
+                  <div style="font:500 10px 'IBM Plex Mono';color:#6f7a88;margin-bottom:8px">terminal · 3 shells · run these yourself</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <sc-for list="{{ commands }}" as="c" hint-placeholder-count="3">
+                      <div style="background:#0a0e14;border:1px solid #1f2731;border-radius:4px;padding:9px 10px">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+                          <div style="font:500 9px 'IBM Plex Mono';color:#5d6875;letter-spacing:.05em;text-transform:uppercase">{{ c.label }}</div>
+                          <div onClick="{{ c.onCopy }}" style="font:500 9px 'IBM Plex Mono';color:#8b93a0;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:1px 6px">{{ c.copyLabel }}</div>
+                        </div>
+                        <div style="font:400 10px/1.6 'IBM Plex Mono';color:#8fc9ea;word-break:break-all">{{ c.cmd }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+      <div style="height:100%;display:flex;flex-direction:column">
+        <sc-if value="{{ fallBanner }}" hint-placeholder-val="{{ true }}">
+          <div style="background:#2a1010;border-bottom:1px solid #612722;padding:9px 16px;display:flex;align-items:center;gap:14px">
+            <div style="width:8px;height:8px;background:#e2564d;border-radius:4px;animation:kcPulse 1s infinite"></div>
+            <div style="font:600 12px 'IBM Plex Sans';color:#f0a19b">FALL DETECTED — {{ fallText }}</div>
+            <div style="font:400 10px 'IBM Plex Mono';color:#b07a76">event feed pinned to last 5 s before fall</div>
+            <div onClick="{{ onUnpin }}" style="margin-left:auto;font:500 10px 'IBM Plex Mono';color:#e0a63c;cursor:pointer;border:1px solid #612722;border-radius:3px;padding:3px 9px">unpin feed</div>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #1b222c;background:#0c1016;flex-wrap:wrap">
+          <div style="font:500 10px 'IBM Plex Mono';color:#5d6875;letter-spacing:.05em;text-transform:uppercase">Interventions</div>
+          <div onPointerDown="{{ joyDown }}" onPointerMove="{{ joyMove }}" onPointerUp="{{ joyUp }}" style="width:56px;height:56px;border:1px solid #232b36;border-radius:5px;background:#0a0e14;position:relative;cursor:crosshair;touch-action:none;flex:none">
+            <div style="position:absolute;left:50%;top:0;width:1px;height:100%;background:#1b222c"></div>
+            <div style="position:absolute;top:50%;left:0;height:1px;width:100%;background:#1b222c"></div>
+            <div style="position:absolute;width:12px;height:12px;border-radius:6px;background:#4aa8d8;left:{{ joyLeft }};top:{{ joyTop }};margin:-6px 0 0 -6px"></div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <sc-for list="{{ velFields }}" as="v" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">{{ v.label }}</div>
+                <input type="number" step="0.05" value="{{ v.value }}" onChange="{{ v.onChange }}" style="width:66px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:3px 6px;border-radius:3px;text-align:right">
+              </div>
+            </sc-for>
+          </div>
+          <div style="width:1px;height:34px;background:#1b222c"></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <sc-for list="{{ distFields }}" as="v" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">{{ v.label }}</div>
+                <input type="number" step="{{ v.step }}" value="{{ v.value }}" onChange="{{ v.onChange }}" style="width:60px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:3px 6px;border-radius:3px;text-align:right">
+              </div>
+            </sc-for>
+            <div onClick="{{ onInject }}" style="align-self:flex-end;padding:5px 11px;border:1px solid #4a3a1c;background:#231b0e;border-radius:4px;font:600 10px 'IBM Plex Mono';color:#e0a63c;cursor:pointer">inject</div>
+          </div>
+          <div style="width:1px;height:34px;background:#1b222c"></div>
+          <div style="display:flex;gap:6px;align-self:flex-end">
+            <div onClick="{{ onStep }}" style="padding:5px 11px;border:1px solid #232b36;border-radius:4px;font:500 10px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757">step 1 tick</div>
+            <div onClick="{{ onStep10 }}" style="padding:5px 11px;border:1px solid #232b36;border-radius:4px;font:500 10px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757">step 1 s</div>
+            <div onClick="{{ onReset }}" style="padding:5px 11px;border:1px solid #232b36;border-radius:4px;font:500 10px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757">reset sim</div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:10px;display:grid;grid-template-columns:{{ gridCols }};grid-template-rows:{{ gridRows }};gap:0">
+
+          <div style="grid-column:1;grid-row:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
+            <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+              <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">3D scene</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">meshcat · /tf · 30 Hz</div>
+            </div>
+            <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;min-height:0;position:relative;background:#0a0e14;display:flex;align-items:center;justify-content:center">
+                <div style="position:absolute;inset:0;background-image:linear-gradient(#131b24 1px,transparent 1px),linear-gradient(90deg,#131b24 1px,transparent 1px);background-size:28px 28px;opacity:.55"></div>
+                <div style="position:relative;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;max-height:100%;padding:8px;overflow:hidden">
+                  <div style="width:150px;height:64px;flex:0 1 auto;min-height:28px;border:1px dashed #2b3543;border-radius:4px;display:flex;align-items:center;justify-content:center;font:400 9px 'IBM Plex Mono';color:#4b5563">meshcat iframe slot</div>
+                  <div style="font:400 9px/1.6 'IBM Plex Mono';color:#5d6875;flex:none">http://localhost:7000/static/<br>pose {{ poseText }}</div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
+                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No viewer attached</div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">start the visualizer, then reconnect:<br><span style="color:#8fc9ea">ros2 launch kennel_viz meshcat.launch.py port:=7000</span></div>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="grid-column:3;grid-row:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden;margin-left:6px">
+            <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+              <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Pipeline health</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">solve time vs deadline · ms</div>
+            </div>
+            <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;min-height:0;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:7px">
+                <sc-for list="{{ health }}" as="h" hint-placeholder-count="6">
+                  <div onClick="{{ h.onClick }}" style="border:1px solid {{ h.border }};background:{{ h.bg }};border-radius:5px;padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:10px;animation:{{ h.anim }}">
+                    <div style="width:7px;height:7px;border-radius:4px;flex:none;background:{{ h.dot }}"></div>
+                    <div style="min-width:0;flex:1">
+                      <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.04em;text-transform:uppercase;color:#dbe2ea">{{ h.name }}</div>
+                      <div style="font:400 9px 'IBM Plex Mono';color:#6f7a88;margin-top:2px">{{ h.sub }}</div>
+                    </div>
+                    <div style="font:500 11px 'IBM Plex Mono';color:{{ h.dot }};white-space:nowrap">{{ h.metric }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
+                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No diagnostics on /pipeline/diagnostics</div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">start the controller stack:<br><span style="color:#8fc9ea">ros2 launch kennel_control pipeline.launch.py</span></div>
+              </div>
+            </sc-if>
+          </div>
+
+          <div onPointerDown="{{ colDrag }}" style="grid-column:2;grid-row:1/6;cursor:col-resize;display:flex;align-items:center;justify-content:center;touch-action:none">
+            <div style="width:1px;height:100%;background:#1b222c"></div>
+          </div>
+
+          <div onPointerDown="{{ rowADrag }}" style="grid-column:1/4;grid-row:2;cursor:row-resize;touch-action:none"></div>
+
+          <div style="grid-column:1;grid-row:3;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
+            <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+              <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Gait / contact timeline</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">/gait/plan + /contact_state · bool · 10 Hz</div>
+            </div>
+            <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;min-height:0;position:relative">
+                <canvas ref="{{ refTl }}" style="position:absolute;inset:0"></canvas>
+              </div>
+              <div style="padding:5px 11px;border-top:1px solid #1f2731;display:flex;gap:14px;font:400 9px 'IBM Plex Mono';color:#5d6875">
+                <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:7px;background:rgba(63,191,127,0.22);border:1px solid #24523c"></div>planned stance</div>
+                <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:5px;background:#3fbf7f"></div>actual contact</div>
+                <div style="display:flex;align-items:center;gap:5px"><div style="width:2px;height:9px;background:#e0a63c"></div>touchdown mismatch &gt;25 ms</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
+                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No contact stream</div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">/contact_state has never been seen — launch:<br><span style="color:#8fc9ea">ros2 launch kennel_control pipeline.launch.py</span></div>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="grid-column:3;grid-row:3;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden;margin-left:6px">
+            <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+              <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Health counters</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">/diagnostics · events·s⁻¹</div>
+            </div>
+            <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;min-height:0;position:relative">
+                <canvas ref="{{ refSpark }}" style="position:absolute;inset:0"></canvas>
+              </div>
+            </sc-if>
+            <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
+                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No counters</div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">/diagnostics is silent — launch:<br><span style="color:#8fc9ea">ros2 launch kennel_control pipeline.launch.py</span></div>
+              </div>
+            </sc-if>
+          </div>
+
+          <div onPointerDown="{{ rowBDrag }}" style="grid-column:1/4;grid-row:4;cursor:row-resize;touch-action:none"></div>
+
+          <div style="grid-column:1;grid-row:5;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
+            <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+              <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">State plots</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">/odom + /imu/data · m, deg, m·s⁻¹ · 10 Hz</div>
+            </div>
+            <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;min-height:0;position:relative">
+                <canvas ref="{{ refPlots }}" style="position:absolute;inset:0"></canvas>
+              </div>
+            </sc-if>
+            <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
+                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No state estimate</div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">/odom missing — launch:<br><span style="color:#8fc9ea">ros2 launch kennel_estimation state_estimation.launch.py</span></div>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="grid-column:3;grid-row:5;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden;margin-left:6px">
+            <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+              <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Event feed</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">{{ feedLabel }}</div>
+            </div>
+            <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
+              <div ref="{{ refFeed }}" style="flex:1;min-height:0;overflow:auto;padding:6px 4px 6px 0">
+                <sc-for list="{{ events }}" as="e" hint-placeholder-count="8">
+                  <div style="display:flex;gap:9px;padding:3px 10px;border-left:2px solid {{ e.color }}">
+                    <div style="font:400 9px 'IBM Plex Mono';color:#4b5563;flex:none;width:44px">{{ e.t }}</div>
+                    <div style="font:400 10px/1.5 'IBM Plex Mono';color:{{ e.fg }}">{{ e.text }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
+                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No events</div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">nothing publishing on /rosout — launch:<br><span style="color:#8fc9ea">ros2 launch kennel_sim go2_sim.launch.py</span></div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <sc-if value="{{ detailOpen }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;top:0;right:0;bottom:0;width:400px;background:#0c1016;border-left:1px solid #1f2731;display:flex;flex-direction:column;box-shadow:-18px 0 40px rgba(0,0,0,.45);z-index:20">
+            <div style="padding:12px 14px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font:600 12px 'IBM Plex Sans';color:#dbe2ea">{{ detailName }}</div>
+                <div style="font:400 9px 'IBM Plex Mono';color:#5d6875;margin-top:2px">{{ detailSub }}</div>
+              </div>
+              <div onClick="{{ onCloseDetail }}" style="font:500 11px 'IBM Plex Mono';color:#8b93a0;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:3px 9px">close</div>
+            </div>
+            <div style="height:220px;position:relative;border-bottom:1px solid #1f2731">
+              <canvas ref="{{ refDetail }}" style="position:absolute;inset:0"></canvas>
+            </div>
+            <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;overflow:auto">
+              <sc-for list="{{ detailStats }}" as="s" hint-placeholder-count="4">
+                <div style="display:flex;justify-content:space-between;font:400 10px 'IBM Plex Mono'">
+                  <div style="color:#6f7a88">{{ s.label }}</div>
+                  <div style="color:{{ s.color }}">{{ s.value }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isRuns }}" hint-placeholder-val="{{ true }}">
+      <div style="height:100%;overflow:auto;padding:18px 20px 40px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <div style="font:600 15px 'IBM Plex Sans'">Runs</div>
+            <div style="font:400 11px 'IBM Plex Mono';color:#6f7a88;margin-top:3px">{{ runsSub }}</div>
+          </div>
+          <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">{{ diffHint }}</div>
+        </div>
+
+        <div style="background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:34px 132px 118px 1fr 78px 108px 190px;gap:0;padding:9px 12px;border-bottom:1px solid #1f2731;font:500 9px 'IBM Plex Mono';letter-spacing:.06em;text-transform:uppercase;color:#5d6875">
+            <div style="overflow:hidden">cmp</div><div style="overflow:hidden">run</div><div style="overflow:hidden">map</div><div style="overflow:hidden">pipeline</div><div style="overflow:hidden">dur</div><div style="overflow:hidden">verdict</div><div style="overflow:hidden">counters</div>
+          </div>
+          <sc-for list="{{ runs }}" as="r" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:34px 132px 118px 1fr 78px 108px 190px;gap:0;padding:10px 12px;border-bottom:1px solid #161d26;align-items:center;background:{{ r.bg }}">
+              <div onClick="{{ r.onSelect }}" style="width:14px;height:14px;border:1px solid {{ r.cbBorder }};background:{{ r.cbBg }};border-radius:3px;cursor:pointer"></div>
+              <div style="font:500 11px 'IBM Plex Mono';color:#dbe2ea">{{ r.id }}</div>
+              <div style="font:400 11px 'IBM Plex Mono';color:#9aa5b1">{{ r.map }}</div>
+              <div style="font:400 10px 'IBM Plex Mono';color:#6f7a88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.stages }}</div>
+              <div style="font:400 11px 'IBM Plex Mono';color:#9aa5b1">{{ r.dur }}</div>
+              <div><span style="font:500 9px 'IBM Plex Mono';letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:3px;color:{{ r.vFg }};background:{{ r.vBg }};border:1px solid {{ r.vBorder }}">{{ r.verdict }}</span></div>
+              <div style="display:flex;gap:10px;align-items:center">
+                <div style="font:400 10px 'IBM Plex Mono';color:#8b93a0">{{ r.counters }}</div>
+                <div onClick="{{ r.onLoad }}" style="margin-left:auto;font:500 9px 'IBM Plex Mono';color:#8fc9ea;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:2px 7px">load</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ hasDiff }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top:16px;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
+            <div style="padding:10px 12px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+              <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Config diff</div>
+              <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">{{ diffTitle }}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 200px 200px;padding:8px 12px;border-bottom:1px solid #161d26;font:500 9px 'IBM Plex Mono';letter-spacing:.06em;text-transform:uppercase;color:#5d6875">
+              <div>key</div><div>{{ diffA }}</div><div>{{ diffB }}</div>
+            </div>
+            <sc-for list="{{ diffRows }}" as="d" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:1fr 200px 200px;padding:6px 12px;border-bottom:1px solid #131a22">
+                <div style="font:400 10px 'IBM Plex Mono';color:#8b93a0">{{ d.key }}</div>
+                <div style="font:400 10px 'IBM Plex Mono';color:#e2564d">{{ d.a }}</div>
+                <div style="font:400 10px 'IBM Plex Mono';color:#3fbf7f">{{ d.b }}</div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noDiff }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:20px;text-align:center;font:400 11px 'IBM Plex Mono';color:#5d6875">configurations are identical</div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+      </sc-if>
+    </div>
+
+    <div style="height:30px;flex:none;border-top:1px solid #1b222c;background:#0c1016;display:flex;align-items:center;gap:0;padding:0 6px">
+      <sc-for list="{{ status }}" as="s" hint-placeholder-count="5">
+        <div style="display:flex;align-items:center;gap:7px;padding:0 12px;border-right:1px solid #161d26;height:18px">
+          <div style="font:400 9px 'IBM Plex Mono';letter-spacing:.05em;text-transform:uppercase;color:#4b5563">{{ s.label }}</div>
+          <div style="font:500 10px 'IBM Plex Mono';color:{{ s.color }}">{{ s.value }}</div>
+        </div>
+      </sc-for>
+      <div onClick="{{ onToggleConn }}" style="margin-left:auto;font:500 10px 'IBM Plex Mono';color:#8b93a0;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:2px 10px" style-hover="border-color:#3b4757;color:#dbe2ea">{{ connBtn }}</div>
+    </div>
+  </div>
+
+  <sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="position:fixed;inset:0;background:rgba(6,9,13,.6);z-index:40;display:flex;justify-content:flex-end" onClick="{{ onCloseDrawer }}">
+      <div onClick="{{ stop }}" style="width:460px;background:#0c1016;border-left:1px solid #1f2731;display:flex;flex-direction:column;height:100%">
+        <div style="padding:14px 16px;border-bottom:1px solid #1f2731">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font:600 13px 'IBM Plex Sans';color:#dbe2ea">{{ drawerName }}</div>
+            <div onClick="{{ onCloseDrawer }}" style="font:500 11px 'IBM Plex Mono';color:#8b93a0;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:3px 9px">close</div>
+          </div>
+          <div style="font:400 10px 'IBM Plex Mono';color:#5d6875;margin-top:4px">{{ drawerSub }}</div>
+          <div style="display:flex;gap:6px;margin-top:12px">
+            <sc-for list="{{ drawerTabs }}" as="t" hint-placeholder-count="2">
+              <div onClick="{{ t.onClick }}" style="font:500 10px 'IBM Plex Mono';padding:4px 10px;border-radius:3px;cursor:pointer;color:{{ t.fg }};background:{{ t.bg }};border:1px solid {{ t.border }}">{{ t.label }}</div>
+            </sc-for>
+            <div onClick="{{ onResetParams }}" style="margin-left:auto;font:500 10px 'IBM Plex Mono';padding:4px 10px;border-radius:3px;cursor:pointer;color:#8b93a0;border:1px solid #232b36">reset to defaults</div>
+          </div>
+        </div>
+        <sc-if value="{{ drawerForm }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:11px">
+            <sc-for list="{{ drawerFields }}" as="f" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <div style="min-width:0">
+                  <div style="display:flex;align-items:center;gap:7px">
+                    <div style="font:400 11px 'IBM Plex Mono';color:#c3ccd6">{{ f.label }}</div>
+                    <sc-if value="{{ f.modified }}" hint-placeholder-val="{{ true }}">
+                      <div style="font:500 8px 'IBM Plex Mono';color:#e0a63c;border:1px solid #4a3a1c;background:#231b0e;padding:1px 5px;border-radius:3px">modified</div>
+                    </sc-if>
+                  </div>
+                  <div style="font:400 9px 'IBM Plex Mono';color:#4b5563;margin-top:2px">{{ f.defLabel }}</div>
+                </div>
+                <div style="flex:none;display:flex;align-items:center;gap:6px">
+                  <sc-if value="{{ f.isNum }}" hint-placeholder-val="{{ true }}">
+                    <input type="number" step="{{ f.step }}" value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:96px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px;text-align:right">
+                  </sc-if>
+                  <sc-if value="{{ f.isEnum }}" hint-placeholder-val="{{ true }}">
+                    <select value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:150px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px">
+                      <sc-for list="{{ f.opts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                    </select>
+                  </sc-if>
+                  <sc-if value="{{ f.isBool }}" hint-placeholder-val="{{ true }}">
+                    <div onClick="{{ f.onToggle }}" style="width:38px;height:20px;border-radius:10px;background:{{ f.trackBg }};border:1px solid {{ f.trackBorder }};position:relative;cursor:pointer">
+                      <div style="position:absolute;top:2px;left:{{ f.knobLeft }};width:14px;height:14px;border-radius:7px;background:{{ f.knobBg }};transition:left .12s"></div>
+                    </div>
+                  </sc-if>
+                  <div style="font:400 9px 'IBM Plex Mono';color:#5d6875;width:34px">{{ f.unit }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ drawerYaml }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;overflow:auto;padding:14px 16px">
+            <pre style="margin:0;background:#0a0e14;border:1px solid #1f2731;border-radius:4px;padding:12px;font:400 10px/1.7 'IBM Plex Mono';color:#a8b3c0;white-space:pre">{{ blockYaml }}</pre>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ yamlModal }}" hint-placeholder-val="{{ true }}">
+    <div style="position:fixed;inset:0;background:rgba(6,9,13,.68);z-index:50;display:flex;align-items:center;justify-content:center" onClick="{{ onCloseYaml }}">
+      <div onClick="{{ stop }}" style="width:900px;max-width:92vw;height:640px;max-height:88vh;background:#0c1016;border:1px solid #1f2731;border-radius:8px;display:flex;flex-direction:column">
+        <div style="padding:14px 16px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font:600 13px 'IBM Plex Sans';color:#dbe2ea">Load configuration</div>
+            <div style="font:400 10px 'IBM Plex Mono';color:#5d6875;margin-top:3px">parses back into composer state · round-trip must be identical</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="font:500 10px 'IBM Plex Mono';color:{{ rtColor }}">{{ rtLabel }}</div>
+            <div onClick="{{ onLoadYaml }}" style="padding:6px 14px;border:1px solid #2f5d78;background:#14283a;border-radius:4px;font:600 11px 'IBM Plex Mono';color:#8fc9ea;cursor:pointer">load into composer</div>
+            <div onClick="{{ onCloseYaml }}" style="padding:6px 12px;border:1px solid #232b36;border-radius:4px;font:500 11px 'IBM Plex Mono';color:#8b93a0;cursor:pointer">close</div>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 16px">
+          <div style="display:flex;flex-direction:column;min-height:0">
+            <div style="font:500 10px 'IBM Plex Mono';color:#6f7a88;margin-bottom:6px">sim.yaml</div>
+            <textarea value="{{ simText }}" onChange="{{ onSimText }}" spellcheck="false" style="flex:1;background:#0a0e14;border:1px solid #1f2731;border-radius:4px;padding:12px;font:400 10px/1.65 'IBM Plex Mono';color:#a8b3c0;resize:none"></textarea>
+          </div>
+          <div style="display:flex;flex-direction:column;min-height:0">
+            <div style="font:500 10px 'IBM Plex Mono';color:#6f7a88;margin-bottom:6px">pipeline.yaml</div>
+            <textarea value="{{ pipeText }}" onChange="{{ onPipeText }}" spellcheck="false" style="flex:1;background:#0a0e14;border:1px solid #1f2731;border-radius:4px;padding:12px;font:400 10px/1.65 'IBM Plex Mono';color:#a8b3c0;resize:none"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;timelineWindowS&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:12,&quot;min&quot;:6,&quot;max&quot;:30,&quot;step&quot;:1,&quot;unit&quot;:&quot;s&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Dashboard&quot;}}">
+const LEGS = ['FL','FR','RL','RR'];
+const OFF = [0, 0.5, 0.5, 0];
+const GAIT_T = 0.6, DUTY = 0.55;
+const MPC_DEADLINE = 10, WBC_DEADLINE = 2;
+const T_FALL = 32.4;
+
+const BLOCKS = [
+  {id:'gait', name:'Gait Sequencer', topic:'/gait/plan', impls:[['simple','Simple'],['adaptive','Adaptive'],['bio','Bio-inspired']]},
+  {id:'mpc', name:'MPC', topic:'/mpc/solution', impls:[['hpipm','HPIPM'],['osqp','OSQP'],['qpoases','qpOASES']]},
+  {id:'wbc', name:'WBC', topic:'/wbc/torque_cmd', impls:[['arcopt','ArcOPT']]},
+  {id:'swing', name:'Swing Leg Ctrl', topic:'/swing/foot_target', impls:[['bezier','Bezier 5th order'],['spline','Cubic spline'],['raibert','Raibert heuristic']]},
+  {id:'contact', name:'Contact Logic', topic:'/contact_state', impls:[['force','Force threshold'],['kinematic','Kinematic'],['fused','Fused force+kin']]},
+  {id:'adapt', name:'Model Adaptation', topic:'/model/estimate', impls:[['off','Off'],['kf','Kalman filter'],['ls','Least squares']]}
+];
+const BY_ID = {}; BLOCKS.forEach(b => BY_ID[b.id] = b);
+
+const PARAMS = {
+  gait: [
+    {k:'step_frequency', label:'step_frequency', unit:'Hz', type:'num', def:2.0, step:0.1},
+    {k:'duty_factor', label:'duty_factor', unit:'', type:'num', def:0.55, step:0.01},
+    {k:'step_height', label:'step_height', unit:'m', type:'num', def:0.08, step:0.01},
+    {k:'stance_pattern', label:'stance_pattern', unit:'', type:'enum', def:'trot', opts:[['trot','trot'],['walk','walk'],['bound','bound']]},
+    {k:'adapt_to_terrain', label:'adapt_to_terrain', unit:'', type:'bool', def:true}
+  ],
+  mpc: [
+    {k:'mode', label:'mode', unit:'', type:'enum', def:'tracking', opts:[['tracking','tracking'],['robust','robust'],['terrain_aware','terrain_aware']]},
+    {k:'horizon_steps', label:'horizon_steps', unit:'', type:'num', def:16, step:1},
+    {k:'timestep', label:'timestep', unit:'s', type:'num', def:0.02, step:0.005},
+    {k:'max_iterations', label:'max_iterations', unit:'', type:'num', def:30, step:1},
+    {k:'deadline_ms', label:'deadline_ms', unit:'ms', type:'num', def:10, step:1},
+    {k:'w_body_position', label:'w_body_position', unit:'', type:'num', def:120, step:10},
+    {k:'w_body_orientation', label:'w_body_orientation', unit:'', type:'num', def:80, step:10},
+    {k:'friction_mu', label:'friction_mu', unit:'', type:'num', def:0.6, step:0.05},
+    {k:'warm_start', label:'warm_start', unit:'', type:'bool', def:true}
+  ],
+  wbc: [
+    {k:'task_priority', label:'task_priority', unit:'', type:'enum', def:'contact_first', opts:[['contact_first','contact_first'],['body_first','body_first']]},
+    {k:'deadline_ms', label:'deadline_ms', unit:'ms', type:'num', def:2, step:0.5},
+    {k:'kp_body', label:'kp_body', unit:'', type:'num', def:400, step:25},
+    {k:'kd_body', label:'kd_body', unit:'', type:'num', def:35, step:5},
+    {k:'torque_limit', label:'torque_limit', unit:'N·m', type:'num', def:33.5, step:0.5},
+    {k:'nullspace_damping', label:'nullspace_damping', unit:'', type:'num', def:0.02, step:0.01}
+  ],
+  swing: [
+    {k:'clearance', label:'clearance', unit:'m', type:'num', def:0.09, step:0.01},
+    {k:'touchdown_gain', label:'touchdown_gain', unit:'', type:'num', def:1.4, step:0.1},
+    {k:'retract_on_early_contact', label:'retract_on_early_contact', unit:'', type:'bool', def:true},
+    {k:'lateral_offset', label:'lateral_offset', unit:'m', type:'num', def:0.0, step:0.01}
+  ],
+  contact: [
+    {k:'force_threshold', label:'force_threshold', unit:'N', type:'num', def:22, step:1},
+    {k:'debounce_ms', label:'debounce_ms', unit:'ms', type:'num', def:20, step:5},
+    {k:'use_ground_truth', label:'use_ground_truth', unit:'', type:'bool', def:false},
+    {k:'schmitt_ratio', label:'schmitt_ratio', unit:'', type:'num', def:0.7, step:0.05}
+  ],
+  adapt: [
+    {k:'update_rate', label:'update_rate', unit:'Hz', type:'num', def:50, step:5},
+    {k:'mass_forgetting', label:'mass_forgetting', unit:'', type:'num', def:0.995, step:0.001},
+    {k:'com_bound', label:'com_bound', unit:'m', type:'num', def:0.05, step:0.01},
+    {k:'broadcast_to_all', label:'broadcast_to_all', unit:'', type:'bool', def:true}
+  ]
+};
+
+const MAPS = [
+  {id:'flat_plane', name:'Flat plane', tag:'baseline', desc:'μ=0.8 · perfectly level · sanity checks'},
+  {id:'obstacle_terrain', name:'Obstacle terrain', tag:'hard', desc:'stairs 0.12 m · ramps 15° · rough patch ±0.04 m'},
+  {id:'brick', name:'Brick', tag:'medium', desc:'uneven brick lattice · μ=0.65 · 0.02 m lips'}
+];
+
+const SIM_DEFAULT = {
+  initial_height: 0.34, real_time_rate: 1.0, imu_noise: true,
+  joint_encoder_noise: true, foot_force_noise: false, ground_truth_state: false
+};
+
+function defaultParams(id) { const o = {}; PARAMS[id].forEach(p => o[p.k] = p.def); return o; }
+function defaultCfg() {
+  return {
+    map: 'obstacle_terrain',
+    sim: Object.assign({}, SIM_DEFAULT),
+    blocks: {
+      gait: {impl:'adaptive', params: defaultParams('gait')},
+      mpc: {impl:'hpipm', params: defaultParams('mpc')},
+      wbc: {impl:'arcopt', params: defaultParams('wbc')},
+      swing: {impl:'bezier', params: defaultParams('swing')},
+      contact: {impl:'force', params: defaultParams('contact')},
+      adapt: {impl:'kf', params: defaultParams('adapt')}
+    }
+  };
+}
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+function yamlVal(v) { return typeof v === 'boolean' ? (v ? 'true' : 'false') : String(v); }
+function emitSim(cfg, runId) {
+  let s = '# ' + runId + ' — sim.yaml (generated by Kennel Console)\n';
+  s += 'sim:\n  map: ' + cfg.map + '\n';
+  Object.keys(cfg.sim).forEach(k => { s += '  ' + k + ': ' + yamlVal(cfg.sim[k]) + '\n'; });
+  return s;
+}
+function emitPipeline(cfg, runId) {
+  let s = '# ' + runId + ' — pipeline.yaml (generated by Kennel Console)\npipeline:\n';
+  BLOCKS.forEach(b => {
+    const c = cfg.blocks[b.id];
+    s += '  ' + b.id + ':\n    implementation: ' + c.impl + '\n    params:\n';
+    PARAMS[b.id].forEach(p => { s += '      ' + p.k + ': ' + yamlVal(c.params[p.k]) + '\n'; });
+  });
+  return s;
+}
+function scalar(v) {
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+  return v.replace(/^["']|["']$/g, '');
+}
+function parseYaml(text) {
+  const root = {}; const stack = [{indent:-1, obj:root}];
+  (text || '').split('\n').forEach(line => {
+    if (!line.trim() || line.trim().charAt(0) === '#') return;
+    const indent = line.match(/^ */)[0].length;
+    const s = line.trim(); const i = s.indexOf(':');
+    if (i < 0) return;
+    const k = s.slice(0, i).trim(); const v = s.slice(i + 1).trim();
+    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
+    const parent = stack[stack.length - 1].obj;
+    if (v === '') { const o = {}; parent[k] = o; stack.push({indent, obj:o}); }
+    else parent[k] = scalar(v);
+  });
+  return root;
+}
+function cfgFromYaml(simText, pipeText) {
+  const cfg = defaultCfg();
+  const sim = (parseYaml(simText).sim) || {};
+  if (sim.map) cfg.map = sim.map;
+  Object.keys(cfg.sim).forEach(k => { if (sim[k] !== undefined) cfg.sim[k] = sim[k]; });
+  const pipe = (parseYaml(pipeText).pipeline) || {};
+  BLOCKS.forEach(b => {
+    const src = pipe[b.id]; if (!src) return;
+    if (src.implementation) cfg.blocks[b.id].impl = String(src.implementation);
+    const ps = src.params || {};
+    PARAMS[b.id].forEach(p => { if (ps[p.k] !== undefined) cfg.blocks[b.id].params[p.k] = ps[p.k]; });
+  });
+  return cfg;
+}
+function flatten(cfg) {
+  const out = {};
+  out['sim.map'] = cfg.map;
+  Object.keys(cfg.sim).forEach(k => out['sim.' + k] = cfg.sim[k]);
+  BLOCKS.forEach(b => {
+    out[b.id + '.implementation'] = cfg.blocks[b.id].impl;
+    PARAMS[b.id].forEach(p => out[b.id + '.' + p.k] = cfg.blocks[b.id].params[p.k]);
+  });
+  return out;
+}
+
+class MockDataSource {
+  constructor(sink) {
+    this.sink = sink; this.timer = null;
+    this.reset();
+  }
+  reset() {
+    this.t = 0; this.seed = 20260724; this.buf = []; this.events = [];
+    this.counters = {mpcOvertime:0, wbcOvertime:0, solverFail:0, contactMiss:0, imuStale:0};
+    this.lastInc = {}; this.cool = {}; this.fallen = false; this.fallText = ''; this.halted = false; this.fallAt = undefined;
+    this.jit = [0,0,0,0]; this.prevActual = [false,false,false,false];
+    this.dist = null; this.cmd = {vx:0.6, vy:0, wz:0.0};
+  }
+  rnd() { this.seed = (this.seed * 1664525 + 1013904223) % 4294967296; return this.seed / 4294967296 - 0.5; }
+  deg(t) { return Math.max(0, Math.min(1, (t - 15) / 15)); }
+  emit(key, sev, text, cd) {
+    if (cd && this.cool[key] !== undefined && this.t - this.cool[key] < cd) return;
+    this.cool[key] = this.t;
+    this.events.push({t:this.t, sev, text});
+    if (this.events.length > 500) this.events.splice(0, 100);
+  }
+  bump(k) { this.counters[k]++; this.lastInc[k] = this.t; }
+  advance() {
+    if (this.fallen && this.t > this.fallAt + 1.2) { this.stop(); this.halted = true; return; }
+    const t = this.t, d = this.deg(t);
+    if (!this.fallen && t >= T_FALL) {
+      this.fallen = true; this.fallText = 'belly contact, pitch −38°, body height 0.09 m';
+      this.emit('fall', 'fatal', 'FALL: belly contact, pitch −38°, height 0.09 m — controller latched to damping mode', 0);
+      this.fallAt = t;
+    }
+    const fallen = this.fallen;
+    let mpcMs = fallen ? 0.3 : 4.6 + 6.2 * d + this.rnd() * (1.4 + 5.5 * d);
+    if (!fallen && d > 0.4 && this.rnd() > 0.35) mpcMs += 2.4 * d;
+    mpcMs = Math.max(0.2, mpcMs);
+    const mpcIters = fallen ? 1 : Math.round(11 + 19 * d + this.rnd() * 6);
+    let wbcMs = fallen ? 0.3 : 1.02 + 0.62 * d + this.rnd() * 0.5;
+    wbcMs = Math.max(0.15, wbcMs);
+    const solverFail = !fallen && d > 0.55 && (this.rnd() + 0.5) > 0.965;
+
+    if (!fallen && mpcMs > MPC_DEADLINE) {
+      this.bump('mpcOvertime');
+      this.emit('mpcOver', 'warn', 'MPC exceeded 10 ms deadline (' + mpcMs.toFixed(1) + ' ms, ' + mpcIters + ' iters) — previous solution held', 1.2);
+    }
+    if (!fallen && wbcMs > WBC_DEADLINE) {
+      this.bump('wbcOvertime');
+      this.emit('wbcOver', 'warn', 'WBC exceeded 2 ms deadline (' + wbcMs.toFixed(2) + ' ms) — torque command late to /wbc/torque_cmd', 1.5);
+    }
+    if (solverFail) {
+      this.bump('solverFail');
+      this.emit('solverFail', 'error', 'MPC solver failed to converge (HPIPM status 2, ' + mpcIters + ' iters) — falling back to last feasible plan', 0.9);
+    }
+    if (!fallen && d > 0.3 && (this.rnd() + 0.5) > 0.988) {
+      this.bump('imuStale');
+      this.emit('imuStale', 'warn', '/imu/data stale for 0.41 s — state estimate coasting on kinematics', 2.0);
+    }
+
+    const planned = [], actual = [], miss = [false,false,false,false];
+    for (let i = 0; i < 4; i++) {
+      const ph = (t / GAIT_T + OFF[i]) % 1;
+      const p = ph < DUTY;
+      if (ph < 0.02) this.jit[i] = this.rnd() * 0.03 + this.rnd() * 0.14 * d;
+      const aph = ((ph - this.jit[i] / GAIT_T) % 1 + 1) % 1;
+      const a = fallen ? true : aph < DUTY;
+      planned.push(fallen ? false : p); actual.push(a);
+      if (!fallen && a && !this.prevActual[i]) {
+        const ms = this.jit[i] * 1000;
+        if (Math.abs(ms) > 25) {
+          miss[i] = true; this.bump('contactMiss');
+          this.emit('td' + i, 'warn', (ms > 0 ? 'Early' : 'Late') + ' contact ' + LEGS[i] + ' ' + (ms > 0 ? '+' : '−') + Math.abs(ms).toFixed(0) + ' ms vs planned touchdown', 0.6);
+        }
+      }
+      this.prevActual[i] = a;
+    }
+
+    let distK = 0;
+    if (this.dist && t < this.dist.until) distK = this.dist.mag / 100;
+    const height = fallen ? 0.09 + this.rnd() * 0.004 : 0.322 + 0.006 * Math.sin(t * 8.4) + this.rnd() * 0.005 + 0.012 * d * Math.sin(t * 3.1) + distK * 0.02;
+    const pitch = fallen ? -38 + this.rnd() * 1.2 : 1.1 * Math.sin(t * 3.0) + this.rnd() * 0.9 + 3.2 * d * Math.sin(t * 6.7) + distK * 5;
+    const roll = fallen ? 12 + this.rnd() : 0.7 * Math.sin(t * 2.2 + 1) + this.rnd() * 0.7 + 2.1 * d * Math.sin(t * 5.1) - distK * 4;
+    const vx = fallen ? 0.02 * this.rnd() : this.cmd.vx * (1 - 0.06 * d) + this.rnd() * (0.05 + 0.16 * d);
+    const vy = fallen ? 0 : this.cmd.vy + this.rnd() * (0.03 + 0.1 * d) + distK * 0.3;
+    const wz = fallen ? 0 : this.cmd.wz + this.rnd() * (0.04 + 0.12 * d);
+    const rtf = fallen ? 1.0 : 1.0 - 0.11 * d + this.rnd() * 0.03;
+    const hb = 0.101 + this.rnd() * 0.03;
+
+    this.buf.push({t, mpcMs, mpcIters, wbcMs, solverFail, planned, actual, miss, height, pitch, roll,
+      vx, vy, wz, cvx:this.cmd.vx, cvy:this.cmd.vy, cwz:this.cmd.wz, rtf, hb, c:Object.assign({}, this.counters)});
+    if (this.buf.length > 900) this.buf.splice(0, 200);
+    this.t = Math.round((this.t + 0.1) * 10) / 10;
+  }
+  seedDemo(seconds) { const n = Math.round(seconds * 10); for (let i = 0; i < n; i++) this.advance(); }
+  start() { if (this.timer) return; this.timer = setInterval(() => { this.advance(); this.sink(); }, 100); }
+  stop() { clearInterval(this.timer); this.timer = null; }
+  last() { return this.buf.length ? this.buf[this.buf.length - 1] : null; }
+  inject(f) {
+    const mag = Math.hypot(f.fx, f.fy, f.fz) || f.mag;
+    this.dist = {until: this.t + f.duration, mag};
+    this.emit('dist' + this.t, 'info', 'Disturbance injected: ' + mag.toFixed(0) + ' N for ' + f.duration.toFixed(2) + ' s at body CoM (' + f.fx + ', ' + f.fy + ', ' + f.fz + ')', 0);
+  }
+}
+
+const SEED_RUNS = [
+  {id:'RUN-2026-0718-1142', map:'obstacle_terrain', dur:'32.4 s', verdict:'fell', c:'mpc_over 118 · solver_fail 9 · td_miss 41',
+   over:{gait:'adaptive', mpc:'hpipm', wbc:'arcopt', swing:'bezier', contact:'force', adapt:'kf'}, params:{}},
+  {id:'RUN-2026-0718-1029', map:'obstacle_terrain', dur:'60.0 s', verdict:'completed', c:'mpc_over 4 · solver_fail 0 · td_miss 7',
+   over:{gait:'adaptive', mpc:'hpipm', wbc:'arcopt', swing:'bezier', contact:'fused', adapt:'kf'}, params:{mpc:{horizon_steps:12}}},
+  {id:'RUN-2026-0717-1755', map:'brick', map_label:'brick', dur:'60.0 s', verdict:'completed', c:'mpc_over 0 · solver_fail 0 · td_miss 2',
+   over:{gait:'simple', mpc:'osqp', wbc:'arcopt', swing:'raibert', contact:'force', adapt:'off'}, params:{mpc:{horizon_steps:10, mode:'robust'}}},
+  {id:'RUN-2026-0717-1408', map:'obstacle_terrain', dur:'11.2 s', verdict:'solver-failed', c:'mpc_over 62 · solver_fail 214 · td_miss 18',
+   over:{gait:'bio', mpc:'qpoases', wbc:'arcopt', swing:'spline', contact:'kinematic', adapt:'ls'}, params:{mpc:{max_iterations:60, horizon_steps:24}}},
+  {id:'RUN-2026-0716-0921', map:'flat_plane', dur:'60.0 s', verdict:'completed', c:'mpc_over 0 · solver_fail 0 · td_miss 0',
+   over:{gait:'simple', mpc:'hpipm', wbc:'arcopt', swing:'bezier', contact:'force', adapt:'off'}, params:{}}
+];
+function seedRuns() {
+  return SEED_RUNS.map(r => {
+    const cfg = defaultCfg();
+    cfg.map = r.map;
+    Object.keys(r.over).forEach(k => cfg.blocks[k].impl = r.over[k]);
+    Object.keys(r.params || {}).forEach(bk => Object.keys(r.params[bk]).forEach(pk => cfg.blocks[bk].params[pk] = r.params[bk][pk]));
+    if (r.map === 'flat_plane') cfg.sim.foot_force_noise = false;
+    if (r.map === 'brick') cfg.sim.initial_height = 0.36;
+    return {id:r.id, dur:r.dur, verdict:r.verdict, counters:r.c, cfg};
+  });
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const cfg = defaultCfg();
+    this.state = {
+      view: 'compose', cfg, tick: 0, conn: 'connected', openBlock: null, drawerTab: 'form',
+      yamlTab: 'sim', copied: '', runs: seedRuns(), sel: [], detail: null, pinFall: false,
+      yamlModal: false, simText: '', pipeText: '', roundTrip: null, presets: [], presetSel: '',
+      colW: 60, rowA: 1.1, rowB: 0.95, rowC: 0.95,
+      dist: {fx: 120, fy: 0, fz: 0, duration: 0.30},
+      runSeq: 1
+    };
+    this.stop = e => e.stopPropagation();
+    this.refTl = el => this._tl = el;
+    this.refSpark = el => this._spark = el;
+    this.refPlots = el => this._plots = el;
+    this.refDetail = el => this._det = el;
+    this.refFeed = el => this._feed = el;
+  }
+  componentDidMount() {
+    this.ds = new MockDataSource(() => this.setState(s => ({tick: s.tick + 1})));
+    this.ds.seedDemo(30);
+    this.ds.start();
+    try {
+      const raw = localStorage.getItem('kennel.presets');
+      if (raw) this.setState({presets: JSON.parse(raw)});
+    } catch (e) {}
+    this.draw();
+  }
+  componentWillUnmount() { if (this.ds) this.ds.stop(); }
+  componentDidUpdate() {
+    this.draw();
+    if (this._feed && !this.state.pinFall) this._feed.scrollTop = this._feed.scrollHeight;
+  }
+  fit(cv) {
+    const p = cv.parentElement; if (!p) return null;
+    const r = p.getBoundingClientRect(); if (r.width < 4 || r.height < 4) return null;
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, r.width, r.height);
+    return {ctx, w: r.width, h: r.height};
+  }
+  draw() {
+    if (this.state.view !== 'dashboard' || this.state.conn !== 'connected') return;
+    if (this._tl) this.drawTimeline();
+    if (this._spark) this.drawSparks();
+    if (this._plots) this.drawPlots();
+    if (this._det) this.drawDetail();
+  }
+  win() {
+    const buf = this.ds.buf; const w = this.props.timelineWindowS || 12;
+    const t1 = buf.length ? buf[buf.length - 1].t : 0;
+    return {buf, w, t1, t0: t1 - w};
+  }
+  drawTimeline() {
+    const f = this.fit(this._tl); if (!f) return;
+    const {ctx, w, h} = f; const {buf, w: win, t0, t1} = this.win();
+    const padL = 30, padR = 10, padT = 4;
+    const padB = h > 90 ? 16 : 8;
+    const iw = w - padL - padR, rowH = (h - padT - padB) / 4;
+    const gap = Math.min(4, rowH * 0.16);
+    const bandH = Math.max(3, rowH - gap);
+    const barH = Math.max(2, Math.min(7, bandH * 0.4));
+    const X = t => padL + (t - t0) / win * iw;
+    const bw = Math.max(1.2, iw / win * 0.1 + 0.4);
+    ctx.font = Math.max(8, Math.min(10, rowH * 0.5)) + 'px "IBM Plex Mono", monospace';
+    for (let i = 0; i < 4; i++) {
+      const y = padT + i * rowH;
+      ctx.fillStyle = '#0a0e14'; ctx.fillRect(padL, y, iw, bandH);
+      for (let j = 0; j < buf.length; j++) {
+        const s = buf[j]; if (s.t < t0) continue;
+        if (s.planned[i]) { ctx.fillStyle = 'rgba(63,191,127,0.22)'; ctx.fillRect(X(s.t), y, bw, bandH); }
+        if (s.actual[i]) { ctx.fillStyle = '#3fbf7f'; ctx.fillRect(X(s.t), y + bandH - barH, bw, barH); }
+        if (s.miss[i]) { ctx.fillStyle = '#e0a63c'; ctx.fillRect(X(s.t) - 1, y, 2, bandH); }
+      }
+      ctx.fillStyle = '#78838f'; ctx.fillText(LEGS[i], 4, y + bandH / 2 + 3);
+    }
+    if (padB > 10) {
+      ctx.fillStyle = '#4b5563';
+      for (let s = Math.ceil(t0); s <= t1; s++) {
+        if (s % 2) continue;
+        ctx.fillRect(X(s), h - padB + 3, 1, 4);
+        ctx.fillText(s.toFixed(0) + 's', X(s) - 9, h - 2);
+      }
+    }
+  }
+  drawSparks() {
+    const f = this.fit(this._spark); if (!f) return;
+    const {ctx, w, h} = f; const buf = this.ds.buf;
+    const rows = [
+      {k:'mpcOvertime', label:'mpc_deadline_missed', color:'#e0a63c'},
+      {k:'wbcOvertime', label:'wbc_deadline_missed', color:'#e0a63c'},
+      {k:'solverFail', label:'mpc_solver_failures', color:'#e2564d'},
+      {k:'contactMiss', label:'touchdown_mismatch', color:'#e0a63c'},
+      {k:'imuStale', label:'imu_stale_windows', color:'#4aa8d8'}
+    ];
+    const rowH = h / rows.length;
+    const fs = Math.max(7, Math.min(10, rowH * 0.32));
+    const inline = rowH < 34;
+    ctx.font = fs + 'px "IBM Plex Mono", monospace';
+    rows.forEach((r, i) => {
+      const y = i * rowH;
+      ctx.strokeStyle = '#161d26'; ctx.beginPath(); ctx.moveTo(8, y + rowH - 0.5); ctx.lineTo(w - 8, y + rowH - 0.5); ctx.stroke();
+      ctx.fillStyle = '#9aa5b1'; ctx.fillText(r.label, 10, y + rowH / 2 + fs / 2 - 1);
+      const total = this.ds.counters[r.k];
+      const n = Math.min(buf.length, 300);
+      const start = buf.length - n;
+      let max = 1;
+      const pts = [];
+      for (let j = 10; j < n; j++) {
+        const a = buf[start + j].c[r.k], b = buf[start + j - 10].c[r.k];
+        const v = a - b; if (v > max) max = v; pts.push(v);
+      }
+      const gx = Math.min(150, w * 0.45), gw = Math.max(30, w - gx - 66);
+      const gpad = Math.max(2, Math.min(6, rowH * 0.16));
+      const gy = y + gpad, gh = Math.max(6, rowH - gpad * 2 - 2);
+      ctx.fillStyle = '#0a0e14'; ctx.fillRect(gx, gy, gw, gh);
+      ctx.strokeStyle = r.color; ctx.lineWidth = 1; ctx.beginPath();
+      pts.forEach((v, j) => {
+        const x = gx + (j / Math.max(1, pts.length - 1)) * gw;
+        const yy = gy + gh - (v / max) * (gh - 2) - 1;
+        if (j === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      });
+      ctx.stroke();
+      if (!inline) { ctx.fillStyle = '#5d6875'; ctx.fillText('peak ' + max.toFixed(0) + '/s', gx + gw + 6, gy + fs + 1); }
+      ctx.fillStyle = total > 0 ? r.color : '#4b5563';
+      ctx.font = '600 ' + Math.max(9, fs + 2) + 'px "IBM Plex Mono", monospace';
+      ctx.fillText(String(total), w - 32, y + rowH / 2 + fs / 2);
+      ctx.font = fs + 'px "IBM Plex Mono", monospace';
+    });
+  }
+  plot(ctx, x, y, w, h, buf, t0, win, series, label, unit, topic, fixed) {
+    ctx.fillStyle = '#0a0e14'; ctx.fillRect(x, y, w, h);
+    let mn = Infinity, mx = -Infinity;
+    series.forEach(s => buf.forEach(d => { if (d.t < t0) return; const v = s.get(d); if (v < mn) mn = v; if (v > mx) mx = v; }));
+    if (!isFinite(mn)) { mn = 0; mx = 1; }
+    if (mx - mn < 1e-6) { mx += 0.5; mn -= 0.5; }
+    const pad = (mx - mn) * 0.15; mn -= pad; mx += pad;
+    const Y = v => y + h - (v - mn) / (mx - mn) * h;
+    const X = t => x + (t - t0) / win * w;
+    ctx.strokeStyle = '#151c25'; ctx.lineWidth = 1;
+    [0.25, 0.5, 0.75].forEach(g => { const yy = Math.round(y + g * h) + 0.5; ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke(); });
+    series.forEach(s => {
+      ctx.strokeStyle = s.color; ctx.lineWidth = s.dash ? 1 : 1.4;
+      ctx.setLineDash(s.dash ? [3, 3] : []);
+      ctx.beginPath(); let first = true;
+      buf.forEach(d => { if (d.t < t0) return; const px = X(d.t), py = Y(s.get(d)); if (first) { ctx.moveTo(px, py); first = false; } else ctx.lineTo(px, py); });
+      ctx.stroke(); ctx.setLineDash([]);
+    });
+    const fs = Math.max(7, Math.min(9, h * 0.22));
+    ctx.font = fs + 'px "IBM Plex Mono", monospace';
+    const head = label + ' [' + unit + ']';
+    ctx.fillStyle = '#78838f'; ctx.fillText(head, x + 6, y + fs + 2);
+    ctx.fillStyle = '#4b5563';
+    ctx.fillText(mx.toFixed(fixed), x + w - 40, y + fs + 2);
+    if (h > 34) {
+      ctx.fillStyle = '#4b5563';
+      ctx.fillText(topic, x + 6, y + h - 4);
+      ctx.fillText(mn.toFixed(fixed), x + w - 40, y + h - 4);
+    }
+    const lastD = buf[buf.length - 1];
+    if (lastD) {
+      let lx = x + 14 + ctx.measureText(head).width;
+      series.forEach(s => {
+        const txt = s.label + ' ' + s.get(lastD).toFixed(fixed);
+        const tw = ctx.measureText(txt).width;
+        if (lx + tw > x + w - 48) return;
+        ctx.fillStyle = s.color;
+        ctx.fillText(txt, lx, y + fs + 2); lx += tw + 10;
+      });
+    }
+  }
+  drawPlots() {
+    const f = this.fit(this._plots); if (!f) return;
+    const {ctx, w, h} = f; const {buf, w: win, t0} = this.win();
+    const gap = 5, ph = (h - gap * 2 - 8) / 3, x = 6, ww = w - 12;
+    this.plot(ctx, x, 4, ww, ph, buf, t0, win,
+      [{label:'z', color:'#4aa8d8', get:d => d.height}], 'body height', 'm', '/odom → pose.position.z', 3);
+    this.plot(ctx, x, 4 + ph + gap, ww, ph, buf, t0, win,
+      [{label:'roll', color:'#8b7fd4', get:d => d.roll}, {label:'pitch', color:'#e0a63c', get:d => d.pitch}], 'attitude', 'deg', '/imu/data → orientation', 1);
+    this.plot(ctx, x, 4 + (ph + gap) * 2, ww, ph, buf, t0, win,
+      [{label:'cmd vx', color:'#5d6875', dash:true, get:d => d.cvx}, {label:'vx', color:'#3fbf7f', get:d => d.vx}, {label:'vy', color:'#4aa8d8', get:d => d.vy}],
+      'velocity', 'm·s⁻¹', '/cmd_vel vs /odom → twist.linear', 2);
+  }
+  drawDetail() {
+    const f = this.fit(this._det); if (!f) return;
+    const {ctx, w, h} = f; const {buf, w: win, t0} = this.win();
+    const id = this.state.detail;
+    if (id === 'mpc' || id === 'wbc') {
+      const dl = id === 'mpc' ? MPC_DEADLINE : WBC_DEADLINE;
+      const key = id === 'mpc' ? 'mpcMs' : 'wbcMs';
+      this.plot(ctx, 6, 6, w - 12, h - 12, buf, t0, win,
+        [{label:'solve', color:'#4aa8d8', get:d => d[key]}, {label:'deadline', color:'#e2564d', dash:true, get:() => dl}],
+        id.toUpperCase() + ' solve time', 'ms', id === 'mpc' ? '/mpc/diagnostics' : '/wbc/diagnostics', 2);
+    } else if (id === 'gait' || id === 'swing' || id === 'contact') {
+      this.plot(ctx, 6, 6, w - 12, h - 12, buf, t0, win,
+        [{label:'td mismatch rate', color:'#e0a63c', get:d => d.c.contactMiss}], 'touchdown mismatches (cumulative)', 'count', '/contact_state', 0);
+    } else {
+      this.plot(ctx, 6, 6, w - 12, h - 12, buf, t0, win,
+        [{label:'pitch', color:'#e0a63c', get:d => d.pitch}, {label:'roll', color:'#8b7fd4', get:d => d.roll}], 'model adaptation residual proxy', 'deg', '/model/estimate', 1);
+    }
+  }
+
+  setCfg(fn) { this.setState(s => { const c = clone(s.cfg); fn(c); return {cfg: c}; }); }
+  copy(text, key) {
+    try { navigator.clipboard.writeText(text); } catch (e) {}
+    this.setState({copied: key});
+    setTimeout(() => this.setState(s => (s.copied === key ? {copied: ''} : null)), 1400);
+  }
+  runId() { return 'RUN-2026-0724-' + String(1400 + this.state.runSeq).padStart(4, '0'); }
+  commands(cfg, id) {
+    const dir = 'runs/' + id;
+    return [
+      {label:'1 · simulator', cmd: 'ros2 launch kennel_sim go2_sim.launch.py map:=' + cfg.map + ' rtf:=' + cfg.sim.real_time_rate + ' config:=' + dir + '/sim.yaml'},
+      {label:'2 · controller', cmd: 'ros2 launch kennel_control pipeline.launch.py config:=' + dir + '/pipeline.yaml'},
+      {label:'3 · state estimation', cmd: 'ros2 launch kennel_estimation state_estimation.launch.py use_ground_truth:=' + (cfg.sim.ground_truth_state ? 'true' : 'false') + ' config:=' + dir + '/sim.yaml'}
+    ];
+  }
+  dragCol(e) {
+    e.preventDefault();
+    const x0 = e.clientX, v0 = this.state.colW;
+    const host = e.currentTarget.parentElement;
+    const width = host ? host.getBoundingClientRect().width : 1000;
+    const move = ev => this.setState({colW: Math.max(24, Math.min(78, v0 + (ev.clientX - x0) / width * 100))});
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  }
+  dragRow(e, a, b) {
+    e.preventDefault();
+    const y0 = e.clientY, va = this.state[a], vb = this.state[b];
+    const host = e.currentTarget.parentElement;
+    const h = host ? host.getBoundingClientRect().height : 600;
+    const total = this.state.rowA + this.state.rowB + this.state.rowC;
+    const move = ev => {
+      const d = (ev.clientY - y0) / h * total;
+      const na = Math.max(0.3, Math.min(va + vb - 0.3, va + d));
+      this.setState({[a]: na, [b]: va + vb - na});
+    };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  }
+
+  renderVals() {
+    const st = this.state, cfg = st.cfg;
+    const ds = this.ds;
+    const buf = ds ? ds.buf : [];
+    const last = buf.length ? buf[buf.length - 1] : null;
+    const live = st.conn === 'connected';
+    const runId = this.runId();
+    const simText = emitSim(cfg, runId), pipeText = emitPipeline(cfg, runId);
+
+    const nav = [
+      {id:'compose', label:'Compose'}, {id:'dashboard', label:'Dashboard'}, {id:'runs', label:'Runs'}
+    ].map(n => {
+      const on = st.view === n.id;
+      return {label:n.label, onClick:() => this.setState({view:n.id, detail:null}),
+        bg: on ? '#141a23' : 'transparent', mark: on ? '#4aa8d8' : 'transparent',
+        fg: on ? '#dbe2ea' : '#7c8794', dot: on ? '#4aa8d8' : '#39465a', dotFill: on ? '#1c3648' : 'transparent'};
+    });
+
+    const mkBlocks = (ids) => ids.map((id, i) => {
+      const B = BY_ID[id], c = cfg.blocks[id];
+      const mod = PARAMS[id].filter(p => c.params[p.k] !== p.def).length;
+      const impl = B.impls.find(x => x[0] === c.impl);
+      const sum = PARAMS[id].slice(0, 2).map(p => p.k + '=' + c.params[p.k]).join(' · ');
+      return {id, name:B.name, topic:B.topic, impl:c.impl, impls:B.impls.map(x => ({v:x[0], label:x[1]})),
+        modified: mod > 0, modLabel: mod + ' modified', border: mod > 0 ? '#4a3a1c' : '#232b36',
+        summary: (impl ? impl[1] : c.impl) + ' · ' + sum, arrow: i < ids.length - 1,
+        onOpen: () => this.setState({openBlock:id, drawerTab:'form'}),
+        onImpl: e => { const v = e.target.value; this.setCfg(c2 => { c2.blocks[id].impl = v; }); }};
+    });
+
+    const simFields = [
+      {k:'initial_height', label:'initial height', unit:'m', type:'num', step:0.01},
+      {k:'real_time_rate', label:'real-time rate', unit:'×', type:'num', step:0.1},
+      {k:'imu_noise', label:'IMU noise', type:'bool'},
+      {k:'joint_encoder_noise', label:'joint encoder noise', type:'bool'},
+      {k:'foot_force_noise', label:'foot force noise', type:'bool'},
+      {k:'ground_truth_state', label:'ground-truth state', type:'bool'}
+    ].map(f => {
+      const v = cfg.sim[f.k];
+      return {label:f.label, unit:f.unit || '', step:f.step || 1, value:v,
+        isNum: f.type === 'num', isBool: f.type === 'bool',
+        onChange: e => { const n = parseFloat(e.target.value); this.setCfg(c => { c.sim[f.k] = isNaN(n) ? 0 : n; }); },
+        onToggle: () => this.setCfg(c => { c.sim[f.k] = !c.sim[f.k]; }),
+        trackBg: v ? '#14283a' : '#0a0e14', trackBorder: v ? '#2f5d78' : '#232b36',
+        knobLeft: v ? '20px' : '2px', knobBg: v ? '#4aa8d8' : '#39465a'};
+    });
+
+    const openId = st.openBlock;
+    const drawerFields = openId ? PARAMS[openId].map(p => {
+      const v = cfg.blocks[openId].params[p.k];
+      return {label:p.label, unit:p.unit, value:v, step:p.step || 1,
+        defLabel: 'default ' + String(p.def), modified: v !== p.def,
+        isNum: p.type === 'num', isEnum: p.type === 'enum', isBool: p.type === 'bool',
+        opts: (p.opts || []).map(o => ({v:o[0], label:o[1]})),
+        onChange: e => { const raw = e.target.value; const val = p.type === 'num' ? (isNaN(parseFloat(raw)) ? 0 : parseFloat(raw)) : raw; this.setCfg(c => { c.blocks[openId].params[p.k] = val; }); },
+        onToggle: () => this.setCfg(c => { c.blocks[openId].params[p.k] = !c.blocks[openId].params[p.k]; }),
+        trackBg: v ? '#14283a' : '#0a0e14', trackBorder: v ? '#2f5d78' : '#232b36',
+        knobLeft: v ? '20px' : '2px', knobBg: v ? '#4aa8d8' : '#39465a'};
+    }) : [];
+    let blockYaml = '';
+    if (openId) {
+      const c = cfg.blocks[openId];
+      blockYaml = openId + ':\n  implementation: ' + c.impl + '\n  params:\n' +
+        PARAMS[openId].map(p => '    ' + p.k + ': ' + yamlVal(c.params[p.k])).join('\n') + '\n';
+    }
+
+    const cnt = ds ? ds.counters : {mpcOvertime:0, wbcOvertime:0, solverFail:0, contactMiss:0, imuStale:0};
+    const now = ds ? ds.t : 0;
+    const recent = k => ds && ds.lastInc[k] !== undefined && now - ds.lastInc[k] < 0.8;
+    const tint = (lvl) => lvl === 'red' ? {dot:'#e2564d', bg:'#1b1113', border:'#5c2622'}
+      : lvl === 'amber' ? {dot:'#e0a63c', bg:'#191510', border:'#4a3a1c'}
+      : lvl === 'off' ? {dot:'#5d6875', bg:'#0d1219', border:'#232b36'}
+      : {dot:'#3fbf7f', bg:'#0e1714', border:'#1f4534'};
+    const mpcMs = last ? last.mpcMs : 0, wbcMs = last ? last.wbcMs : 0;
+    const health = [
+      {id:'gait', sub:'/gait/plan · 0.10 s old', metric: (cfg.blocks.gait.impl) + ' @ ' + cfg.blocks.gait.params.step_frequency + ' Hz',
+       lvl: recent('contactMiss') ? 'amber' : 'green', flash: recent('contactMiss')},
+      {id:'mpc', sub:'/mpc/solution · ' + (last ? last.mpcIters : 0) + ' iters · deadline 10 ms',
+       metric: mpcMs.toFixed(1) + ' / 10.0 ms', lvl: mpcMs >= 10 || recent('solverFail') ? 'red' : mpcMs > 7 ? 'amber' : 'green',
+       flash: recent('mpcOvertime') || recent('solverFail')},
+      {id:'wbc', sub:'/wbc/torque_cmd · deadline 2 ms', metric: wbcMs.toFixed(2) + ' / 2.00 ms',
+       lvl: wbcMs >= 2 ? 'red' : wbcMs > 1.5 ? 'amber' : 'green', flash: recent('wbcOvertime')},
+      {id:'swing', sub:'/swing/foot_target · 0.10 s old', metric: 'clearance ' + cfg.blocks.swing.params.clearance + ' m',
+       lvl: recent('contactMiss') ? 'amber' : 'green', flash: recent('contactMiss')},
+      {id:'contact', sub:'/contact_state · td mismatches ' + cnt.contactMiss, metric: cnt.contactMiss + ' mismatch',
+       lvl: cnt.contactMiss > 20 ? 'amber' : 'green', flash: recent('contactMiss')},
+      {id:'adapt', sub:'/model/estimate · ' + cfg.blocks.adapt.params.update_rate + ' Hz',
+       metric: cfg.blocks.adapt.impl === 'off' ? 'disabled' : 'converged', lvl: cfg.blocks.adapt.impl === 'off' ? 'off' : 'green', flash:false}
+    ].map(h => {
+      const down = !!(ds && ds.fallen);
+      const t = tint(down ? 'red' : h.lvl);
+      if (down) { h.sub = 'halted at fall · controller latched to damping'; h.metric = 'stopped'; }
+      return {name: BY_ID[h.id].name, sub:h.sub, metric:h.metric, dot:t.dot, bg:t.bg, border: h.flash ? '#e0a63c' : t.border,
+        anim: h.flash ? 'kcFlash .4s' : 'none', onClick: () => this.setState({detail:h.id})};
+    });
+
+    let evs = ds ? ds.events : [];
+    if (st.pinFall && ds && ds.fallAt !== undefined) evs = evs.filter(e => e.t >= ds.fallAt - 5 && e.t <= ds.fallAt);
+    const events = evs.slice(-140).map(e => ({
+      t: e.t.toFixed(1) + 's', text: e.text,
+      color: e.sev === 'fatal' ? '#e2564d' : e.sev === 'error' ? '#e2564d' : e.sev === 'warn' ? '#e0a63c' : '#2b3543',
+      fg: e.sev === 'fatal' ? '#f0a19b' : e.sev === 'error' ? '#e59a94' : e.sev === 'warn' ? '#dcc08a' : '#8b93a0'
+    }));
+
+    const runs = st.runs.map((r, i) => {
+      const on = st.sel.indexOf(i) >= 0;
+      const stages = BLOCKS.map(b => (BY_ID[b.id].impls.find(x => x[0] === r.cfg.blocks[b.id].impl) || [0, r.cfg.blocks[b.id].impl])[1]).join(' → ');
+      const v = r.verdict;
+      const vc = v === 'completed' ? {fg:'#3fbf7f', bg:'#0e1714', b:'#1f4534'} : v === 'fell' ? {fg:'#e2564d', bg:'#1b1113', b:'#5c2622'}
+        : v === 'staged' ? {fg:'#8fc9ea', bg:'#101a24', b:'#2f5d78'} : {fg:'#e0a63c', bg:'#191510', b:'#4a3a1c'};
+      return {id:r.id, map:(MAPS.find(m => m.id === r.cfg.map) || {name:r.cfg.map}).name, stages, dur:r.dur, verdict:v,
+        counters:r.counters, vFg:vc.fg, vBg:vc.bg, vBorder:vc.b, bg: on ? '#111721' : 'transparent',
+        cbBorder: on ? '#4aa8d8' : '#39465a', cbBg: on ? '#4aa8d8' : 'transparent',
+        onSelect: () => this.setState(s => {
+          const sel = s.sel.slice(); const k = sel.indexOf(i);
+          if (k >= 0) sel.splice(k, 1); else { sel.push(i); if (sel.length > 2) sel.shift(); }
+          return {sel};
+        }),
+        onLoad: () => this.setState({cfg: clone(r.cfg), view:'compose'})};
+    });
+    let diffRows = [], diffA = '', diffB = '';
+    const hasDiff = st.sel.length === 2;
+    if (hasDiff) {
+      const A = st.runs[st.sel[0]], B = st.runs[st.sel[1]];
+      diffA = A.id; diffB = B.id;
+      const fa = flatten(A.cfg), fb = flatten(B.cfg);
+      Object.keys(fa).forEach(k => { if (String(fa[k]) !== String(fb[k])) diffRows.push({key:k, a:String(fa[k]), b:String(fb[k])}); });
+    }
+
+    const rt = st.roundTrip;
+    return {
+      nav, stop: this.stop,
+      isCompose: st.view === 'compose', isDash: st.view === 'dashboard', isRuns: st.view === 'runs',
+      live, offline: !live,
+
+      maps: MAPS.map(m => ({name:m.name, desc:m.desc, tag:m.tag,
+        tagFg: cfg.map === m.id ? '#8fc9ea' : '#5d6875',
+        border: cfg.map === m.id ? '#2f5d78' : '#232b36', bg: cfg.map === m.id ? '#101a24' : '#0d1219',
+        onClick: () => this.setCfg(c => { c.map = m.id; })})),
+      simFields,
+      chain: mkBlocks(['gait','mpc','wbc']),
+      branch: mkBlocks(['swing','contact']),
+      adapt: mkBlocks(['adapt']),
+      adaptTargets: ['Gait Sequencer','MPC','WBC','Swing Leg Ctrl','Contact Logic'].map(l => ({label:l})),
+
+      nextRunId: runId,
+      yamlTabs: [['sim','sim.yaml'],['pipeline','pipeline.yaml']].map(t => ({
+        label:t[1], onClick: () => this.setState({yamlTab:t[0]}),
+        fg: st.yamlTab === t[0] ? '#8fc9ea' : '#8b93a0', bg: st.yamlTab === t[0] ? '#101a24' : 'transparent',
+        border: st.yamlTab === t[0] ? '#2f5d78' : '#232b36'})),
+      yamlText: st.yamlTab === 'sim' ? simText : pipeText,
+      copyYamlLabel: st.copied === 'yaml' ? 'copied' : 'copy',
+      onCopyYaml: () => this.copy(st.yamlTab === 'sim' ? simText : pipeText, 'yaml'),
+      commands: this.commands(cfg, runId).map((c, i) => ({label:c.label, cmd:c.cmd,
+        copyLabel: st.copied === 'c' + i ? 'copied' : 'copy', onCopy: () => this.copy(c.cmd, 'c' + i)})),
+      onGenerate: () => this.setState(s => ({
+        runs: [{id: this.runId(), dur:'—', verdict:'staged', counters:'not yet run', cfg: clone(s.cfg)}].concat(s.runs),
+        runSeq: s.runSeq + 1, view:'runs'
+      })),
+      presets: st.presets.map((p, i) => ({v:String(i), label:p.name})),
+      presetSel: st.presetSel,
+      onPresetSave: () => {
+        const name = cfg.map + ' / ' + cfg.blocks.gait.impl + '+' + cfg.blocks.mpc.impl + ' · ' + new Date().toISOString().slice(5, 16).replace('T', ' ');
+        const next = st.presets.concat([{name, cfg: clone(cfg)}]);
+        try { localStorage.setItem('kennel.presets', JSON.stringify(next)); } catch (e) {}
+        this.setState({presets: next});
+      },
+      onPresetLoad: e => {
+        const i = e.target.value; if (i === '') return;
+        this.setState({cfg: clone(st.presets[Number(i)].cfg), presetSel: ''});
+      },
+      onOpenYaml: () => this.setState({yamlModal:true, simText, pipeText, roundTrip:null}),
+      onCloseYaml: () => this.setState({yamlModal:false}),
+      yamlModal: st.yamlModal, simText: st.simText, pipeText: st.pipeText,
+      onSimText: e => this.setState({simText:e.target.value, roundTrip:null}),
+      onPipeText: e => this.setState({pipeText:e.target.value, roundTrip:null}),
+      onLoadYaml: () => {
+        const next = cfgFromYaml(st.simText, st.pipeText);
+        const ok = emitSim(next, runId) === st.simText.trim() + '\n' || JSON.stringify(flatten(next)) === JSON.stringify(flatten(cfgFromYaml(emitSim(next, runId), emitPipeline(next, runId))));
+        this.setState({cfg: next, roundTrip: ok ? 'ok' : 'lossy'});
+      },
+      rtLabel: rt === 'ok' ? 'round-trip identical ✓' : rt === 'lossy' ? 'round-trip lossy ✗' : '',
+      rtColor: rt === 'ok' ? '#3fbf7f' : '#e2564d',
+
+      drawerOpen: !!openId, drawerName: openId ? BY_ID[openId].name : '',
+      drawerSub: openId ? BY_ID[openId].topic + ' · ' + cfg.blocks[openId].impl : '',
+      drawerTabs: [['form','parameters'],['yaml','raw YAML']].map(t => ({
+        label:t[1], onClick: () => this.setState({drawerTab:t[0]}),
+        fg: st.drawerTab === t[0] ? '#8fc9ea' : '#8b93a0', bg: st.drawerTab === t[0] ? '#101a24' : 'transparent',
+        border: st.drawerTab === t[0] ? '#2f5d78' : '#232b36'})),
+      drawerForm: st.drawerTab === 'form', drawerYaml: st.drawerTab === 'yaml',
+      drawerFields, blockYaml,
+      onCloseDrawer: () => this.setState({openBlock:null}),
+      onResetParams: () => this.setCfg(c => { if (openId) c.blocks[openId].params = defaultParams(openId); }),
+
+      health, events,
+      feedLabel: st.pinFall ? 'pinned · last 5 s before fall' : '/rosout · auto-scroll',
+      fallBanner: live && !!(ds && ds.fallen), fallText: ds ? ds.fallText : '',
+      onUnpin: () => this.setState(s => ({pinFall: !s.pinFall})),
+      poseText: last ? 'z=' + last.height.toFixed(3) + ' m · pitch=' + last.pitch.toFixed(1) + '°' : '—',
+      gridCols: st.colW + '% 12px 1fr',
+      gridRows: 'minmax(170px,' + st.rowA + 'fr) 10px minmax(170px,' + st.rowB + 'fr) 10px minmax(170px,' + st.rowC + 'fr)',
+      colDrag: e => this.dragCol(e),
+      rowADrag: e => this.dragRow(e, 'rowA', 'rowB'),
+      rowBDrag: e => this.dragRow(e, 'rowB', 'rowC'),
+      refTl: this.refTl, refSpark: this.refSpark, refPlots: this.refPlots, refDetail: this.refDetail, refFeed: this.refFeed,
+
+      detailOpen: live && !!st.detail,
+      detailName: st.detail ? BY_ID[st.detail].name + ' detail' : '',
+      detailSub: st.detail ? BY_ID[st.detail].topic : '',
+      onCloseDetail: () => this.setState({detail:null}),
+      detailStats: st.detail ? [
+        {label:'implementation', value: cfg.blocks[st.detail].impl, color:'#dbe2ea'},
+        {label:'deadline misses', value: String(st.detail === 'wbc' ? cnt.wbcOvertime : cnt.mpcOvertime), color:'#e0a63c'},
+        {label:'solver failures', value: String(cnt.solverFail), color:'#e2564d'},
+        {label:'touchdown mismatches', value: String(cnt.contactMiss), color:'#e0a63c'},
+        {label:'topic age', value: last ? last.hb.toFixed(3) + ' s' : '—', color:'#9aa5b1'}
+      ] : [],
+
+      velFields: [
+        {label:'vx [m/s]', key:'vx'}, {label:'vy [m/s]', key:'vy'}, {label:'ωz [rad/s]', key:'wz'}
+      ].map(v => ({label:v.label, value: ds ? ds.cmd[v.key] : 0,
+        onChange: e => { const n = parseFloat(e.target.value); if (ds) ds.cmd[v.key] = isNaN(n) ? 0 : n; this.setState(s => ({tick:s.tick + 1})); }})),
+      distFields: [
+        {label:'Fx [N]', key:'fx', step:10}, {label:'Fy [N]', key:'fy', step:10},
+        {label:'Fz [N]', key:'fz', step:10}, {label:'dur [s]', key:'duration', step:0.05}
+      ].map(v => ({label:v.label, step:v.step, value: st.dist[v.key],
+        onChange: e => { const n = parseFloat(e.target.value); this.setState(s => ({dist: Object.assign({}, s.dist, {[v.key]: isNaN(n) ? 0 : n})})); }})),
+      onInject: () => { if (ds) ds.inject(Object.assign({mag:100}, st.dist)); this.setState(s => ({tick:s.tick + 1})); },
+      onStep: () => { if (ds) { ds.advance(); this.setState(s => ({tick:s.tick + 1})); } },
+      onStep10: () => { if (ds) { for (let i = 0; i < 10; i++) ds.advance(); this.setState(s => ({tick:s.tick + 1})); } },
+      onReset: () => { if (ds) { const wasRunning = !!ds.timer; ds.stop(); ds.reset(); if (wasRunning) ds.start(); } this.setState({pinFall:false, detail:null, tick:0}); },
+      joyLeft: (50 + (ds ? ds.cmd.wz : 0) * 40) + '%',
+      joyTop: (50 - (ds ? ds.cmd.vx : 0) * 40) + '%',
+      joyDown: e => { this._joy = true; e.currentTarget.setPointerCapture(e.pointerId); this.joySet(e); },
+      joyMove: e => { if (this._joy) this.joySet(e); },
+      joyUp: () => { this._joy = false; },
+
+      status: [
+        {label:'conn', value: live ? 'MockDataSource · connected' : 'disconnected', color: live ? '#3fbf7f' : '#e2564d'},
+        {label:'rtf', value: live && last ? last.rtf.toFixed(2) + '×' : '—', color: live && last && last.rtf < 0.9 ? '#e0a63c' : '#9aa5b1'},
+        {label:'heartbeat', value: live && last ? (last.hb * 1000).toFixed(0) + ' ms' : '—', color: live && last && last.hb > 0.2 ? '#e0a63c' : '#9aa5b1'},
+        {label:'sim t', value: live ? now.toFixed(1) + ' s' + (ds && ds.halted ? ' · frozen at fall' : '') : '—',
+         color: ds && ds.halted ? '#e0a63c' : '#9aa5b1'},
+        {label:'run', value: runId, color:'#8fc9ea'}
+      ],
+      connBtn: live ? 'disconnect' : 'connect',
+      onToggleConn: () => {
+        if (!this.ds) return;
+        if (st.conn === 'connected') { this.ds.stop(); this.setState({conn:'disconnected'}); }
+        else { this.ds.start(); this.setState({conn:'connected'}); }
+      },
+
+      runs, hasDiff, noDiff: hasDiff && diffRows.length === 0, diffRows, diffA, diffB,
+      diffTitle: hasDiff ? diffRows.length + ' differing keys' : '',
+      runsSub: st.runs.length + ' manifests · configs stored, never executed',
+      diffHint: st.sel.length === 2 ? 'comparing 2 runs' : 'select two runs to diff (' + st.sel.length + '/2)'
+    };
+  }
+  joySet(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const nx = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / (r.width / 2)));
+    const ny = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / (r.height / 2)));
+    if (this.ds) { this.ds.cmd.vx = Math.round(-ny * 1.2 * 100) / 100; this.ds.cmd.wz = Math.round(nx * 1.5 * 100) / 100; }
+    this.setState(s => ({tick: s.tick + 1}));
+  }
+}
+</script>
+</body>
+</html>
