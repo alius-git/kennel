@@ -1,0 +1,142 @@
+# yaml-language-server: $schema=../schemas/sequence.schema.yml
+# (schema path is relative to test/sequences/ in the Yuruna clone, where this
+#  file is copied to run -- see vm/provisioning.md)
+
+# Kennel stack provisioning -- issue #10.
+#
+# Takes the sized kennel-vm guest to "stack ready": Docker CE, the pinned
+# dfki-quad fork, upstream's Docker image, the container running headless, and
+# the go2 colcon workspace compiled. The work itself lives in the guest script
+# guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh; this sequence is the
+# harness around it plus the acceptance assertions.
+#
+# Declares no sizing variables on purpose: the planner cascades them down from
+# start.guest.ubuntu.server.24.kennel.ssh (8 vCPU / 16 GiB), so there is exactly
+# one place to change the size. See vm/guest-sizing.md §2.
+#
+# The resource chain runs the #9 sizing sequence first, so a wrong-sized guest
+# fails in seconds on the nproc/MemTotal asserts instead of hours later inside a
+# colcon build that was never going to fit.
+
+sequenceGuid: 42a48668-1b18-441d-99f8-c81c4523276c
+sequenceRevision: 2
+
+description: "Kennel (SSH): provision Docker CE + the pinned dfki-quad stack in the guest, prove the go2 simulator is launchable in-container, and prove Meshcat is bound where the host can reach it."
+keystrokeMechanism: ssh
+resource:
+  ubuntu.server.24:
+    - workload.guest.ubuntu.server.24.kennel.ssh
+
+component:
+  - action: sshWaitReady
+    timeoutSeconds: 300
+    description: "Wait for sshd"
+
+  - action: sshExec
+    command: "whoami && hostname"
+    description: "Smoke test: whoami/hostname"
+
+workload:
+  # --- The provisioning run itself.
+  # The fetch path is relative to the Yuruna framework working tree, which the
+  # host status service serves at /yuruna-repo/. Until issue #23 points
+  # repositories.projectUrl at the kennel repo, the script is COPIED into the
+  # framework clone (vm/provisioning.md) -- that copy is the bypass, and the
+  # retirement path is a project-tree path here instead.
+  #
+  # timeoutSeconds is deliberately large: upstream's image builds Drake, acados,
+  # proxsuite, osqp, qpSWIFT, CycloneDDS, unitree_sdk2, MKL and the WBC library
+  # from source, and the colcon build compiles the MPC/WBC/Drake-sim stack after
+  # it. Measured wall-clock lands in vm/guest-sizing.md §5.4; this bound only
+  # exists so a wedged build eventually fails instead of hanging the cycle.
+  - action: sshFetchAndExecute
+    command: "/usr/local/lib/yuruna/fetch-and-execute.sh guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh"
+    timeoutSeconds: 14400
+    description: "Provision Docker + the pinned dfki-quad stack"
+
+  # --- Idempotency assertion (issue #10 work item 4).
+  # The SHORT timeout is the assertion. A second run must find Docker present,
+  # the clone at the pin, the image built, the container up and the build stamp
+  # written, so it only re-runs the bounded simulator smoke -- minutes. If any
+  # guard failed to hold, this step rebuilds and blows the 1800 s bound, which
+  # is exactly the failure we want surfaced rather than a silent slow re-run.
+  - action: sshFetchAndExecute
+    command: "/usr/local/lib/yuruna/fetch-and-execute.sh guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh"
+    timeoutSeconds: 1800
+    description: "Re-run to prove idempotency (must be a no-op refresh)"
+
+  # --- Acceptance assertions. Each exits non-zero on mismatch.
+  - action: sshExec
+    command: "sudo docker image inspect dfki_quad:latest > /dev/null && echo 'image dfki_quad:latest present'"
+    description: "Assert the dfki-quad image exists"
+
+  - action: sshExec
+    # --type container matters: `docker inspect dfki_quad` would otherwise
+    # resolve the identically-named IMAGE, exit 0, and report an empty status.
+    command: "s=$(sudo docker inspect --type container -f '{{.State.Status}}' dfki_quad); echo \"container=$s (want running)\"; [ \"$s\" = running ]"
+    description: "Assert the dfki_quad container is running"
+
+  - action: sshExec
+    command: "sudo docker exec dfki_quad test -f /root/ros2_ws/install/setup.bash && echo 'colcon workspace installed'"
+    description: "Assert the go2 workspace is built"
+
+  # The pin is the single source of truth every other MVP issue references
+  # (issue #12). Asserting it here catches a guest provisioned from a stale
+  # script or a drifted branch before any measurement is trusted.
+  - action: sshExec
+    # NB: no ${...} anywhere in these commands. Yuruna expands ${name} in step
+    # parameters and leaves unknown names verbatim, so plain $c is used instead.
+    command: "c=$(git -C \"$HOME/dfki-quad\" rev-parse HEAD); echo \"pin=$c\"; [ \"$c\" = dcf53c596339afd45b82f12c54b1e93e8273c2f4 ]"
+    description: "Assert the clone sits at the stack pin"
+
+  # Acceptance criterion of issue #10, restated as a launch that survives a
+  # bounded window. The provisioning script already ran this smoke; repeating it
+  # here proves it holds against a container that has been up across two runs.
+  - action: sshExec
+    # The unitree_ros2 overlay must be sourced explicitly: the image's .bashrc
+    # does it, but `docker exec ... bash -c` is non-interactive and never reads
+    # .bashrc, so without it the go2 driver nodes cannot resolve unitree_go.
+    # Bounded teardown. Three traps, all hit for real: an unbounded `wait` hangs
+    # (the Drake sim ignores SIGINT to the launcher); a negative-PID kill can hit
+    # this shell's own process group; and `pkill -f 'ros2 launch simulator'`
+    # matches THIS shell, whose cmdline contains that text. Hence: signal, wait
+    # bounded, hard-kill the pid, then reap by exact process NAME (-x).
+    command: "sudo docker exec dfki_quad bash -c 'source /opt/ros/humble/setup.bash; if [ -f /root/unitree_ros2/install/setup.bash ]; then source /root/unitree_ros2/install/setup.bash; fi; source /root/ros2_ws/install/setup.bash; source /root/setup_ulab_workspace.bash; ros2 launch simulator simulator.launch.py sim:=go2 > /tmp/sim-assert.log 2>&1 & LP=$!; sleep 45; if ! kill -0 $LP 2>/dev/null; then echo SIM_FAILED; tail -40 /tmp/sim-assert.log; exit 1; fi; echo SIM_OK; kill -INT $LP 2>/dev/null || true; for _ in $(seq 1 10); do kill -0 $LP 2>/dev/null || break; sleep 1; done; kill -KILL $LP 2>/dev/null || true; pkill -KILL -x simulator 2>/dev/null || true; pkill -KILL -x ros2 2>/dev/null || true; exit 0'"
+    timeoutSeconds: 300
+    description: "Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable"
+
+  # --- Meshcat exposure, hop 1 -- issue #11.
+  # Deliberately a SEPARATE step rather than an extension of the launch assert
+  # above: that step encodes five teardown fixes found the hard way (see
+  # vm/provisioning.md §5a), and folding a second concern into it risks
+  # regressing #10's acceptance to save one sim launch.
+  #
+  # Scope: this asserts the CONTAINER->GUEST hop only -- that Meshcat binds a
+  # non-loopback address in the guest's network namespace and answers there.
+  # The GUEST->HOST hop cannot be asserted from inside a sequence, because
+  # Yuruna has no host-exec action (test/sequences/actions.yml: sshExec,
+  # sshFetchAndExecute, callExtension). It is covered by the host-side
+  # vm/test/verify-meshcat-host.sh. See vm/meshcat-exposure.md.
+  #
+  # The port is DISCOVERED, never assumed: Drake takes the first free port in
+  # 7000-7099, so a stale listener shifts it off 7000.
+  #
+  # Shell notes, each one a trap already hit in this repo:
+  #   * no ${...} anywhere -- Yuruna expands that in step parameters.
+  #   * `l=$(... | grep ...)` needs `|| true`: under `set -e` an assignment
+  #     takes the substitution's status, so an empty poll iteration would abort
+  #     the whole step instead of retrying.
+  #   * teardown runs from a trap so a FAILED assert still reaps the sim --
+  #     otherwise a leftover Meshcat holds the port and shifts every later run.
+  #   * the launcher's container-side PID is written to a file and signalled by
+  #     PID; reaping is by exact process NAME (-x), never `pkill -f`, which
+  #     matches the calling shell's own command line.
+  - action: sshExec
+    command: "teardown() { sudo docker exec dfki_quad bash -c 'p=$(cat /tmp/sim-meshcat.pid 2>/dev/null); if [ -n \"$p\" ]; then kill -INT $p 2>/dev/null || true; for _ in $(seq 1 10); do kill -0 $p 2>/dev/null || break; sleep 1; done; kill -KILL $p 2>/dev/null || true; fi; pkill -KILL -x simulator 2>/dev/null || true; pkill -KILL -x ros2 2>/dev/null || true; true' >/dev/null 2>&1 || true; }; set -e; trap teardown EXIT; ip=$(ip route get 1.1.1.1 | awk '{print $7; exit}'); echo \"guest ip: $ip\"; sudo docker start dfki_quad >/dev/null; sudo docker exec -d dfki_quad bash -c 'echo $$ > /tmp/sim-meshcat.pid; source /opt/ros/humble/setup.bash; if [ -f /root/unitree_ros2/install/setup.bash ]; then source /root/unitree_ros2/install/setup.bash; fi; source /root/ros2_ws/install/setup.bash; source /root/setup_ulab_workspace.bash; exec ros2 launch simulator simulator.launch.py sim:=go2 > /tmp/sim-meshcat.log 2>&1'; l=''; for i in $(seq 1 60); do l=$(ss -tlnH | awk '{print $4}' | grep -E ':7[0-9]{3}$' | sort -u || true); if [ -n \"$l\" ]; then break; fi; sleep 2; done; echo \"listeners: $l\"; if [ -z \"$l\" ]; then echo NO_MESHCAT_LISTENER; sudo docker exec dfki_quad tail -30 /tmp/sim-meshcat.log || true; exit 1; fi; nl=$(echo \"$l\" | grep -vE '^127\\.' || true); if [ -z \"$nl\" ]; then echo MESHCAT_LOOPBACK_ONLY; exit 1; fi; port=$(echo \"$nl\" | head -1 | sed 's/.*://'); curl -fsS --max-time 10 \"http://$ip:$port/\" | grep -qi meshcat; echo \"MESHCAT_OK http://$ip:$port/\""
+    timeoutSeconds: 300
+    description: "Assert Meshcat binds a host-reachable address in the guest (#11 hop 1)"
+
+  # --- Evidence block: these numbers populate vm/guest-sizing.md §5.4.
+  - action: sshExec
+    command: "echo '--- provisioning metrics ---'; cat \"$HOME/kennel-provisioning-metrics.txt\"; echo '--- docker system df ---'; sudo docker system df; echo '--- disk ---'; df -h /; echo '--- workspace ---'; du -sh \"$HOME/dfki-quad\""
+    description: "Record the build's footprint (feeds #9 §5.4)"
