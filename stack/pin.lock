@@ -1,0 +1,79 @@
+# stack/pin.lock -- the exact dfki-quad revision the Kennel MVP builds against.
+#
+# Issue #12: https://github.com/alius-git/kennel/issues/12
+#
+# THE RULE: every issue that touches the stack cites this file, never a branch.
+# Provisioning (#10) and the mapping notes (#15) name this SHA; a branch would
+# silently drift underneath them and make every measurement unreproducible.
+#
+# Bypass note (tracking-issue #6, #9): this file replaces the Version Manifest
+# foundation of design.md for the MVP, and the gitignored nested clone (see
+# .gitignore) replaces a formal vendoring/submodule decision.
+#   Retirement paths: manifest generator in the appliance build; the
+#   submodule-vs-vendoring decision post-MVP.
+#
+# Format: `key: value`, one per line, `#` comments. Greppable by future tooling
+# (`grep '^commit:' stack/pin.lock | cut -d: -f2-`), readable without it.
+
+fork:           https://github.com/thalesasoares/dfki-quad
+upstream:       https://github.com/dfki-ric-underactuated-lab/dfki-quad
+commit:         dcf53c596339afd45b82f12c54b1e93e8273c2f4
+commit-date:    2026-05-04
+commit-subject: Add disabling of mcf (AI mode) as this is active in the newest firmwares be default - for old quads we have to check what happens
+pinned:         2026-08-05
+
+# --- Why this revision
+#
+# It is upstream `main` at its tip -- the newest upstream code, not an arbitrary
+# older point -- and it is the revision #10's provisioning was built and
+# validated end to end against on 2026-08-05: fresh guest -> Docker CE -> clone
+# at this SHA -> image build -> `colcon build` (7 packages) -> `ros2 launch
+# simulator simulator.launch.py sim:=go2` alive past the smoke window, no OOM.
+# See vm/provisioning.md section 6 for the validation table and the five defects
+# that pass found.
+#
+# It is therefore a revision known to build and run on the sized guest, which is
+# the only property the MVP needs from a pin. Moving off it is scenario s009
+# (repin), gated by the same sequence.
+
+# --- Local patches vs upstream
+#
+# NONE. Verified 2026-08-05: the fork carries no divergence at all -- fork
+# `main`, upstream `main` and this pin are the same commit.
+#
+# Re-verify (both must hold):
+#   gh api "repos/dfki-ric-underactuated-lab/dfki-quad/compare/main...thalesasoares:dfki-quad:dcf53c596339afd45b82f12c54b1e93e8273c2f4" \
+#     --jq '{status,ahead_by,behind_by}'      # -> identical, 0, 0
+#   gh api repos/thalesasoares/dfki-quad/commits/main --jq .sha   # -> the pin
+#
+# The fork exists to hold Kennel-local patches *if* they become necessary, and
+# to keep the MVP immune to an upstream force-push or repo move. Per design.md
+# section 4 the stack is wrapped, never forked in spirit: any patch that does
+# land here is minimal, recorded in this file, and headed upstream.
+#
+# NB: the fork has later work on other branches (`dev` and the M4.x feature
+# branches). None of it is pinned, and none of it is in the MVP.
+
+# --- Where this pin is enforced
+#
+# The provisioning script cannot read this file: Yuruna fetch-and-executes it
+# standalone into the guest, with no checkout of the kennel repo present. So
+# `DFKI_QUAD_COMMIT` in
+# vm/guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh is a DERIVED COPY of
+# `commit:` above and must be updated with it.
+#
+# The enforcement point is the Yuruna sequence: the "Assert the clone sits at
+# the stack pin" step in
+# vm/test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml re-states the SHA
+# independently and fails the run if the provisioned guest is not sitting on it.
+# A drift between the three therefore surfaces as a red sequence, not as a
+# quietly wrong measurement.
+#
+# Repinning = change `commit:` here, then the script literal, then the sequence
+# assertion, then re-run the stack sequence. All three, or the sequence fails.
+
+# --- Scope
+#
+# This pin governs the GUEST clone at $HOME/dfki-quad. The gitignored working
+# clone at the root of this repo (dfki-quad/) is a developer checkout, may sit
+# off-pin, and is not what the MVP builds.
