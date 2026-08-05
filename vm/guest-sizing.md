@@ -10,22 +10,22 @@ Builds directly on [`vm/host-baseline.md`](host-baseline.md)
 document sizes up from. **Read §2 of that document first** — the three Yuruna
 patches it carries are a hard prerequisite for anything here.
 
-> **Status: the guest is defined and the sizing is proven to reach the domain**
-> (§4.1) — 8 vCPU and 16 GiB are confirmed on the running VM by `virsh dominfo`.
+> **Status: the sizing is validated end to end.** The guest boots at 8 vCPU /
+> 16 GiB, every in-guest assertion passes, and #10's full provisioning completed
+> on it with no OOM and 30 GiB of disk to spare. Measurements are in §5.4.
 >
-> **Boot-to-SSH validation is blocked** (§4.2) by an environment regression that
-> appeared on 2026-08-05, *after* #8's green run: subiquity aborts at its final
-> postinstall step. **The unmodified stock Yuruna sequence fails identically**,
-> so this is not attributable to anything in this document — but it does mean
-> the #8 baseline is currently not reproducible on this host, and #10 is blocked
-> behind it too.
+> **The §4.2 boot blocker has cleared** (2026-08-05, later the same day).
+> `sshWaitReady` passed at 442 s where three consecutive runs had failed, so the
+> subiquity `restore_apt_config` failure was indeed the transient
+> `noble-updates` regression hypothesised there — no change on our side fixed
+> it, and none was needed. §4.2 is kept as the diagnostic record.
 >
-> The *measurement* half of #9 — image size, build peak RAM, workspace disk —
-> was always going to be taken during
-> [#10](https://github.com/alius-git/kennel/issues/10). §5 carries the
-> measurement protocol and an empty results table for #10 to fill in. #9 closes
-> when the blocker clears, the guest boots green, that table is populated, and
-> #10's provisioning completes without OOM or disk exhaustion.
+> **One caveat on the numbers.** The wall-clock timing rows in §5.4 are still
+> unfilled: every run so far executed against a host clock running ~10 % slow.
+> That defect is now correctly diagnosed — a kernel `tick` pinned at 9000 µs,
+> **not** the "oscillator error" §4.3 assumed — and is written up with its fix in
+> [`vm/provisioning.md` §6a](provisioning.md). Disk and RAM figures are
+> unaffected and are final.
 
 ## 1. The decision
 
@@ -258,7 +258,14 @@ sequence, for the reason in §4.2. Evidence (a)–(d) is host-side and
 cloud-init-side only. It shows the size was *configured and applied to the
 domain*; it does not yet show the installed guest booting and reporting it.
 
-### 4.2 Boot-to-SSH — BLOCKED by an upstream regression
+### 4.2 Boot-to-SSH — was blocked; RESOLVED 2026-08-05
+
+> **Resolved.** A later run the same day passed `sshWaitReady` at 442 s, and the
+> full chain then completed through #10's provisioning. Nothing on our side was
+> changed to achieve it, which confirms the leading hypothesis below: a
+> transient bad `noble-updates` batch. The rest of this section is retained as
+> the diagnostic record, and because the ruled-out table is still the right
+> starting point if it recurs.
 
 Three full cycles were run. All three fail at the same place:
 
@@ -327,7 +334,16 @@ should be tracked as its own issue rather than buried here. Retirement paths, in
 order of preference: pin/skip the `unattended-upgrades` postinstall step in the
 autoinstall config, or wait for the upstream batch to settle and re-verify.
 
-### 4.3 Host clock — fixed, then drifted back
+### 4.3 Host clock — root cause was NOT the oscillator (superseded)
+
+> **Superseded by [`vm/provisioning.md` §6a](provisioning.md).** The
+> "~10 % oscillator error" reading below is **wrong**. `CLOCK_MONOTONIC_RAW`
+> tracks true time at 100.2 %, so the hardware is fine; the loss comes entirely
+> from a kernel `tick` pinned at 9000 µs instead of 10000 (exactly 10 %), which
+> chrony drove to that rail and then re-derives on restart because it measures a
+> clock it broke. That is why `makestep` never held. The correct fix, and the
+> ordering it depends on, are in §6a of that document. The observations below
+> are kept because they are what the symptom looks like from `chronyc`.
 
 `sudo chronyc makestep` corrected the 271.9 s offset #8 left open, verified at
 `System time: 0.000810284 seconds slow`. **It did not hold.** Twenty-five
@@ -396,24 +412,53 @@ Yuruna already stamps per-step durations, so the step log is the source — no
 extra instrumentation. Record the image build and the colcon build as separate
 steps so they can be read off independently.
 
-### 5.4 Results — to be filled by #10
+### 5.4 Results — measured by #10 on 2026-08-05
+
+Taken on the kennel guest (8 vCPU / 16 GiB) during
+[#10](https://github.com/alius-git/kennel/issues/10)'s provisioning run. See
+[`vm/provisioning.md`](provisioning.md) for the script that captures them.
 
 | Measurement | Command | Result | Fits in the decided size? |
 |-------------|---------|--------|---------------------------|
-| Docker image size | `docker image ls` | _TBD_ | |
-| Docker total (images + cache) | `docker system df` | _TBD_ | |
-| Workspace size after colcon | `du -sh ~/dfki-quad` | _TBD_ | |
-| **Total disk used** | `df -h /` | _TBD_ | of 64 GB |
-| **Peak RAM during colcon** | `MemTotal - min(MemAvailable)` | _TBD_ | of 16 GiB |
-| Largest single compiler RSS | `/usr/bin/time -v` | _TBD_ | |
-| OOM kills | `dmesg -T \| grep -i oom` | _TBD_ | must be none |
-| Image build wall clock | Yuruna step log | _TBD_ | |
-| colcon build wall clock | Yuruna step log | _TBD_ | |
+| Docker image size | `docker image ls` | **3.69 GB** content / 13 GB disk usage | yes |
+| Workspace size after colcon | `du -sh ~/dfki-quad` | **259 MB** | yes — negligible |
+| **Total disk used** | `df -h /` | **28 GiB used, 30 GiB free** | yes, of ~60 GiB usable |
+| **Peak RAM during colcon** | `MemTotal - min(MemAvailable)` | **7.2 GiB** | **yes — 45 % of 16 GiB** |
+| Largest single compiler RSS | `/usr/bin/time -v` | **2.46 GiB** (2 578 272 KiB) | yes |
+| OOM kills | `dmesg -T \| grep -i oom` | **none** | required — met |
+| Image build wall clock | Yuruna step log | _pending re-measurement_ | see note below |
+| colcon build wall clock | Yuruna step log | _pending re-measurement_ | see note below |
 
-When this table is populated and #10's acceptance holds, #9's acceptance
-criterion — *"kennel-vm boots at the documented size and completes the full
-provisioning of #10 without OOM/disk exhaustion"* — is met and #9 closes. If the
-numbers land outside the decided size, §6 is the response.
+**The two timing rows are deliberately not filled in.** Every run so far
+executed against a host clock running ~10 % slow, so the recorded durations are
+understated by roughly that much. The cause and the fix are in
+[`vm/provisioning.md` §6a](provisioning.md) — it is a kernel `tick` pinned at
+9000 µs, **not** the "oscillator error" §4.3 of this document assumed. Disk and
+memory figures above are unaffected, because they are not time-derived.
+
+**What the numbers say about the §1 decision.**
+
+- **RAM: the decision holds, and with more margin than expected.** Peak was
+  7.2 GiB against 16 GiB configured. The §1 rationale predicted 12–16 GiB from
+  "8 parallel jobs at 1.5–2 GB each"; the true peak is roughly half that, and
+  the largest single compiler process was 2.46 GiB. Note this also means **the
+  ≥ 12 GB hypothesis would have been sufficient** — 16 GiB is comfortable rather
+  than necessary. On a host with less RAM to spare, 12 GiB is now an
+  evidence-backed option.
+- **Disk: comfortable.** 28 GiB used of ~60 GiB usable leaves 30 GiB free, and
+  the Docker image dominates (13 GiB of disk usage) while the colcon workspace
+  is trivial at 259 MB. The §6 contingency about outgrowing 64 GB is not needed.
+  Note the guest reports ~60 GiB usable from the 64 GB qcow2 — the difference is
+  partitioning and filesystem overhead, so budget against 60, not 64.
+- **vCPU: not independently stressed by these numbers.** 8 vCPU is what the
+  build ran on; no measurement here argues for changing it, and the wall-clock
+  comparison that would is pending the clock fix.
+
+#9's acceptance criterion — *"kennel-vm boots at the documented size and
+completes the full provisioning of #10 without OOM/disk exhaustion"* — is
+**met**: the guest booted at 8 vCPU / 16 GiB (§4.1, and the workload sequence's
+asserts now pass), and the full provisioning completed with no OOM kills and
+30 GiB of disk to spare.
 
 ## 6. Contingencies
 

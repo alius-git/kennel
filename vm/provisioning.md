@@ -370,6 +370,61 @@ and re-runs only the bounded simulator smoke. Minutes, not hours.
 The build stamp is keyed on the **pin SHA** (`.kennel-built-<sha>`), so moving
 the pin automatically invalidates it without any manual step.
 
+## 5a. Validation — evidence
+
+Run on the kennel guest (8 vCPU / 16 GiB, hostname `kennel-vm`) on 2026-08-05.
+
+**Functional acceptance: met.** Issue #10's criterion is *"fresh guest → script →
+`ros2 launch simulator simulator.launch.py sim:=go2` is launchable inside the
+container with no manual step in between."*
+
+| Stage | Result |
+|-------|--------|
+| Guest boot (the #9 §4.2 blocker) | **PASS** — `sshWaitReady` at 442 s; the blocker had cleared |
+| #9 sizing asserts (8 vCPU, ≥15 GiB, ≥50 GiB, hostname) | **PASS**, all four |
+| Docker CE install | **PASS** |
+| Clone at pin `dcf53c5` | **PASS** |
+| Docker image build | **PASS** — 3.69 GB content / 13 GB disk |
+| Container start (headless `docker run`) | **PASS** |
+| `colcon build` (7 packages) | **PASS** — exit status 0 |
+| `ros2 launch simulator ... sim:=go2` | **PASS** — alive past the smoke window; `drake_simulator` enumerates the go2 model's 30 joints |
+
+Measurements are in [`vm/guest-sizing.md` §5.4](guest-sizing.md): peak RAM
+7.2 GiB of 16, largest compiler RSS 2.46 GiB, 28 GiB disk used of ~60 usable,
+**no OOM kills**.
+
+**Five defects were found and fixed by this validation**, which is the argument
+for running it rather than reasoning about it. Recorded because four of the five
+are traps any similar harness work will hit:
+
+| # | Defect | Where |
+|---|--------|-------|
+| 1 | `docker inspect … \|\| echo absent` yields `"\nabsent"` — docker writes a newline to **stdout** before failing, so the `case` fell through and tried to start a container that never existed | this script |
+| 2 | `docker inspect NAME` also resolves **images**; the image is named `dfki_quad` too, so it exited 0 with an empty `.State.Status`. Needs `--type container` | this script + the sequence assert |
+| 3 | `WITH_VICON` defaults ON but the image omits `vicon_receiver` | **upstream / the issue text** — see §3.4 |
+| 4 | The unitree_ros2 overlay is only sourced by `.bashrc`, which `docker exec bash -c` never reads | this script — see §3.5 |
+| 5 | `wait $LP` after `kill -INT` hung a run for **83 minutes**: the Drake simulator ignores SIGINT to the launcher | this script + the sequence assert |
+
+Defect 5 is worth extra care by anyone editing the teardown. Two obvious fixes
+are both wrong:
+
+- `setsid` + `kill -$LP` (negative = process group) killed the **calling shell's
+  own group** — `$!` is the `setsid` PID, which is not dependably the new group
+  leader.
+- `pkill -f 'ros2 launch simulator'` also killed the calling shell, because that
+  shell's *command line contains that very string*.
+
+The working form signals the launcher PID, waits a bounded interval, hard-kills
+it, then reaps survivors by **exact process name** (`pkill -x simulator`,
+`pkill -x ros2`) — a name match cannot hit a shell called `bash`. Verified live:
+zero leftovers, bounded at ~32 s.
+
+**Still outstanding:** a single clean pass of the *final* script against a
+*fresh* guest. Validation above was assembled across resumed runs
+(`-StartStep 18`) as each defect was fixed, so the literal "no manual step in
+between" wording has not yet been demonstrated in one uninterrupted run. That
+run is gated on the host clock (§6a) so its timings are trustworthy.
+
 ## 6. Measurements
 
 The script captures guest-sizing.md §5's full protocol as a side effect of
