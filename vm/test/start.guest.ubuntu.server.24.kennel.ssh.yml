@@ -1,0 +1,94 @@
+# yaml-language-server: $schema=../schemas/sequence.schema.yml
+# (schema path is relative to test/sequences/ in the Yuruna clone, where this
+#  file is copied to run -- see vm/guest-sizing.md §3)
+
+# Kennel guest definition for the MVP -- issue #9.
+# Derived from Yuruna 2026.08.04 `start.guest.ubuntu.server.24.ssh.yml`
+# (sequenceGuid 42bfcca2, revision 3) WITH the three patches from vm/patches/
+# already folded in. The only substantive delta is the `variables:` block below.
+#
+# See vm/guest-sizing.md for the sizing rationale and the reproduction steps.
+
+sequenceGuid: 42c9c065-826e-40ac-bf26-7b63bfb3b4ab
+sequenceRevision: 1
+
+description: "Kennel (SSH): Ubuntu Server 24.04 guest sized for the dfki-quad Docker image build + colcon build of the MPC/WBC/acados stack."
+keystrokeMechanism: ssh
+resource:
+  ubuntu.server.24: []
+
+# --- REGION: kennel-vm sizing (issue #9)
+# THIS is where the kennel guest's size is set. At Yuruna 2026.08.04 RAM and
+# vCPU are per-sequence variables that cascade into
+# host/ubuntu.kvm/guest.ubuntu.server.24/New-VM.ps1 as -MemoryStartupBytes /
+# -Cores. They are declared HERE and only here: this is the sequence that
+# creates the VM, and the planner cascades top-of-chain -> prereqs with the
+# first non-empty value winning, so every workload chaining to this sequence
+# inherits the size without restating it.
+#
+# Two caveats that have bitten already:
+#   1. The cascade is applied at VM CREATION ONLY. An existing VM of the same
+#      name is reused as-is and keeps its old size -- destroy it first.
+#   2. Disk is NOT settable here. New-VM.ps1 hardcodes `qemu-img create -f
+#      qcow2 ... 64G`. 64 G clears the >= 50 G target, so the MVP needs no
+#      patch; see vm/guest-sizing.md if a measurement in #10 outgrows it.
+variables:
+  username: yuuser24
+  hostname: kennel-vm
+  memoryStartupBytes: 16GB
+  cores: 8
+
+component:
+  # OCR-free boot bridge: GRUB has no sshd yet, so dismiss the boot menu with a
+  # blind keystroke (no framebuffer/OCR needed -- pressKey uses hypervisor key
+  # injection, which works headless). Two attempts cover the menu's render
+  # window; GRUB's own auto-boot timeout is the backstop if both mistime.
+  - action: waitForSeconds
+    seconds: 5
+    description: "Let the GRUB boot menu render"
+
+  - action: pressKey
+    name: Enter
+    description: "Blind-dismiss the GRUB boot menu (first attempt)"
+
+  - action: waitForSeconds
+    seconds: 8
+    description: "Pause before retry"
+
+  - action: pressKey
+    name: Enter
+    description: "Blind-dismiss the GRUB boot menu (retry)"
+
+  # Subiquity DOES stop for confirmation on this guest -- New-VM.ps1 boots the
+  # live-server ISO without `autoinstall` on the kernel command line, by design.
+  # Carried over from yuruna-ssh-autoinstall-confirm.patch (issue #8, §6.4b).
+  - action: waitForAndEnter
+    pattern: "Continue with autoinstall?"
+    timeoutSeconds: 900
+    text: "yes"
+    description: "OCR: Continue with autoinstall?"
+
+  - action: sshWaitReady
+    timeoutSeconds: 2400
+    # Fast-fail OCR scan: if subiquity aborts the installer drops to a shell and
+    # sshd never starts -- without this list we'd burn the full 2400 s.
+    installerFailurePatterns:
+      - "install_fail.crash"
+      - "Press enter to start a shell"
+      - "An error occurred"
+    description: "Wait for SSH after autoinstall (fast-fail on subiquity crash)"
+
+  - action: sshExec
+    command: "whoami && hostname"
+    description: "Smoke test: whoami/hostname"
+
+workload:
+  - action: sshFetchAndExecute
+    command: "/usr/local/lib/yuruna/fetch-and-execute.sh guest/ubuntu.server.24/ubuntu.server.24.update.sh"
+    timeoutSeconds: 1800
+    description: "ubuntu.server.24.update.sh"
+
+  - action: sshExec
+    command: "sudo reboot now"
+    allowFailure: true
+    description: "Reboot the VM"
