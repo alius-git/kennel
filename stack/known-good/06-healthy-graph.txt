@@ -1,0 +1,62 @@
+=== ros2 node list ===
+/drake_simulator
+/joy_linux_node
+/joy_to_target
+/leg_driver
+/mit_controller_node
+/safe_start_launcher
+
+=== ros2 topic list ===
+/clock
+/contact_state
+/controller_heartbeat
+/diagnostics
+/gait_sequence
+/gait_state
+/imu_measurement
+/joint_cmd
+/joint_states
+/joy
+/joy/set_feedback
+/leg_joint_cmd
+/open_loop_trajectory
+/parameter_events
+/quad_control_target
+/quad_model_debug
+/quad_model_update
+/quad_state
+/rosout
+/simulation_disturbance
+/solve_time
+/wbc_solve_time
+/wbc_target
+/wirelesscontroller
+
+=== rates ===
+--- /quad_state
+average rate: 1000.026
+--- /joint_cmd
+average rate: 1000.017
+--- /gait_state
+average rate: 100.003
+--- /controller_heartbeat
+average rate: 2.000
+
+=== /controller_heartbeat ===
+header:
+  stamp:
+    sec: 158
+    nanosec: 663000000
+  frame_id: ''
+num_early_contacts: 10
+num_mpc_solver_overtime: 0
+num_wbc_overtime: 2
+num_mpc_solver_fail: 0
+num_wbc_solver_fail: 0
+num_model_updates: 0
+keep_pose_active: false
+---
+
+=== gait params ===
+String value is: Simple
+String value is: WALKING_TROT
