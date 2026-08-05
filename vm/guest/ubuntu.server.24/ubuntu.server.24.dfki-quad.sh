@@ -28,8 +28,13 @@ export DEBIAN_FRONTEND=noninteractive
 export NONINTERACTIVE=1
 
 # --- REGION: knobs
-# The stack pin. Single source of truth is stack/pin.lock (issue #12); until
-# that file lands this literal IS the pin, and #12 must reconcile the two.
+# The stack pin. Single source of truth is stack/pin.lock (issue #12); these two
+# literals are a DERIVED COPY of its `fork:` and `commit:` and must be updated
+# with it. They cannot read it: fetch-and-execute drops this script into the
+# guest alone, with no checkout of the kennel repo to read. The drift check is
+# the "Assert the clone sits at the stack pin" step in
+# vm/test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml, which re-states
+# the SHA independently.
 DFKI_QUAD_REPO="${DFKI_QUAD_REPO:-https://github.com/thalesasoares/dfki-quad}"
 DFKI_QUAD_COMMIT="${DFKI_QUAD_COMMIT:-dcf53c596339afd45b82f12c54b1e93e8273c2f4}"
 DFKI_QUAD_DIR="${DFKI_QUAD_DIR:-$HOME/dfki-quad}"

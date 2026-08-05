@@ -80,8 +80,10 @@ workload:
     command: "sudo docker exec dfki_quad test -f /root/ros2_ws/install/setup.bash && echo 'colcon workspace installed'"
     description: "Assert the go2 workspace is built"
 
-  # The pin is the single source of truth every other MVP issue references
-  # (issue #12). Asserting it here catches a guest provisioned from a stale
+  # stack/pin.lock is the single source of truth every other MVP issue
+  # references (issue #12); the SHA below and the provisioning script's
+  # DFKI_QUAD_COMMIT are both derived copies of its `commit:`. This step IS the
+  # enforcement point for all three: it catches a guest provisioned from a stale
   # script or a drifted branch before any measurement is trusted.
   - action: sshExec
     # NB: no ${...} anywhere in these commands. Yuruna expands ${name} in step

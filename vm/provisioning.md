@@ -550,12 +550,16 @@ kept at `/tmp/kennel-sim-smoke.log` (guest) and `/tmp/sim-smoke.log`
 
 ## 8. Notes for the record
 
-- **The pin is hardcoded in the script.**
-  [#12](https://github.com/alius-git/kennel/issues/12) makes `stack/pin.lock`
-  the single source of truth; that file does not exist yet, so this literal is
-  currently the pin. #12 must reconcile the two — either by having the script
-  read `pin.lock`, or by making the assertion in the sequence the enforcement
-  point (it already asserts the SHA independently).
+- **The pin lives in [`stack/pin.lock`](../stack/pin.lock); the script's literal
+  is a derived copy.** [#12](https://github.com/alius-git/kennel/issues/12)
+  landed that file and resolved the reconciliation this note used to leave open,
+  in favour of *assertion-as-enforcement*: the script cannot read `pin.lock`
+  (fetch-and-execute drops it into the guest alone, with no checkout of the
+  kennel repo), so `DFKI_QUAD_COMMIT` stays a literal, and the sequence's
+  "Assert the clone sits at the stack pin" step — which re-states the SHA
+  independently — is what catches drift between the three. Repinning means
+  changing all three and re-running the sequence. No SHA changed: `pin.lock`
+  records the `dcf53c5` this document validated.
 - **The container's `~/.bashrc` sources `/root/ros2_ws/install/setup.bash`**,
   which does not exist before the first build. Every command the script runs in
   the container sources what it needs explicitly, rather than relying on the
