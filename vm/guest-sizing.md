@@ -426,15 +426,26 @@ Taken on the kennel guest (8 vCPU / 16 GiB) during
 | **Peak RAM during colcon** | `MemTotal - min(MemAvailable)` | **7.2 GiB** | **yes — 45 % of 16 GiB** |
 | Largest single compiler RSS | `/usr/bin/time -v` | **2.46 GiB** (2 578 272 KiB) | yes |
 | OOM kills | `dmesg -T \| grep -i oom` | **none** | required — met |
-| Image build wall clock | Yuruna step log | _pending re-measurement_ | see note below |
-| colcon build wall clock | Yuruna step log | _pending re-measurement_ | see note below |
+| Image build wall clock | Yuruna step log | _not measurable on this host_ | n/a |
+| colcon build wall clock | Yuruna step log | _not measurable on this host_ | n/a |
 
-**The two timing rows are deliberately not filled in.** Every run so far
-executed against a host clock running ~10 % slow, so the recorded durations are
-understated by roughly that much. The cause and the fix are in
-[`vm/provisioning.md` §6a](provisioning.md) — it is a kernel `tick` pinned at
-9000 µs, **not** the "oscillator error" §4.3 of this document assumed. Disk and
-memory figures above are unaffected, because they are not time-derived.
+**The two timing rows are deliberately empty, and are not expected to be filled
+on this host.** Its system clock runs ~10 % slow, so any recorded duration is
+understated by roughly that much. The defect is a kernel `tick` pinned at
+9000 µs — **not** the "oscillator error" §4.3 assumed — and it reasserts itself
+even with chrony stopped and masked. Diagnosis and the attempted fixes are in
+[`vm/provisioning.md` §6a](provisioning.md).
+
+This was **descoped deliberately**: it is a property of the development host,
+not of Kennel, and no MVP acceptance criterion depends on it. Nothing else in
+this table is affected — disk and memory are not time-derived, and the
+functional acceptance in
+[`vm/provisioning.md` §5a](provisioning.md) does not rest on timings.
+
+Order-of-magnitude only, for planning rather than record: the image build ran
+roughly 20 minutes and the colcon build roughly 15 on 8 vCPU. Treat both as
+~10 % low, and re-take them on a host with a sound clock before quoting them
+anywhere that matters.
 
 **What the numbers say about the §1 decision.**
 

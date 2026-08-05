@@ -469,30 +469,44 @@ reproduces the same state. That is why `makestep` appears to work and then
 reverts, and why `Frequency` returns to exactly `100000.000 ppm` — the rail, not
 a measurement.
 
-**Fix (needs sudo; run when no cycle is in flight):**
+**What was tried, and the outcome.** Resetting the tick does work, briefly:
 
 ```bash
-sudo apt install -y adjtimex
 sudo systemctl stop chrony
-sudo adjtimex --tick 10000 --frequency 0
-sudo systemctl start chrony && sudo chronyc makestep
+sudo rm -f /var/lib/chrony/chrony.drift
+sudo adjtimex --tick 10000 --frequency 0     # rate returns to 100.00 %
 ```
 
-Then confirm `chronyc tracking` reports `Frequency` in the tens of ppm rather
-than six figures. Deleting `/var/lib/chrony/chrony.drift` alone is **not**
-sufficient — it does not reset the kernel `tick`. Switching `clocksource` is
-also not a fix; both `tsc` and `hpet` behave identically here, which is
-consistent with the hardware being fine.
+but it does not hold. With chrony running it is re-railed to 9000 within
+seconds — chrony's frequency estimate is derived from measuring a clock it
+itself broke, so on every start it "confirms" a 10 % error and reapplies it.
+**And it reverts even with chrony stopped, masked, and no `chronyd` process
+alive**, so chrony is not the whole story on this host.
 
-**Consequence for this issue:** the runs recorded below executed against a clock
-running ~10 % slow, so **every wall-clock duration is understated by roughly
-10 %**. Disk and memory measurements are unaffected — they are not time-derived.
-Timing rows in guest-sizing.md §5.4 are marked accordingly and should be re-taken
-once the clock is fixed.
+Ruled out along the way: deleting the drift file alone (does not reset the
+kernel `tick`); switching `clocksource` (`tsc` and `hpet` behave identically,
+consistent with the hardware being sound); and a competing time daemon
+(`systemd-timesyncd` is not even installed here).
+
+**Descoped.** This is a property of the development host, not of Kennel, and no
+MVP acceptance criterion depends on wall-clock duration. Chasing it further has
+no payoff for the project. Practical guidance:
+
+- Leave `chrony` **enabled**. It cannot fix the rate, but it keeps absolute time
+  near zero. Masked, the clock free-runs ~6 min/hour off, which trips Yuruna's
+  120 s config gate mid-cycle and can make the guest's `apt` reject repository
+  metadata as "not valid yet".
+- Treat any Yuruna step duration measured here as ~10 % low.
+- Take real timings on a host with a sound clock before quoting them.
+
+**Consequence for this issue:** the two wall-clock rows in guest-sizing.md §5.4
+are intentionally left unfilled. Everything else — functional acceptance, peak
+RAM, disk, OOM — is unaffected, because none of it is time-derived.
 
 Worth filing on [#28](https://github.com/alius-git/kennel/issues/28): Yuruna's
 config gate detects the *offset* but reports it as advisory, and its suggested
-remedy (`chronyc makestep`) cannot fix this failure mode.
+remedy (`chronyc makestep`) cannot fix this failure mode — it addresses the
+offset while the rate is what is actually wrong.
 
 ## 7. Contingencies
 
