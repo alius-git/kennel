@@ -419,11 +419,13 @@ it, then reaps survivors by **exact process name** (`pkill -x simulator`,
 `pkill -x ros2`) — a name match cannot hit a shell called `bash`. Verified live:
 zero leftovers, bounded at ~32 s.
 
-**Still outstanding:** a single clean pass of the *final* script against a
-*fresh* guest. Validation above was assembled across resumed runs
-(`-StartStep 18`) as each defect was fixed, so the literal "no manual step in
-between" wording has not yet been demonstrated in one uninterrupted run. That
-run is gated on the host clock (§6a) so its timings are trustworthy.
+**The clean pass has since been demonstrated** (2026-08-05, later the same
+day): one uninterrupted `Invoke-TestSequence` cycle from guest creation through
+all 27 steps — full provisioning in step 3, the idempotency re-run inside its
+1800 s bound in step 4, every assert green. The literal "no manual step in
+between" wording now holds. Wall-clock numbers from that run are still
+untrustworthy (§6a — the host clock defect stands), so the §5.4 timing rows
+remain unfilled; everything else is final.
 
 ## 6. Measurements
 
@@ -564,6 +566,10 @@ kept at `/tmp/kennel-sim-smoke.log` (guest) and `/tmp/sim-smoke.log`
   stating rather than inheriting silently.
 - **Meshcat's URL is captured** from the smoke output into the metrics file, so
   #11 starts from an observed value rather than an assumed `localhost:7000`.
+  [#11](https://github.com/alius-git/kennel/issues/11) is now closed out in
+  [`vm/meshcat-exposure.md`](meshcat-exposure.md): `--network host` did indeed
+  carry the container→guest hop, and the guest→host hop needs no port forward —
+  the host routes to the guest's NAT address over `virbr0`.
 
 ---
 
