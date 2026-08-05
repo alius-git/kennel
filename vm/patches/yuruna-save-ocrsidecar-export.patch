@@ -1,0 +1,10 @@
+diff --git a/test/modules/Test.SequenceEngine.psm1 b/test/modules/Test.SequenceEngine.psm1
+index 58d7644..01aff13 100644
+--- a/test/modules/Test.SequenceEngine.psm1
++++ b/test/modules/Test.SequenceEngine.psm1
+@@ -2091,4 +2091,4 @@ function Invoke-Sequence {
+ Export-ModuleMember -Function Invoke-Sequence, Invoke-SequenceByName, Send-Text, Send-Key, Send-Click, `
+     Wait-ForText, Invoke-TapOn, Save-DebugScreenshot, Write-ProgressTick, `
+     Select-SequenceStepWindow, Get-SequenceFinishedVMName, Get-OcrDegradationGrace, `
+-    Invoke-GuestSequenceList
++    Invoke-GuestSequenceList, Save-OcrSidecar

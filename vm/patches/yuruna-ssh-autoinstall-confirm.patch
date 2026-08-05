@@ -1,0 +1,36 @@
+diff --git a/test/sequences/start.guest.ubuntu.server.24.ssh.yml b/test/sequences/start.guest.ubuntu.server.24.ssh.yml
+index 95beccc..c62206c 100644
+--- a/test/sequences/start.guest.ubuntu.server.24.ssh.yml
++++ b/test/sequences/start.guest.ubuntu.server.24.ssh.yml
+@@ -4,7 +4,7 @@
+ # Copyright (c) 2019-2026 by Alisson Sol et al.
+ 
+ sequenceGuid: 42bfcca2-e31d-4879-90e2-c3a034eba8bd
+-sequenceRevision: 1
++sequenceRevision: 3
+ 
+ description: "Ubuntu Server 24.04 (SSH): blind-keystroke-dismiss GRUB (OCR-free), then drive everything else over SSH once cloud-init has finished bringing up sshd."
+ keystrokeMechanism: ssh
+@@ -34,6 +34,22 @@ component:
+     name: Enter
+     description: "Blind-dismiss the GRUB boot menu (retry)"
+ 
++  # Subiquity DOES stop for confirmation on this guest: New-VM.ps1 boots the
++  # live-server ISO with a CIDATA seed CD and deliberately does NOT put
++  # 'autoinstall' on the kernel command line (see its .DESCRIPTION -- the
++  # pre-baked cloud image is rejected precisely BECAUSE it skips this prompt).
++  # So the installer parks on "Continue with autoinstall? (yes|no)" and nothing
++  # in this sequence answers it -- sshd never starts and step sshWaitReady burns
++  # its full 2400 s. The gui sibling (start.guest.ubuntu.server.24.yml) has
++  # always carried this step; the ssh variant was missing it.
++  # OCR is already a dependency of this sequence (sshWaitReady's
++  # installerFailurePatterns scan frames the same way), so this costs no new one.
++  - action: waitForAndEnter
++    pattern: "Continue with autoinstall?"
++    timeoutSeconds: 900
++    text: "yes"
++    description: "OCR: Continue with autoinstall?"
++
+   - action: sshWaitReady
+     timeoutSeconds: 2400
+     # Fast-fail OCR scan: if subiquity aborts the installer drops to a shell and
