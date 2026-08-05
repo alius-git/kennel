@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=../schemas/sequence.schema.yml
+# (schema path is relative to test/sequences/ in the Yuruna clone, where this
+#  file is copied to run -- see vm/guest-sizing.md §3)
+
+# Sizing acceptance for the kennel guest -- issue #9.
+#
+# This sequence proves the DEFINITION, not the build. It asserts that the size
+# declared in start.guest.ubuntu.server.24.kennel.ssh actually reached the guest
+# and that the guest is the one Kennel expects. The heavy workload (Docker CE +
+# the pinned dfki-quad image build + colcon) lands in #10, which chains to the
+# same start sequence and therefore inherits the same size.
+#
+# Declares no sizing variables on purpose: the planner cascades them down from
+# the start sequence, so there is exactly one place to change the size.
+
+sequenceGuid: 4288e645-f4be-4a91-802f-23bed9ac8593
+sequenceRevision: 1
+
+description: "Kennel (SSH): assert the kennel-vm guest booted at the documented size (8 vCPU / 16 GiB / 64 G disk) and record its resource footprint."
+keystrokeMechanism: ssh
+resource:
+  ubuntu.server.24:
+    - start.guest.ubuntu.server.24.kennel.ssh
+
+component:
+  - action: sshWaitReady
+    timeoutSeconds: 300
+    description: "Wait for sshd after reboot"
+
+  - action: sshExec
+    command: "whoami && hostname"
+    description: "Smoke test: whoami/hostname"
+
+workload:
+  # Evidence block: the numbers quoted in vm/guest-sizing.md come from here.
+  - action: sshExec
+    command: "echo '--- cpu ---'; nproc; lscpu | grep -E '^(Model name|CPU\\(s\\)):'; echo '--- mem ---'; free -h; echo '--- disk ---'; df -h /; lsblk; echo '--- os ---'; . /etc/os-release && echo \"$PRETTY_NAME\"; uname -r"
+    description: "Record the guest's CPU / memory / disk footprint"
+
+  # Assertions. Each exits non-zero on mismatch, so the step fails the cycle
+  # rather than leaving a wrong size to be discovered during #10's build.
+  - action: sshExec
+    command: "n=$(nproc); echo \"vCPU=$n (want 8)\"; [ \"$n\" -eq 8 ]"
+    description: "Assert 8 vCPU"
+
+  # MemTotal is always a little under the configured 16384 MiB -- firmware and
+  # kernel reserve claim some before /proc/meminfo is populated. 15000 MiB is
+  # comfortably above the 12 GB hypothesis floor and well under 16384, so it
+  # catches "the cascade silently did not apply" (which lands on the 8192
+  # default) without tripping on normal reserve.
+  - action: sshExec
+    # NB: no ${...} anywhere in these commands. Yuruna expands ${name} in step
+    # parameters (Test.SequenceVariable.psm1:123) and leaves unknown names
+    # verbatim, so ${m} happens to survive today -- but it would silently become
+    # a substitution the moment a cascade variable of that name existed. Plain
+    # $m is equivalent in POSIX sh and cannot collide.
+    command: "m=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo); echo \"MemTotal=$m MiB (want >= 15000, default would be ~8000)\"; [ \"$m\" -ge 15000 ]"
+    description: "Assert >= 15 GiB RAM (16 GiB configured)"
+
+  - action: sshExec
+    command: "g=$(df -BG --output=size / | tail -1 | tr -dc '0-9'); echo \"rootfs=$g GiB (want >= 50)\"; [ \"$g\" -ge 50 ]"
+    description: "Assert >= 50 GiB root filesystem"
+
+  - action: sshExec
+    command: "h=$(hostname); echo \"hostname=$h (want kennel-vm)\"; [ \"$h\" = kennel-vm ]"
+    description: "Assert the guest hostname is kennel-vm"
+
+  # Headroom the #10 build actually consumes. Recorded as the "before" row of
+  # the measurement table in vm/guest-sizing.md.
+  - action: sshExec
+    command: "echo '--- free disk before the dfki-quad build ---'; df -h --output=source,size,used,avail,pcent /; echo '--- free memory before the build ---'; free -m | awk '/Mem:/{print \"available_MiB=\" $7}'"
+    description: "Record the pre-build headroom baseline for #10"
