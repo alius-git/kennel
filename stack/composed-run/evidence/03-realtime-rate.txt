@@ -1,0 +1,5 @@
+[p21-rate] t0  sim 62.953s  monotonic 80102.500s
+[p21-rate] observing 30 s ...
+[p21-rate] t1  sim 78.675s  monotonic 80133.950s
+
+[PASS] realtime-rate -- /clock vs guest monotonic: measured 0.500 (15.722 sim-s in 31.450 s), required 0.5 +/- 0.1 i.e. [0.400, 0.600]

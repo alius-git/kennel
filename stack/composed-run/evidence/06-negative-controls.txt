@@ -1,0 +1,64 @@
+########## Kennel issue #21 -- negative control: a deliberately broken
+##########                    generated YAML must fail LOUDLY, not silently
+#
+# Three corruptions of the SAME exported controller YAML, each transferred
+# and launched exactly like the good one. The question is not whether the
+# stack breaks -- it is whether it TELLS YOU.
+#
+# Recorded 2026-08-06. Full launch logs were read from /tmp/p21-ctrl.log
+# inside the container after each attempt.
+
+##################################################################################
+########## A. YAML syntax error -- the colon after mpc_solver removed
+##################################################################################
+    mpc_solver "PARTIAL_CONDENSING_OSQP"
+
+# LOUD. The launcher exits 1; mit_controller_node aborts before it starts,
+# and the message names the file AND the line.
+[mitcontrollernode-1] [ERROR] [1786042257.491938818] [rcl]: Failed to parse global arguments
+[mitcontrollernode-1]   what():  failed to initialize rcl: Couldn't parse params file: '--params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml'. Error: Error parsing a event near line 32, at ./src/parse.c:763, at ./src/rcl/arguments.c:406
+[joy_to_target.py-4] [ERROR] [1786042257.544497025] [rcl]: Failed to parse global arguments
+[joy_to_target.py-4] rclpy._rclpy_pybind11.RCLError: failed to initialize rcl: Couldn't parse params file: '--params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml'. Error: Error parsing a event near line 32, at ./src/parse.c:763, at ./src/rcl/arguments.c:406
+
+[joy_to_target.py-4] rclpy._rclpy_pybind11.RCLError: failed to initialize rcl: Couldn't parse params file: '--params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml'. Error: Error parsing a event near line 32, at ./src/parse.c:763, at ./src/rcl/arguments.c:406
+[ERROR] [joy_to_target.py-4]: process has died [pid 21666, exit code 1, cmd '/root/ros2_ws/install/controllers/lib/controllers/joy_to_target.py --ros-args -r __node:=joy_to_target --params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml --params-file /tmp/launch_params_uocq790h'].
+[ERROR] [mitcontrollernode-1]: process has died [pid 21660, exit code -6, cmd '/root/ros2_ws/install/controllers/lib/controllers/mitcontrollernode --ros-args --log-level mit_controller_node:=info --ros-args -r __node:=mit_controller_node --params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml --params-file /root/ros2_ws/install/common/share/common/config/common_config_go2.yaml --params-file /tmp/launch_params_a0w9_edl'].
+[INFO] [log_cpu_power-2]: process has finished cleanly [pid 21662]
+
+##################################################################################
+########## B. valid YAML, value outside the enum
+##################################################################################
+    mpc_solver: "NO_SUCH_SOLVER"
+
+# LOUD, and better than A: upstream validates the value itself and says so.
+[mitcontrollernode-1] [ERROR] [1786042404.045450682] [mit_controller_node]: Unknown mpc solver: NO_SUCH_SOLVER
+[ERROR] [mitcontrollernode-1]: process has died [pid 22778, exit code 255, cmd '/root/ros2_ws/install/controllers/lib/controllers/mitcontrollernode --ros-args --log-level mit_controller_node:=info --ros-args -r __node:=mit_controller_node --params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml --params-file /root/ros2_ws/install/common/share/common/config/common_config_go2.yaml --params-file /tmp/launch_params_817gqll5'].
+
+[log_cpu_power-2] [ERROR] [1786042404.059797557] [cpu_power_logging_node]: Could not open energy_uj file.
+[ERROR] [mitcontrollernode-1]: process has died [pid 22778, exit code 255, cmd '/root/ros2_ws/install/controllers/lib/controllers/mitcontrollernode --ros-args --log-level mit_controller_node:=info --ros-args -r __node:=mit_controller_node --params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml --params-file /root/ros2_ws/install/common/share/common/config/common_config_go2.yaml --params-file /tmp/launch_params_817gqll5'].
+[INFO] [log_cpu_power-2]: process has finished cleanly [pid 22780]
+
+##################################################################################
+########## C. valid YAML, key misspelled -- mpc_solverr
+##################################################################################
+    mpc_solverr: "PARTIAL_CONDENSING_OSQP"
+
+# SILENT. This is the finding. The stack launches cleanly (exit 0), the
+# controller logs no complaint about the unknown key, and it quietly runs the
+# STOCK solver -- so an operator watching the launch sees a healthy stack
+# running a configuration nobody composed.
+[p21-launch]   controller started
+[p21-launch] stack is up, launched from the console's generated commands.txt
+[p21-launch] logs: /tmp/p21-sim.log /tmp/p21-legdrv.log /tmp/p21-ctrl.log (in the container)
+
+# What the controller actually chose:
+    [mitcontrollernode-1] Set hpipm mode to SPEED        <- stock, not the composed OSQP
+
+# And this is why #14's read-back exists. The recipe catches it -- nine
+# checks pass, the stack really is healthy and walking, and check 10 is the
+# only thing standing between a silent typo and a believed result:
+[FAIL] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_HPIPM, launch log agrees with the running value ([mitcontrollernode-1] Set hpipm mode to SPEED), required PARTIAL_CONDENSING_OSQP
+pass=9 fail=1
+VERDICT: FAIL
+
+# NB the --controller-log flag is not optional here -- see composed-run.md 6.4.

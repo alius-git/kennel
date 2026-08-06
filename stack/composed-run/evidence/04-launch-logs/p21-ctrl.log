@@ -1,0 +1,197 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-08-06-19-00-06-088375-kennel-vm-25362
+[INFO] [launch]: Default logging verbosity is set to INFO
+[WARN] [1786042806.128679686] [rcl]: Found remap rule 'sim:=go2'. This syntax is deprecated. Use '--ros-args --remap sim:=go2' instead.
+[INFO] [1786042806.503972930] [safe_start_launcher]: Safe start launcher is running
+[INFO] [1786042806.519382491] [safe_start_launcher]: Wait for quad_state message and collect it for 3 seconds
+[INFO] [1786042809.524842792] [safe_start_launcher]: No pose drift: OK
+[INFO] [1786042809.525641588] [safe_start_launcher]: No velocity: OK
+[INFO] [1786042809.526286895] [safe_start_launcher]: Safe standup successful, handing over to controller launch
+[INFO] [mitcontrollernode-1]: process started with pid [25392]
+[INFO] [log_cpu_power-2]: process started with pid [25394]
+[INFO] [joy_linux_node-3]: process started with pid [25396]
+[INFO] [joy_to_target.py-4]: process started with pid [25398]
+[joy_linux_node-3] [ERROR] [1786042809.567094838] [joy_linux_node]: Couldn't open joystick /dev/input/js0. Will retry every second.
+[mitcontrollernode-1] Loaded URDF model_ with 19 joints and 18 degrees of freedom.
+[mitcontrollernode-1] data mass -1
+[mitcontrollernode-1] data inertia 0 0 0
+[mitcontrollernode-1] 0 0 0
+[mitcontrollernode-1] 0 0 0
+[mitcontrollernode-1] Joint names:
+[mitcontrollernode-1] - universe
+[mitcontrollernode-1] - root_joint
+[mitcontrollernode-1] - bl_abad
+[mitcontrollernode-1] - bl_shoulder
+[mitcontrollernode-1] - bl_knee
+[mitcontrollernode-1] - br_abad
+[mitcontrollernode-1] - br_shoulder
+[mitcontrollernode-1] - br_knee
+[mitcontrollernode-1] - fl_abad
+[mitcontrollernode-1] - fl_shoulder
+[mitcontrollernode-1] - fl_knee
+[mitcontrollernode-1] - fr_abad
+[mitcontrollernode-1] - fr_shoulder
+[mitcontrollernode-1] - fr_knee
+[mitcontrollernode-1] Joint 8: fl_abad
+[mitcontrollernode-1] Joint 9: fl_shoulder
+[mitcontrollernode-1] Joint 10: fl_knee
+[mitcontrollernode-1] Joint 11: fr_abad
+[mitcontrollernode-1] Joint 12: fr_shoulder
+[mitcontrollernode-1] Joint 13: fr_knee
+[mitcontrollernode-1] Joint 2: bl_abad
+[mitcontrollernode-1] Joint 3: bl_shoulder
+[mitcontrollernode-1] Joint 4: bl_knee
+[mitcontrollernode-1] Joint 5: br_abad
+[mitcontrollernode-1] Joint 6: br_shoulder
+[mitcontrollernode-1] Joint 7: br_knee
+[mitcontrollernode-1] Inertia element idx: 8
+[mitcontrollernode-1] Inertia element idx: 9
+[mitcontrollernode-1] Inertia element idx: 10
+[mitcontrollernode-1] Inertia element idx: 11
+[mitcontrollernode-1] Inertia element idx: 12
+[mitcontrollernode-1] Inertia element idx: 13
+[mitcontrollernode-1] Inertia element idx: 2
+[mitcontrollernode-1] Inertia element idx: 3
+[mitcontrollernode-1] Inertia element idx: 4
+[mitcontrollernode-1] Inertia element idx: 5
+[mitcontrollernode-1] Inertia element idx: 6
+[mitcontrollernode-1] Inertia element idx: 7
+[mitcontrollernode-1] [INFO] [1786042809.607040958] [mit_controller_node]: Early contact detection is activated
+[mitcontrollernode-1] [INFO] [1786042809.607150172] [mit_controller_node]: Controller running in JOINT_CONTROL or JOINT_TORQUE_CONTROL mode
+[mitcontrollernode-1] [INFO] [1786042809.616248671] [mit_controller_node]: Waiting for first quad state message to properly initialize controller
+[mitcontrollernode-1] [INFO] [1786042809.616474833] [mit_controller_node]: First quad_state received, initializing controller
+[mitcontrollernode-1] [INFO] [1786042809.616573989] [mit_controller_node]: Creating simple gait sequencer
+[mitcontrollernode-1] [INFO] [1786042809.616582565] [mit_controller_node]: Create gait of type [STAND]
+[mitcontrollernode-1] [INFO] [1786042809.617319474] [mit_controller_node]: Choosing Kalman Filter for Model Adaptation
+[mitcontrollernode-1] Set condensing to 5
+[mitcontrollernode-1] Set osqp linear system solver to qdldl
+[mitcontrollernode-1]  ---> Original problem dimensions: 
+[mitcontrollernode-1] k	nx	nu	nb	nbx	nbu	ng	ns
+[mitcontrollernode-1] 0	13	12	25	13	12	16	0	
+[mitcontrollernode-1] 1	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 2	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 3	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 4	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 5	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 6	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 7	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 8	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 9	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 10	13	0	0	0	0	0	0	
+[mitcontrollernode-1]  <--- 
+[mitcontrollernode-1]  ---> Partial condensed problem dimensions: 
+[mitcontrollernode-1] k	nx	nu	nb	nbx	nbu	ng	ns
+[mitcontrollernode-1] 0	13	24	37	13	24	32	0	
+[mitcontrollernode-1] 1	13	24	24	0	24	32	0	
+[mitcontrollernode-1] 2	13	24	24	0	24	32	0	
+[mitcontrollernode-1] 3	13	24	24	0	24	32	0	
+[mitcontrollernode-1] 4	13	24	24	0	24	32	0	
+[mitcontrollernode-1] 5	13	0	0	0	0	0	0	
+[mitcontrollernode-1]  <--- 
+[mitcontrollernode-1] Loading URDF from src/common/model/urdf/go2/urdf/go2_description.urdf
+[mitcontrollernode-1] com weights: 10, 10, 10, 10, 10, 10 
+[mitcontrollernode-1] joint [0, 0] fl_abad [6]
+[mitcontrollernode-1] joint [0, 1] fl_shoulder [7]
+[mitcontrollernode-1] joint [0, 2] fl_knee [8]
+[mitcontrollernode-1] joint [1, 0] fr_abad [9]
+[mitcontrollernode-1] joint [1, 1] fr_shoulder [10]
+[mitcontrollernode-1] joint [1, 2] fr_knee [11]
+[mitcontrollernode-1] joint [2, 0] bl_abad [0]
+[mitcontrollernode-1] joint [2, 1] bl_shoulder [1]
+[mitcontrollernode-1] joint [2, 2] bl_knee [2]
+[mitcontrollernode-1] joint [3, 0] br_abad [3]
+[mitcontrollernode-1] joint [3, 1] br_shoulder [4]
+[mitcontrollernode-1] joint [3, 2] br_knee [5]
+[mitcontrollernode-1] [INFO] [1786042809.618797690] [mit_controller_node]: Waiting for leg driver service to become available
+[mitcontrollernode-1] [INFO] [1786042809.619975135] [mit_controller_node]: Starting controller
+[log_cpu_power-2] [ERROR] [1786042809.661554007] [cpu_power_logging_node]: Could not open energy_uj file.
+[INFO] [log_cpu_power-2]: process has finished cleanly [pid 25394]
+[mitcontrollernode-1] [INFO] [1786042825.470465068] [mit_controller_node]: Changed parameter simple_gait_sequencer.gait sucessfully
+[mitcontrollernode-1] [INFO] [1786042825.470514710] [mit_controller_node]: Gait related parameter has changed, reloading gait sequencer
+[mitcontrollernode-1] [INFO] [1786042825.470562550] [mit_controller_node]: Creating simple gait sequencer
+[mitcontrollernode-1] [INFO] [1786042825.470575104] [mit_controller_node]: Create gait of type [WALKING_TROT]
+[mitcontrollernode-1] [INFO] [1786042825.975066400] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042826.458982664] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042826.459057824] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042826.978891931] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042827.462945431] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042827.471051105] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042827.975038317] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042827.986994329] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042828.471098612] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042828.474980237] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042828.963200995] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042828.966894515] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] Updated state weights to:     20    200     50 0.0001 0.0001    100    0.2    0.2    0.8     20     20    0.3
+[mitcontrollernode-1] [INFO] [1786042829.947054560] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042829.947148255] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042830.979001703] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042832.458936859] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042832.467185396] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042833.458927264] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042833.463022829] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042833.987093158] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042834.971077609] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042834.975128259] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042835.942926153] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042835.955443440] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042836.971247473] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042836.979084583] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042837.466929210] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042837.470994014] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042838.455103702] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042838.463028122] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042839.458915705] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042839.463146029] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042840.967074041] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042840.979064076] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042841.955067758] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042841.955168045] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042842.954944172] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042842.959037088] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042843.958954277] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042843.963045484] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042844.962955441] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042844.975053802] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042845.963040966] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042845.967025685] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042846.970982200] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042847.979172566] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042848.963083696] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042848.971239430] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042849.971533091] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042849.975041677] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042851.478964719] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042854.478924463] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042855.474967087] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042855.479160328] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042856.487064676] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042857.478959950] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042857.483128390] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042858.467135286] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042858.471038582] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042859.479411315] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042860.478968216] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042861.474940686] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042862.478869655] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042862.983019203] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042866.983065748] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042866.987041491] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] Updated state weights to: 30 30 30 30 30 30  1  1  1  1  1  1
+[mitcontrollernode-1] [INFO] [1786042869.966976395] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042869.967030746] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042870.446864419] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042870.459166309] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042870.962995726] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042870.967095908] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042871.443015746] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042871.447055591] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042871.886877776] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042871.967094054] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042872.343156111] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1786042872.471436242] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1786042872.935566067] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1786042872.939521886] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1786042873.565038266] [mit_controller_node]: Changed parameter simple_gait_sequencer.gait sucessfully
+[mitcontrollernode-1] [INFO] [1786042873.565089922] [mit_controller_node]: Gait related parameter has changed, reloading gait sequencer
+[mitcontrollernode-1] [INFO] [1786042873.565137233] [mit_controller_node]: Creating simple gait sequencer
+[mitcontrollernode-1] [INFO] [1786042873.565147272] [mit_controller_node]: Create gait of type [STAND]
