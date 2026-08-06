@@ -224,7 +224,8 @@ vendored path reproduces the CDN path pixel for pixel:
 
 | Issue | What it takes from here |
 |-------|------------------------|
-| [#17](https://github.com/alius-git/kennel/issues/17), [#18](https://github.com/alius-git/kennel/issues/18), [#19](https://github.com/alius-git/kennel/issues/19) | A console that boots reliably, to develop against |
+| [#17](https://github.com/alius-git/kennel/issues/17) — done, [`composer-scope.md`](composer-scope.md) | A console that boots reliably, to develop against; the offline-isolated browser harness its checks reuse |
+| [#18](https://github.com/alius-git/kennel/issues/18), [#19](https://github.com/alius-git/kennel/issues/19) | The same, plus a composer whose every option is already legal |
 | [#26](https://github.com/alius-git/kennel/issues/26) | The bypass note above, for the consolidated log |
 | [#27](https://github.com/alius-git/kennel/issues/27) | §1 verbatim, plus the `%20` warning |
 | [#23](https://github.com/alius-git/kennel/issues/23), [#25](https://github.com/alius-git/kennel/issues/25) | `verify-serve.sh` as a host-side assert with no VM dependency |
