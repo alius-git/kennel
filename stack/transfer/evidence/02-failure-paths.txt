@@ -1,0 +1,79 @@
+########## Kennel issue #20 -- the failure paths, exercised
+# A transfer that cannot fail is not a verified transfer. Each case below is
+# provoked deliberately; the exit code is the contract (see the script header).
+# Recorded 2026-08-06.
+
+########## A. run folder generated against another pin -> exit 3
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+NONZERO SCRIPT EXIT: this run was generated against pin 0000000000000000000000000000000000000000, the stack is pinned at dcf53c596339afd45b82f12c54b1e93e8273c2f4.
+  Its keys have no defined meaning at this revision. Re-export, or force with:
+    ./stack/transfer/kennel-transfer.sh apply /tmp/claude-1000/-home-thales-kennel/deafeefd-570a-4c94-a6b6-a583aec262b7/scratchpad/badpin --allow-pin-mismatch
+EXIT=3
+
+########## B. incomplete run folder (one YAML removed) -> exit 2
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+NONZERO SCRIPT EXIT: '/tmp/claude-1000/-home-thales-kennel/deafeefd-570a-4c94-a6b6-a583aec262b7/scratchpad/incomplete' has no mit_controller_sim_go2.yaml.
+  Every console export carries both YAMLs; this folder is not one,
+  or it was edited. Re-export rather than hand-assembling it.
+EXIT=2
+
+########## C. the .zip handed over instead of an unpacked folder -> exit 2
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+NONZERO SCRIPT EXIT: '/tmp/claude-1000/-home-thales-kennel/deafeefd-570a-4c94-a6b6-a583aec262b7/scratchpad/dl/run-20260806T170428Z.zip' is not a directory.
+  Pass an UNPACKED run-<timestamp>/ folder, not the .zip the console downloads:
+    unzip ~/Downloads/run-<stamp>.zip -d ~/runs && ./stack/transfer/kennel-transfer.sh apply ~/runs/run-<stamp>
+EXIT=2
+
+########## D. the bytes that landed are not the bytes the host sent -> exit 1
+# Provoked by handing the applier a false host checksum. Note this also
+# demonstrates the #24 reuse path: the applier runs standalone over plain SSH,
+# env vars only, with no host-side wrapper involved.
+[apply] applying run 'run-20260806T170428Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      d02c62cb  d02c62cb  d02c62cb  d02c62cb  HOST-DIFFERS
+      reference (run folder run-20260806T170428Z) d02c62cbb9b65b88fc8fd38059d97872dc152c4f93eb3c5b255e2180b5df3329
+      guest     /home/yuuser24/dfki-quad/ws/src/simulator/config/simulator_params_go2.yaml  d02c62cbb9b65b88fc8fd38059d97872dc152c4f93eb3c5b255e2180b5df3329
+      ctr src   /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml  d02c62cbb9b65b88fc8fd38059d97872dc152c4f93eb3c5b255e2180b5df3329
+      ctr read  /root/ros2_ws/install/simulator/share/simulator/config/simulator_params_go2.yaml  d02c62cbb9b65b88fc8fd38059d97872dc152c4f93eb3c5b255e2180b5df3329
+      resolves  /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+      host      deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+NONZERO SCRIPT EXIT: the configs on the container's paths are NOT the run folder's bytes.
+  Nothing was rolled back -- inspect the table above, then either re-run
+  the apply or return to a known state with KENNEL_MODE=restore-stock.
+EXIT=1
+
+########## E. --symlink-install broken: the assert must bite even when every checksum matches
+# The install entry is replaced by a REGULAR FILE with identical content, so all
+# four checksums still agree. Only the resolve check can see it -- and it must,
+# because a de-linked install would silently ignore every later apply.
+now a regular file
+[apply] applying run 'run-20260806T170428Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      d02c62cb  d02c62cb  d02c62cb  d02c62cb  NOT-SYMLINKED
+      reference (run folder run-20260806T170428Z) d02c62cbb9b65b88fc8fd38059d97872dc152c4f93eb3c5b255e2180b5df3329
+      guest     /home/yuuser24/dfki-quad/ws/src/simulator/config/simulator_params_go2.yaml  d02c62cbb9b65b88fc8fd38059d97872dc152c4f93eb3c5b255e2180b5df3329
+      ctr src   /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml  d02c62cbb9b65b88fc8fd38059d97872dc152c4f93eb3c5b255e2180b5df3329
+      ctr read  /root/ros2_ws/install/simulator/share/simulator/config/simulator_params_go2.yaml  d02c62cbb9b65b88fc8fd38059d97872dc152c4f93eb3c5b255e2180b5df3329
+      resolves  /root/ros2_ws/install/simulator/share/simulator/config/simulator_params_go2.yaml
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+NONZERO SCRIPT EXIT: the configs on the container's paths are NOT the run folder's bytes.
+  Nothing was rolled back -- inspect the table above, then either re-run
+  the apply or return to a known state with KENNEL_MODE=restore-stock.
+EXIT=1
+
+# repair the link and return to stock
+/root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+  mit_controller_sim_go2.yaml    40683000  40683000  40683000  40683000  OK
+
+[restore-stock] OK -- the baseline is back on the container's config paths.

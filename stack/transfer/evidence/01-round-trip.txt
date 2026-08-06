@@ -1,0 +1,117 @@
+########## Kennel issue #20 -- the transfer round trip, host -> guest -> container
+# Host: this repo. Guest: kennel-vm (192.168.122.8). Container: dfki_quad.
+# Run folders are real console exports (issue #19), unpacked, not hand-assembled:
+#   run-20260806T170428Z  OSQP + Obstacle terrain
+#   run-20260806T170901Z  OSQP + Flat plane (solver is the only non-stock choice)
+# Recorded 2026-08-06.
+
+########## 1. before anything: what is live
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.8 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run <none -- stock, or never applied>
+[status] runs staged run-20260806T170428Z run-20260806T170901Z 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      eb31c744  eb31c744  eb31c744  stock@dcf53c59
+  mit_controller_sim_go2.yaml    40683000  40683000  40683000  stock@dcf53c59
+
+
+########## 2. apply the composed run (OSQP + terrain)
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+run folder       run-20260806T170428Z
+  simulator_params_go2.yaml  d02c62cb
+  mit_controller_sim_go2.yaml  3c69d87f
+guest            kennel-vm at 192.168.122.8 (libvirt 'default')
+staged           ~/kennel-staging/runs/run-20260806T170428Z
+
+[apply] applying run 'run-20260806T170428Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      d02c62cb  d02c62cb  d02c62cb  d02c62cb  OK
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+[apply] OK -- the container's config paths carry run 'run-20260806T170428Z'.
+[apply] The stack reads these at LAUNCH; relaunch for them to take effect (stack/launch.md section 1).
+
+########## 3. status agrees, and names the run
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.8 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run run-20260806T170428Z
+[status] runs staged run-20260806T170428Z run-20260806T170901Z 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      d02c62cb  d02c62cb  d02c62cb  run-20260806T170428Z
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  run-20260806T170428Z
+
+
+########## 4. re-apply is a cheap no-op re-verify (idempotency)
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+run folder       run-20260806T170428Z
+  simulator_params_go2.yaml  d02c62cb
+  mit_controller_sim_go2.yaml  3c69d87f
+guest            kennel-vm at 192.168.122.8 (libvirt 'default')
+staged           ~/kennel-staging/runs/run-20260806T170428Z
+
+[apply] applying run 'run-20260806T170428Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      d02c62cb  d02c62cb  d02c62cb  d02c62cb  OK
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+[apply] OK -- the container's config paths carry run 'run-20260806T170428Z'.
+[apply] The stack reads these at LAUNCH; relaunch for them to take effect (stack/launch.md section 1).
+
+########## 5. apply the solver-only run (OSQP + flat plane)
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+run folder       run-20260806T170901Z
+  simulator_params_go2.yaml  f2674ff5
+  mit_controller_sim_go2.yaml  3c69d87f
+guest            kennel-vm at 192.168.122.8 (libvirt 'default')
+staged           ~/kennel-staging/runs/run-20260806T170901Z
+
+[apply] applying run 'run-20260806T170901Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      f2674ff5  f2674ff5  f2674ff5  f2674ff5  OK
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+[apply] OK -- the container's config paths carry run 'run-20260806T170901Z'.
+[apply] The stack reads these at LAUNCH; relaunch for them to take effect (stack/launch.md section 1).
+
+########## 6. restore-stock brings the pin's baseline back
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.8 (libvirt 'default')
+
+[restore-stock] restoring the stock configs at pin dcf53c596339afd45b82f12c54b1e93e8273c2f4
+[restore-stock]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[restore-stock]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      eb31c744  eb31c744  eb31c744  eb31c744  OK
+  mit_controller_sim_go2.yaml    40683000  40683000  40683000  40683000  OK
+
+[restore-stock] OK -- the baseline is back on the container's config paths.
+
+########## 7. the guest clone has no modified file -- the restore is byte-exact
+?? ws/.kennel-built-dcf53c596339afd45b82f12c54b1e93e8273c2f4
+(the untracked build stamp is #10s, not ours)
