@@ -1,0 +1,42 @@
+########## forced failure: the controller launch is killed ##########
+remaining mit_controller processes: 0
+0
+
+=== kennel-verify -- CLI walking/health recipe (issue #14) ===
+container=dfki_quad node=/mit_controller_node gait=WALKING_TROT
+windows(sim s): observe=5 settle=5 trot=15
+target: body_x_dot=0.3 world_z=0.30
+
+[FAIL] 1 node-graph           -- ros2 node list: measured /drake_simulator /joy_linux_node /joy_to_target /leg_driver /mit_controller_node [missing: /safe_start_launcher ][extra: none][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+       waiting for /clock ...
+       observing 5 sim-s (wall budget 40 s) ...
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 8.0 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 0.627, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 999.0 Hz per sim-second, required 900-1100 Hz per sim-second
+[FAIL] 4 controller-alive     -- /controller_heartbeat rate: measured 0.00 Hz per sim-second (0 msgs / 5.00 sim-s), required 1.50-2.50 Hz per sim-second
+
+       liveness gate failed -- not commanding a gait at a stack that is not answering
+[FAIL] 5 gait-command         -- ros2 param set /mit_controller_node simple_gait_sequencer.gait: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 6 gait-active          -- /gait_state: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 7 solver-health        -- /controller_heartbeat counters: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured no value, launch log said '[mitcontrollernode-1] Set hpipm mode to SPEED', required a readable mpc_solver
+
+=== verdict ===
+[FAIL] 1 node-graph           -- ros2 node list: measured /drake_simulator /joy_linux_node /joy_to_target /leg_driver /mit_controller_node [missing: /safe_start_launcher ][extra: none][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 8.0 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 0.627, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 999.0 Hz per sim-second, required 900-1100 Hz per sim-second
+[FAIL] 4 controller-alive     -- /controller_heartbeat rate: measured 0.00 Hz per sim-second (0 msgs / 5.00 sim-s), required 1.50-2.50 Hz per sim-second
+[FAIL] 5 gait-command         -- ros2 param set /mit_controller_node simple_gait_sequencer.gait: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 6 gait-active          -- /gait_state: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 7 solver-health        -- /controller_heartbeat counters: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured no value, launch log said '[mitcontrollernode-1] Set hpipm mode to SPEED', required a readable mpc_solver
+
+pass=2 fail=8
+VERDICT: FAIL
+kennel-verify: report in /tmp/kennel-verify (exit 1)
+EXIT=1

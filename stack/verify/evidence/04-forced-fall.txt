@@ -1,0 +1,48 @@
+########## forced fall: /set_emergency_damping_mode called on the healthy, standing stack ##########
+response:
+std_srvs.srv.Trigger_Response(success=True, message='See log')
+
+
+=== kennel-verify -- CLI walking/health recipe (issue #14) ===
+container=dfki_quad node=/mit_controller_node gait=WALKING_TROT
+windows(sim s): observe=5 settle=5 trot=15
+target: body_x_dot=0.3 world_z=0.30
+
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes, no duplicates
+       waiting for /clock ...
+       observing 5 sim-s (wall budget 40 s) ...
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 5.0 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 1.002, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.2 Hz per sim-second, required 900-1100 Hz per sim-second
+[PASS] 4 controller-alive     -- /controller_heartbeat rate: measured 2.00 Hz per sim-second, required 1.50-2.50 Hz per sim-second
+[INFO]   heartbeat-counters   -- /controller_heartbeat cumulative: measured early_contacts=11 mpc_overtime=0 wbc_overtime=4 mpc_fail=0 wbc_fail=0 model_updates=0, required informative, deltas are asserted by check 7
+[PASS] 5 gait-command         -- ros2 param set/get /mit_controller_node simple_gait_sequencer.gait: measured set said 'Set parameter successful', read back 'WALKING_TROT', required 'Set parameter successful' and read-back 'WALKING_TROT'
+       commanding WALKING_TROT at body_x_dot=0.30 world_z=0.30, 5 sim-s settle ...
+       measuring 15 sim-s of commanded trot ...
+       done: 15.00 sim-s, 15000 /quad_state samples, 399 targets published
+[PASS] 6 gait-active          -- /gait_state: measured period=0.500 duty_factor=['0.600', '0.600', '0.600', '0.600'] phase_offset=['0.000', '0.500', '0.500', '0.000'] sequencer=0, required WALKING_TROT signature period=0.500 duty=0.600 offsets=[0.0, 0.5, 0.5, 0.0]
+[PASS] 7 solver-health        -- /controller_heartbeat counters: measured d_mpc_fail=0 d_wbc_fail=0 d_overtime=0 (d_early_contacts=34, 30 heartbeats), required d_mpc_fail=0, d_wbc_fail=0, d_overtime <= 20
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured vx_mean=0.000 m/s, dx=0.000 m over 15.00 sim-s, advanced in all 5 sub-windows: no, required vx_mean in [0.20, 0.35] m/s for a 0.30 m/s command, dx >= 2.25 m, advance in every sub-window
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured belly_contact=0/15000 samples, z median=0.0754 m (p01=0.0754 min=0.0754 max=0.0754), max tilt=0.102 rad, tilt over 0.50 in 0.00% of samples, required belly_contact false in every sample, median z in [0.20, 0.45] m, tilt over 0.50 rad in <= 2.0% of samples
+[INFO]   height-tracking      -- /quad_state z against commanded world_z: measured median 0.0754 m, peak-to-peak 0.0000 m, commanded 0.30 m, required informative, gait bob is config-dependent
+[INFO] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_HPIPM, launch log agrees with the running value ([mitcontrollernode-1] Set hpipm mode to SPEED), required informative, pass --expect-solver to assert
+
+=== verdict ===
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes, no duplicates
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 5.0 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 1.002, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.2 Hz per sim-second, required 900-1100 Hz per sim-second
+[PASS] 4 controller-alive     -- /controller_heartbeat rate: measured 2.00 Hz per sim-second, required 1.50-2.50 Hz per sim-second
+[INFO]   heartbeat-counters   -- /controller_heartbeat cumulative: measured early_contacts=11 mpc_overtime=0 wbc_overtime=4 mpc_fail=0 wbc_fail=0 model_updates=0, required informative, deltas are asserted by check 7
+[PASS] 5 gait-command         -- ros2 param set/get /mit_controller_node simple_gait_sequencer.gait: measured set said 'Set parameter successful', read back 'WALKING_TROT', required 'Set parameter successful' and read-back 'WALKING_TROT'
+[PASS] 6 gait-active          -- /gait_state: measured period=0.500 duty_factor=['0.600', '0.600', '0.600', '0.600'] phase_offset=['0.000', '0.500', '0.500', '0.000'] sequencer=0, required WALKING_TROT signature period=0.500 duty=0.600 offsets=[0.0, 0.5, 0.5, 0.0]
+[PASS] 7 solver-health        -- /controller_heartbeat counters: measured d_mpc_fail=0 d_wbc_fail=0 d_overtime=0 (d_early_contacts=34, 30 heartbeats), required d_mpc_fail=0, d_wbc_fail=0, d_overtime <= 20
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured vx_mean=0.000 m/s, dx=0.000 m over 15.00 sim-s, advanced in all 5 sub-windows: no, required vx_mean in [0.20, 0.35] m/s for a 0.30 m/s command, dx >= 2.25 m, advance in every sub-window
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured belly_contact=0/15000 samples, z median=0.0754 m (p01=0.0754 min=0.0754 max=0.0754), max tilt=0.102 rad, tilt over 0.50 in 0.00% of samples, required belly_contact false in every sample, median z in [0.20, 0.45] m, tilt over 0.50 rad in <= 2.0% of samples
+[INFO]   height-tracking      -- /quad_state z against commanded world_z: measured median 0.0754 m, peak-to-peak 0.0000 m, commanded 0.30 m, required informative, gait bob is config-dependent
+[INFO] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_HPIPM, launch log agrees with the running value ([mitcontrollernode-1] Set hpipm mode to SPEED), required informative, pass --expect-solver to assert
+
+pass=7 fail=2
+VERDICT: FAIL
+kennel-verify: report in /tmp/kennel-verify (exit 1)
+EXIT=1

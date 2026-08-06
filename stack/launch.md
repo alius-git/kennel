@@ -18,9 +18,9 @@ the evidence is in [`stack/known-good/`](known-good/).
 
 > **Scope.** This document is the *launch surface*: what to run, in what order,
 > and how to command a gait. Turning the health signals in §6 into a pass/fail
-> CLI recipe is [#14](https://github.com/alius-git/kennel/issues/14); mapping
-> console choices onto launch args and YAML keys is
-> [#15](https://github.com/alius-git/kennel/issues/15).
+> CLI recipe was [#14](https://github.com/alius-git/kennel/issues/14) — done, in
+> [`stack/verify.md`](verify.md); mapping console choices onto launch args and
+> YAML keys is [#15](https://github.com/alius-git/kennel/issues/15).
 
 ## 1. The canonical command set — three commands, not two
 

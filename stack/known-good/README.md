@@ -72,6 +72,13 @@ Exactly six nodes, no duplicates:
 
 ## Reading this as a reference
 
+> **Superseded by [`stack/verify.md`](../verify.md).** #14 is done, and two of
+> the suggestions below did not survive contact with a forced failure:
+> `belly_contact` stays false through both a damping collapse and a full
+> tip-over, and the node list still shows a node for as long as its DDS
+> participant takes to expire. See [`verify.md`](../verify.md) §4 for what the
+> recipe asserts instead. The measurements on this page are unaffected.
+
 Suggested "healthy and walking" signals for #14, cheapest first:
 
 1. `QuadState.belly_contact` is false — did not fall.
