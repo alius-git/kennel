@@ -97,7 +97,13 @@ select{appearance:none}
               <div style="padding:12px;display:flex;flex-direction:column;gap:10px">
                 <sc-for list="{{ simFields }}" as="f" hint-placeholder-count="6">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-                    <div style="font:400 11px 'IBM Plex Mono';color:#9aa5b1">{{ f.label }}</div>
+                    <div style="font:400 11px 'IBM Plex Mono';color:{{ f.labelFg }}">{{ f.label }}</div>
+                    <sc-if value="{{ f.fixed }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex;align-items:center;gap:7px">
+                        <div style="font:400 11px 'IBM Plex Mono';color:#6f7a88">{{ f.fixedLabel }}</div>
+                        <div style="font:500 9px 'IBM Plex Mono';color:#7c8794;border:1px solid #2b3543;background:#0d1219;padding:1px 5px;border-radius:3px;white-space:nowrap">stock (MVP)</div>
+                      </div>
+                    </sc-if>
                     <sc-if value="{{ f.isNum }}" hint-placeholder-val="{{ true }}">
                       <div style="display:flex;align-items:center;gap:6px">
                         <input type="number" step="{{ f.step }}" value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:78px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:4px 6px;border-radius:3px;text-align:right">
@@ -111,6 +117,11 @@ select{appearance:none}
                     </sc-if>
                   </div>
                 </sc-for>
+                <sc-if value="{{ gtOff }}" hint-placeholder-val="{{ true }}">
+                  <div style="border:1px solid #4a3a1c;background:#191510;border-radius:4px;padding:8px 10px;font:400 10px/1.6 'IBM Plex Mono';color:#dcc08a">
+                    ground truth off — at this pin the controller then has no state source: sim state estimation has no launch path, and the noise knobs only perturb topics nothing consumes.
+                  </div>
+                </sc-if>
               </div>
             </div>
           </div>
@@ -131,11 +142,19 @@ select{appearance:none}
                           <sc-if value="{{ b.modified }}" hint-placeholder-val="{{ true }}">
                             <div style="font:500 9px 'IBM Plex Mono';color:#e0a63c;border:1px solid #4a3a1c;background:#231b0e;padding:1px 5px;border-radius:3px;white-space:nowrap">{{ b.modLabel }}</div>
                           </sc-if>
+                          <sc-if value="{{ b.fixed }}" hint-placeholder-val="{{ true }}">
+                            <div style="font:500 9px 'IBM Plex Mono';color:#7c8794;border:1px solid #2b3543;background:#0d1219;padding:1px 5px;border-radius:3px;white-space:nowrap">stock (MVP)</div>
+                          </sc-if>
                         </div>
                         <div style="font:400 9px 'IBM Plex Mono';color:#5d6875;margin-top:3px">{{ b.topic }}</div>
-                        <select value="{{ b.impl }}" onChange="{{ b.onImpl }}" onClick="{{ stop }}" style="width:100%;margin-top:9px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px">
-                          <sc-for list="{{ b.impls }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
-                        </select>
+                        <sc-if value="{{ b.selectable }}" hint-placeholder-val="{{ true }}">
+                          <select value="{{ b.impl }}" onChange="{{ b.onImpl }}" onClick="{{ stop }}" style="width:100%;margin-top:9px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px">
+                            <sc-for list="{{ b.impls }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                          </select>
+                        </sc-if>
+                        <sc-if value="{{ b.fixed }}" hint-placeholder-val="{{ true }}">
+                          <div style="width:100%;margin-top:9px;background:#0a0e14;border:1px dashed #232b36;color:#6f7a88;font:400 11px 'IBM Plex Mono';padding:5px 7px;border-radius:3px;cursor:not-allowed">{{ b.fixedLabel }}</div>
+                        </sc-if>
                         <div style="font:400 9px/1.6 'IBM Plex Mono';color:#6f7a88;margin-top:8px">{{ b.summary }}</div>
                       </div>
                       <sc-if value="{{ b.arrow }}" hint-placeholder-val="{{ true }}">
@@ -157,11 +176,19 @@ select{appearance:none}
                           <sc-if value="{{ b.modified }}" hint-placeholder-val="{{ true }}">
                             <div style="font:500 9px 'IBM Plex Mono';color:#e0a63c;border:1px solid #4a3a1c;background:#231b0e;padding:1px 5px;border-radius:3px;white-space:nowrap">{{ b.modLabel }}</div>
                           </sc-if>
+                          <sc-if value="{{ b.fixed }}" hint-placeholder-val="{{ true }}">
+                            <div style="font:500 9px 'IBM Plex Mono';color:#7c8794;border:1px solid #2b3543;background:#0d1219;padding:1px 5px;border-radius:3px;white-space:nowrap">stock (MVP)</div>
+                          </sc-if>
                         </div>
                         <div style="font:400 9px 'IBM Plex Mono';color:#5d6875;margin-top:3px">{{ b.topic }}</div>
-                        <select value="{{ b.impl }}" onChange="{{ b.onImpl }}" onClick="{{ stop }}" style="width:100%;margin-top:9px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px">
-                          <sc-for list="{{ b.impls }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
-                        </select>
+                        <sc-if value="{{ b.selectable }}" hint-placeholder-val="{{ true }}">
+                          <select value="{{ b.impl }}" onChange="{{ b.onImpl }}" onClick="{{ stop }}" style="width:100%;margin-top:9px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px">
+                            <sc-for list="{{ b.impls }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                          </select>
+                        </sc-if>
+                        <sc-if value="{{ b.fixed }}" hint-placeholder-val="{{ true }}">
+                          <div style="width:100%;margin-top:9px;background:#0a0e14;border:1px dashed #232b36;color:#6f7a88;font:400 11px 'IBM Plex Mono';padding:5px 7px;border-radius:3px;cursor:not-allowed">{{ b.fixedLabel }}</div>
+                        </sc-if>
                         <div style="font:400 9px/1.6 'IBM Plex Mono';color:#6f7a88;margin-top:8px">{{ b.summary }}</div>
                       </div>
                       <sc-if value="{{ b.arrow }}" hint-placeholder-val="{{ true }}">
@@ -188,11 +215,19 @@ select{appearance:none}
                           <sc-if value="{{ b.modified }}" hint-placeholder-val="{{ true }}">
                             <div style="font:500 9px 'IBM Plex Mono';color:#e0a63c;border:1px solid #4a3a1c;background:#231b0e;padding:1px 5px;border-radius:3px;white-space:nowrap">{{ b.modLabel }}</div>
                           </sc-if>
+                          <sc-if value="{{ b.fixed }}" hint-placeholder-val="{{ true }}">
+                            <div style="font:500 9px 'IBM Plex Mono';color:#7c8794;border:1px solid #2b3543;background:#0d1219;padding:1px 5px;border-radius:3px;white-space:nowrap">stock (MVP)</div>
+                          </sc-if>
                         </div>
                         <div style="font:400 9px 'IBM Plex Mono';color:#5d6875;margin-top:3px">{{ b.topic }}</div>
-                        <select value="{{ b.impl }}" onChange="{{ b.onImpl }}" onClick="{{ stop }}" style="width:100%;margin-top:9px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px">
-                          <sc-for list="{{ b.impls }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
-                        </select>
+                        <sc-if value="{{ b.selectable }}" hint-placeholder-val="{{ true }}">
+                          <select value="{{ b.impl }}" onChange="{{ b.onImpl }}" onClick="{{ stop }}" style="width:100%;margin-top:9px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px">
+                            <sc-for list="{{ b.impls }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+                          </select>
+                        </sc-if>
+                        <sc-if value="{{ b.fixed }}" hint-placeholder-val="{{ true }}">
+                          <div style="width:100%;margin-top:9px;background:#0a0e14;border:1px dashed #232b36;color:#6f7a88;font:400 11px 'IBM Plex Mono';padding:5px 7px;border-radius:3px;cursor:not-allowed">{{ b.fixedLabel }}</div>
+                        </sc-if>
                         <div style="font:400 9px/1.6 'IBM Plex Mono';color:#6f7a88;margin-top:8px">{{ b.summary }}</div>
                       </div>
                       <div style="flex:1;border:1px dashed #2b3543;border-radius:6px;display:flex;align-items:center;padding:0 14px;gap:14px">
@@ -538,8 +573,16 @@ select{appearance:none}
             <sc-for list="{{ drawerTabs }}" as="t" hint-placeholder-count="2">
               <div onClick="{{ t.onClick }}" style="font:500 10px 'IBM Plex Mono';padding:4px 10px;border-radius:3px;cursor:pointer;color:{{ t.fg }};background:{{ t.bg }};border:1px solid {{ t.border }}">{{ t.label }}</div>
             </sc-for>
-            <div onClick="{{ onResetParams }}" style="margin-left:auto;font:500 10px 'IBM Plex Mono';padding:4px 10px;border-radius:3px;cursor:pointer;color:#8b93a0;border:1px solid #232b36">reset to defaults</div>
+            <sc-if value="{{ drawerEditable }}" hint-placeholder-val="{{ true }}">
+              <div onClick="{{ onResetParams }}" style="margin-left:auto;font:500 10px 'IBM Plex Mono';padding:4px 10px;border-radius:3px;cursor:pointer;color:#8b93a0;border:1px solid #232b36">reset to defaults</div>
+            </sc-if>
+            <sc-if value="{{ drawerFixed }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-left:auto;font:500 10px 'IBM Plex Mono';padding:4px 10px;border-radius:3px;color:#7c8794;border:1px solid #2b3543;background:#0d1219">stock (MVP) · read-only</div>
+            </sc-if>
           </div>
+          <sc-if value="{{ drawerFixed }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:10px;font:400 10px/1.6 'IBM Plex Mono';color:#6f7a88">{{ drawerFixedNote }}</div>
+          </sc-if>
         </div>
         <sc-if value="{{ drawerForm }}" hint-placeholder-val="{{ true }}">
           <div style="flex:1;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:11px">
@@ -555,6 +598,9 @@ select{appearance:none}
                   <div style="font:400 9px 'IBM Plex Mono';color:#4b5563;margin-top:2px">{{ f.defLabel }}</div>
                 </div>
                 <div style="flex:none;display:flex;align-items:center;gap:6px">
+                  <sc-if value="{{ f.fixed }}" hint-placeholder-val="{{ true }}">
+                    <div style="width:150px;text-align:right;font:400 11px 'IBM Plex Mono';color:#6f7a88">{{ f.fixedLabel }}</div>
+                  </sc-if>
                   <sc-if value="{{ f.isNum }}" hint-placeholder-val="{{ true }}">
                     <input type="number" step="{{ f.step }}" value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:96px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 7px;border-radius:3px;text-align:right">
                   </sc-if>
@@ -618,15 +664,31 @@ const LEGS = ['FL','FR','RL','RR'];
 const OFF = [0, 0.5, 0.5, 0];
 const GAIT_T = 0.6, DUTY = 0.55;
 const MPC_DEADLINE = 10, WBC_DEADLINE = 2;
+// mit_controller_params.hpp:6 at the pin — bounds mpc_condensed_size (mpc.cpp:225).
+const MPC_PREDICTION_HORIZON = 10;
 const T_FALL = 32.4;
 
+// MVP scope (issue #17): only the MPC stage is selectable. Every other stage is
+// fixed at the pin's stock value and rendered read-only — visible, not hidden,
+// so the pipeline diagram stays honest. `key` is the mechanism in
+// stack/mapping.md that the stock value corresponds to; null where the pin has
+// no selection key at all (mapping.md §4.3).
 const BLOCKS = [
-  {id:'gait', name:'Gait Sequencer', topic:'/gait/plan', impls:[['simple','Simple'],['adaptive','Adaptive'],['bio','Bio-inspired']]},
-  {id:'mpc', name:'MPC', topic:'/mpc/solution', impls:[['hpipm','HPIPM'],['osqp','OSQP'],['qpoases','qpOASES']]},
-  {id:'wbc', name:'WBC', topic:'/wbc/torque_cmd', impls:[['arcopt','ArcOPT']]},
-  {id:'swing', name:'Swing Leg Ctrl', topic:'/swing/foot_target', impls:[['bezier','Bezier 5th order'],['spline','Cubic spline'],['raibert','Raibert heuristic']]},
-  {id:'contact', name:'Contact Logic', topic:'/contact_state', impls:[['force','Force threshold'],['kinematic','Kinematic'],['fused','Fused force+kin']]},
-  {id:'adapt', name:'Model Adaptation', topic:'/model/estimate', impls:[['off','Off'],['kf','Kalman filter'],['ls','Least squares']]}
+  {id:'gait', name:'Gait Sequencer', topic:'/gait/plan', fixed:true, key:'gait_sequencer',
+   impls:[['Simple','Simple']]},
+  {id:'mpc', name:'MPC', topic:'/mpc/solution', key:'mpc_solver',
+   impls:[['PARTIAL_CONDENSING_HPIPM','HPIPM · partial condensing'],
+          ['FULL_CONDENSING_HPIPM','HPIPM · full condensing'],
+          ['PARTIAL_CONDENSING_OSQP','OSQP · partial condensing'],
+          ['FULL_CONDENSING_QPOASES','qpOASES · full condensing']]},
+  {id:'wbc', name:'WBC', topic:'/wbc/torque_cmd', fixed:true, key:'wbc.arc_opt.solver',
+   impls:[['EiquadprogSolver','ArcOPT · Eiquadprog']]},
+  {id:'swing', name:'Swing Leg Ctrl', topic:'/swing/foot_target', fixed:true, key:null,
+   impls:[['stock','stock — single implementation']]},
+  {id:'contact', name:'Contact Logic', topic:'/contact_state', fixed:true, key:null,
+   impls:[['stock','stock — no selection key']]},
+  {id:'adapt', name:'Model Adaptation', topic:'/model/estimate', fixed:true, key:'use_model_adaptation',
+   impls:[['off','Off']]}
 ];
 const BY_ID = {}; BLOCKS.forEach(b => BY_ID[b.id] = b);
 
@@ -638,16 +700,17 @@ const PARAMS = {
     {k:'stance_pattern', label:'stance_pattern', unit:'', type:'enum', def:'trot', opts:[['trot','trot'],['walk','walk'],['bound','bound']]},
     {k:'adapt_to_terrain', label:'adapt_to_terrain', unit:'', type:'bool', def:true}
   ],
+  // The two solver-dependent MPC parameters (mapping.md §1.3). `appliesTo`
+  // encodes the gating read out of the pin at mpc.cpp:223/:230 — condensing_N
+  // is set only for the partial-condensing solvers, hpipm_mode only for the two
+  // HPIPM ones. See composer-scope.md §2.
   mpc: [
-    {k:'mode', label:'mode', unit:'', type:'enum', def:'tracking', opts:[['tracking','tracking'],['robust','robust'],['terrain_aware','terrain_aware']]},
-    {k:'horizon_steps', label:'horizon_steps', unit:'', type:'num', def:16, step:1},
-    {k:'timestep', label:'timestep', unit:'s', type:'num', def:0.02, step:0.005},
-    {k:'max_iterations', label:'max_iterations', unit:'', type:'num', def:30, step:1},
-    {k:'deadline_ms', label:'deadline_ms', unit:'ms', type:'num', def:10, step:1},
-    {k:'w_body_position', label:'w_body_position', unit:'', type:'num', def:120, step:10},
-    {k:'w_body_orientation', label:'w_body_orientation', unit:'', type:'num', def:80, step:10},
-    {k:'friction_mu', label:'friction_mu', unit:'', type:'num', def:0.6, step:0.05},
-    {k:'warm_start', label:'warm_start', unit:'', type:'bool', def:true}
+    {k:'mpc_hpipm_mode', label:'mpc_hpipm_mode', unit:'', type:'enum', def:'SPEED',
+     opts:[['SPEED_ABS','SPEED_ABS'],['SPEED','SPEED'],['BALANCE','BALANCE'],['ROBUST','ROBUST']],
+     appliesTo: s => s === 'PARTIAL_CONDENSING_HPIPM' || s === 'FULL_CONDENSING_HPIPM'},
+    {k:'mpc_condensed_size', label:'mpc_condensed_size', unit:'', type:'num', def:5, step:1,
+     min:1, max:MPC_PREDICTION_HORIZON,
+     appliesTo: s => s.indexOf('PARTIAL_CONDENSING_') === 0}
   ],
   wbc: [
     {k:'task_priority', label:'task_priority', unit:'', type:'enum', def:'contact_first', opts:[['contact_first','contact_first'],['body_first','body_first']]},
@@ -677,33 +740,94 @@ const PARAMS = {
   ]
 };
 
+// Two cards only. Brick has no working configuration at the pin — its sole link
+// is named base_link, which collides with the Go2's own and aborts the
+// simulator (mapping.md §4.1). It is also not a ground plane.
 const MAPS = [
-  {id:'flat_plane', name:'Flat plane', tag:'baseline', desc:'μ=0.8 · perfectly level · sanity checks'},
-  {id:'obstacle_terrain', name:'Obstacle terrain', tag:'hard', desc:'stairs 0.12 m · ramps 15° · rough patch ±0.04 m'},
-  {id:'brick', name:'Brick', tag:'medium', desc:'uneven brick lattice · μ=0.65 · 0.02 m lips'}
+  {id:'flat_plane', name:'Flat plane', tag:'baseline', urdf:'plane.urdf',
+   desc:'μ=0.8 · perfectly level · sanity checks'},
+  {id:'obstacle_terrain', name:'Obstacle terrain', tag:'hard', urdf:'terrain.urdf',
+   desc:'stairs 0.12 m · ramps 15° · rough patch ±0.04 m'}
 ];
+const MAP_IDS = MAPS.map(m => m.id);
 
+// Stock values at the pin (mapping.md §1.2). Only real_time_rate and
+// ground_truth_state are selectable in the MVP; the rest are shown fixed.
 const SIM_DEFAULT = {
-  initial_height: 0.34, real_time_rate: 1.0, imu_noise: true,
-  joint_encoder_noise: true, foot_force_noise: false, ground_truth_state: false
+  initial_height: 0.4, real_time_rate: 1.0, imu_noise: false,
+  joint_encoder_noise: false, ground_truth_state: true
 };
+const SIM_FIXED = {initial_height: true, imu_noise: true, joint_encoder_noise: true};
 
 function defaultParams(id) { const o = {}; PARAMS[id].forEach(p => o[p.k] = p.def); return o; }
+function stockImpl(id) { return BY_ID[id].impls[0][0]; }
 function defaultCfg() {
-  return {
-    map: 'obstacle_terrain',
-    sim: Object.assign({}, SIM_DEFAULT),
-    blocks: {
-      gait: {impl:'adaptive', params: defaultParams('gait')},
-      mpc: {impl:'hpipm', params: defaultParams('mpc')},
-      wbc: {impl:'arcopt', params: defaultParams('wbc')},
-      swing: {impl:'bezier', params: defaultParams('swing')},
-      contact: {impl:'force', params: defaultParams('contact')},
-      adapt: {impl:'kf', params: defaultParams('adapt')}
-    }
-  };
+  const blocks = {};
+  BLOCKS.forEach(b => { blocks[b.id] = {impl: stockImpl(b.id), params: defaultParams(b.id)}; });
+  return {map: 'flat_plane', sim: Object.assign({}, SIM_DEFAULT), blocks: blocks};
 }
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+// Which of a block's params are live given the current implementation.
+//
+// Two filters, same principle — never show a value as a choice when the stack
+// would ignore it. (a) A fixed-stock stage exposes none: its PARAMS entries are
+// the prototype's invented placeholders, not keys read from the pin, so
+// displaying them as "stock" would be a fresh dishonesty in place of the one
+// this issue removes. They stay in state because the mock Dashboard reads them.
+// (b) A param with an `appliesTo` guard is inert for the other solvers
+// (mapping.md §1.3, gating at mpc.cpp:223/:230).
+function activeParams(id, cfg) {
+  if (BY_ID[id].fixed) return [];
+  const impl = cfg.blocks[id].impl;
+  return PARAMS[id].filter(p => !p.appliesTo || p.appliesTo(impl));
+}
+
+// Every path a config can enter the composer by — defaults, saved presets, a
+// loaded run, pasted YAML — funnels through here. Without it, a preset saved
+// before issue #17, or a seeded run, can re-arm an option the composer no
+// longer offers and the generated config could not honour.
+const LEGACY_IMPL = {
+  hpipm:'PARTIAL_CONDENSING_HPIPM', osqp:'PARTIAL_CONDENSING_OSQP',
+  qpoases:'FULL_CONDENSING_QPOASES',
+  simple:'Simple', adaptive:'Simple', bio:'Simple',
+  arcopt:'EiquadprogSolver',
+  bezier:'stock', spline:'stock', raibert:'stock',
+  force:'stock', kinematic:'stock', fused:'stock',
+  kf:'off', ls:'off'
+};
+function normalizeCfg(cfg) {
+  const out = defaultCfg();
+  if (!cfg || typeof cfg !== 'object') return out;
+  if (MAP_IDS.indexOf(cfg.map) >= 0) out.map = cfg.map;
+  Object.keys(out.sim).forEach(k => {
+    if (SIM_FIXED[k]) return;                       // fixed-stock: never adopted
+    const v = cfg.sim ? cfg.sim[k] : undefined;
+    if (typeof v === typeof out.sim[k] && v !== undefined) out.sim[k] = v;
+  });
+  if (out.sim.real_time_rate < 0 || isNaN(out.sim.real_time_rate)) out.sim.real_time_rate = SIM_DEFAULT.real_time_rate;
+  BLOCKS.forEach(b => {
+    const src = (cfg.blocks || {})[b.id] || {};
+    const dst = out.blocks[b.id];
+    if (!b.fixed) {
+      const want = LEGACY_IMPL[src.impl] || src.impl;
+      if (b.impls.some(x => x[0] === want)) dst.impl = want;
+    }
+    PARAMS[b.id].forEach(p => {
+      const v = (src.params || {})[p.k];
+      if (v === undefined || typeof v !== typeof p.def) return;
+      if (b.fixed) return;                          // fixed-stock: params stay stock
+      let val = v;
+      if (p.type === 'num') {
+        if (p.min !== undefined) val = Math.max(p.min, val);
+        if (p.max !== undefined) val = Math.min(p.max, val);
+      }
+      if (p.opts && !p.opts.some(o => o[0] === val)) return;
+      dst.params[p.k] = val;
+    });
+  });
+  return out;
+}
 
 function yamlVal(v) { return typeof v === 'boolean' ? (v ? 'true' : 'false') : String(v); }
 function emitSim(cfg, runId) {
@@ -717,7 +841,7 @@ function emitPipeline(cfg, runId) {
   BLOCKS.forEach(b => {
     const c = cfg.blocks[b.id];
     s += '  ' + b.id + ':\n    implementation: ' + c.impl + '\n    params:\n';
-    PARAMS[b.id].forEach(p => { s += '      ' + p.k + ': ' + yamlVal(c.params[p.k]) + '\n'; });
+    activeParams(b.id, cfg).forEach(p => { s += '      ' + p.k + ': ' + yamlVal(c.params[p.k]) + '\n'; });
   });
   return s;
 }
@@ -754,7 +878,7 @@ function cfgFromYaml(simText, pipeText) {
     const ps = src.params || {};
     PARAMS[b.id].forEach(p => { if (ps[p.k] !== undefined) cfg.blocks[b.id].params[p.k] = ps[p.k]; });
   });
-  return cfg;
+  return normalizeCfg(cfg);   // pasted YAML is untrusted input like any other
 }
 function flatten(cfg) {
   const out = {};
@@ -867,17 +991,20 @@ class MockDataSource {
   }
 }
 
+// Seeded history. Every entry must be a config the constrained composer could
+// itself produce — they differ only in the MVP-scope choices (map, solver,
+// solver-dependent params, real-time rate, ground-truth state).
 const SEED_RUNS = [
   {id:'RUN-2026-0718-1142', map:'obstacle_terrain', dur:'32.4 s', verdict:'fell', c:'mpc_over 118 · solver_fail 9 · td_miss 41',
-   over:{gait:'adaptive', mpc:'hpipm', wbc:'arcopt', swing:'bezier', contact:'force', adapt:'kf'}, params:{}},
+   over:{mpc:'PARTIAL_CONDENSING_HPIPM'}, params:{mpc:{mpc_hpipm_mode:'SPEED', mpc_condensed_size:2}}},
   {id:'RUN-2026-0718-1029', map:'obstacle_terrain', dur:'60.0 s', verdict:'completed', c:'mpc_over 4 · solver_fail 0 · td_miss 7',
-   over:{gait:'adaptive', mpc:'hpipm', wbc:'arcopt', swing:'bezier', contact:'fused', adapt:'kf'}, params:{mpc:{horizon_steps:12}}},
-  {id:'RUN-2026-0717-1755', map:'brick', map_label:'brick', dur:'60.0 s', verdict:'completed', c:'mpc_over 0 · solver_fail 0 · td_miss 2',
-   over:{gait:'simple', mpc:'osqp', wbc:'arcopt', swing:'raibert', contact:'force', adapt:'off'}, params:{mpc:{horizon_steps:10, mode:'robust'}}},
+   over:{mpc:'PARTIAL_CONDENSING_HPIPM'}, params:{mpc:{mpc_hpipm_mode:'BALANCE'}}},
+  {id:'RUN-2026-0717-1755', map:'flat_plane', dur:'60.0 s', verdict:'completed', c:'mpc_over 0 · solver_fail 0 · td_miss 2',
+   over:{mpc:'PARTIAL_CONDENSING_OSQP'}, params:{mpc:{mpc_condensed_size:5}}},
   {id:'RUN-2026-0717-1408', map:'obstacle_terrain', dur:'11.2 s', verdict:'solver-failed', c:'mpc_over 62 · solver_fail 214 · td_miss 18',
-   over:{gait:'bio', mpc:'qpoases', wbc:'arcopt', swing:'spline', contact:'kinematic', adapt:'ls'}, params:{mpc:{max_iterations:60, horizon_steps:24}}},
+   over:{mpc:'FULL_CONDENSING_QPOASES'}, params:{}, sim:{real_time_rate:0.5}},
   {id:'RUN-2026-0716-0921', map:'flat_plane', dur:'60.0 s', verdict:'completed', c:'mpc_over 0 · solver_fail 0 · td_miss 0',
-   over:{gait:'simple', mpc:'hpipm', wbc:'arcopt', swing:'bezier', contact:'force', adapt:'off'}, params:{}}
+   over:{mpc:'FULL_CONDENSING_HPIPM'}, params:{mpc:{mpc_hpipm_mode:'ROBUST'}}}
 ];
 function seedRuns() {
   return SEED_RUNS.map(r => {
@@ -885,9 +1012,8 @@ function seedRuns() {
     cfg.map = r.map;
     Object.keys(r.over).forEach(k => cfg.blocks[k].impl = r.over[k]);
     Object.keys(r.params || {}).forEach(bk => Object.keys(r.params[bk]).forEach(pk => cfg.blocks[bk].params[pk] = r.params[bk][pk]));
-    if (r.map === 'flat_plane') cfg.sim.foot_force_noise = false;
-    if (r.map === 'brick') cfg.sim.initial_height = 0.36;
-    return {id:r.id, dur:r.dur, verdict:r.verdict, counters:r.c, cfg};
+    Object.keys(r.sim || {}).forEach(k => cfg.sim[k] = r.sim[k]);
+    return {id:r.id, dur:r.dur, verdict:r.verdict, counters:r.c, cfg: normalizeCfg(cfg)};
   });
 }
 
@@ -1154,39 +1280,56 @@ class Component extends DCLogic {
 
     const mkBlocks = (ids) => ids.map((id, i) => {
       const B = BY_ID[id], c = cfg.blocks[id];
-      const mod = PARAMS[id].filter(p => c.params[p.k] !== p.def).length;
+      const active = activeParams(id, cfg);
+      const mod = B.fixed ? 0 : active.filter(p => c.params[p.k] !== p.def).length;
       const impl = B.impls.find(x => x[0] === c.impl);
-      const sum = PARAMS[id].slice(0, 2).map(p => p.k + '=' + c.params[p.k]).join(' · ');
+      const sum = B.fixed
+        ? (B.key ? B.key : 'no selection key at the pin')
+        : active.slice(0, 2).map(p => p.k + '=' + c.params[p.k]).join(' · ');
       return {id, name:B.name, topic:B.topic, impl:c.impl, impls:B.impls.map(x => ({v:x[0], label:x[1]})),
-        modified: mod > 0, modLabel: mod + ' modified', border: mod > 0 ? '#4a3a1c' : '#232b36',
+        modified: mod > 0, modLabel: mod + ' modified',
+        border: mod > 0 ? '#4a3a1c' : '#232b36',
+        fixed: !!B.fixed, selectable: !B.fixed,
+        fixedLabel: impl ? impl[1] : c.impl,
         summary: (impl ? impl[1] : c.impl) + ' · ' + sum, arrow: i < ids.length - 1,
         onOpen: () => this.setState({openBlock:id, drawerTab:'form'}),
         onImpl: e => { const v = e.target.value; this.setCfg(c2 => { c2.blocks[id].impl = v; }); }};
     });
 
+    // foot force noise is gone entirely: unlike the fixed rows below, the pin has
+    // no such key at all (mapping.md §1.2 lists imu_noise and joint_noise only),
+    // so there is no stock value to display honestly.
     const simFields = [
       {k:'initial_height', label:'initial height', unit:'m', type:'num', step:0.01},
       {k:'real_time_rate', label:'real-time rate', unit:'×', type:'num', step:0.1},
       {k:'imu_noise', label:'IMU noise', type:'bool'},
       {k:'joint_encoder_noise', label:'joint encoder noise', type:'bool'},
-      {k:'foot_force_noise', label:'foot force noise', type:'bool'},
       {k:'ground_truth_state', label:'ground-truth state', type:'bool'}
     ].map(f => {
       const v = cfg.sim[f.k];
+      const fixed = !!SIM_FIXED[f.k];
       return {label:f.label, unit:f.unit || '', step:f.step || 1, value:v,
-        isNum: f.type === 'num', isBool: f.type === 'bool',
-        onChange: e => { const n = parseFloat(e.target.value); this.setCfg(c => { c.sim[f.k] = isNaN(n) ? 0 : n; }); },
+        isNum: f.type === 'num' && !fixed, isBool: f.type === 'bool' && !fixed,
+        fixed: fixed, fixedLabel: f.type === 'bool' ? (v ? 'on' : 'off') : String(v) + ' ' + (f.unit || ''),
+        labelFg: fixed ? '#5d6875' : '#9aa5b1',
+        onChange: e => { const n = parseFloat(e.target.value); this.setCfg(c => { c.sim[f.k] = isNaN(n) || n < 0 ? 0 : n; }); },
         onToggle: () => this.setCfg(c => { c.sim[f.k] = !c.sim[f.k]; }),
         trackBg: v ? '#14283a' : '#0a0e14', trackBorder: v ? '#2f5d78' : '#232b36',
         knobLeft: v ? '20px' : '2px', knobBg: v ? '#4aa8d8' : '#39465a'};
     });
+    // mapping.md §4.4: with ground truth off, this pin has no state source at all.
+    const gtOff = !cfg.sim.ground_truth_state;
 
     const openId = st.openBlock;
-    const drawerFields = openId ? PARAMS[openId].map(p => {
+    const openFixed = openId ? !!BY_ID[openId].fixed : false;
+    const drawerFields = openId ? activeParams(openId, cfg).map(p => {
       const v = cfg.blocks[openId].params[p.k];
+      const rng = p.min !== undefined ? ' · range ' + p.min + '–' + p.max : '';
       return {label:p.label, unit:p.unit, value:v, step:p.step || 1,
-        defLabel: 'default ' + String(p.def), modified: v !== p.def,
-        isNum: p.type === 'num', isEnum: p.type === 'enum', isBool: p.type === 'bool',
+        defLabel: 'default ' + String(p.def) + rng, modified: !openFixed && v !== p.def,
+        fixed: openFixed, fixedLabel: String(v),
+        isNum: p.type === 'num' && !openFixed, isEnum: p.type === 'enum' && !openFixed,
+        isBool: p.type === 'bool' && !openFixed,
         opts: (p.opts || []).map(o => ({v:o[0], label:o[1]})),
         onChange: e => { const raw = e.target.value; const val = p.type === 'num' ? (isNaN(parseFloat(raw)) ? 0 : parseFloat(raw)) : raw; this.setCfg(c => { c.blocks[openId].params[p.k] = val; }); },
         onToggle: () => this.setCfg(c => { c.blocks[openId].params[p.k] = !c.blocks[openId].params[p.k]; }),
@@ -1197,7 +1340,7 @@ class Component extends DCLogic {
     if (openId) {
       const c = cfg.blocks[openId];
       blockYaml = openId + ':\n  implementation: ' + c.impl + '\n  params:\n' +
-        PARAMS[openId].map(p => '    ' + p.k + ': ' + yamlVal(c.params[p.k])).join('\n') + '\n';
+        activeParams(openId, cfg).map(p => '    ' + p.k + ': ' + yamlVal(c.params[p.k])).join('\n') + '\n';
     }
 
     const cnt = ds ? ds.counters : {mpcOvertime:0, wbcOvertime:0, solverFail:0, contactMiss:0, imuStale:0};
@@ -1252,7 +1395,7 @@ class Component extends DCLogic {
           if (k >= 0) sel.splice(k, 1); else { sel.push(i); if (sel.length > 2) sel.shift(); }
           return {sel};
         }),
-        onLoad: () => this.setState({cfg: clone(r.cfg), view:'compose'})};
+        onLoad: () => this.setState({cfg: normalizeCfg(r.cfg), view:'compose'})};
     });
     let diffRows = [], diffA = '', diffB = '';
     const hasDiff = st.sel.length === 2;
@@ -1273,7 +1416,7 @@ class Component extends DCLogic {
         tagFg: cfg.map === m.id ? '#8fc9ea' : '#5d6875',
         border: cfg.map === m.id ? '#2f5d78' : '#232b36', bg: cfg.map === m.id ? '#101a24' : '#0d1219',
         onClick: () => this.setCfg(c => { c.map = m.id; })})),
-      simFields,
+      simFields, gtOff,
       chain: mkBlocks(['gait','mpc','wbc']),
       branch: mkBlocks(['swing','contact']),
       adapt: mkBlocks(['adapt']),
@@ -1296,14 +1439,16 @@ class Component extends DCLogic {
       presets: st.presets.map((p, i) => ({v:String(i), label:p.name})),
       presetSel: st.presetSel,
       onPresetSave: () => {
-        const name = cfg.map + ' / ' + cfg.blocks.gait.impl + '+' + cfg.blocks.mpc.impl + ' · ' + new Date().toISOString().slice(5, 16).replace('T', ' ');
+        // friendly solver label, not the 26-character canonical string
+        const solver = (BY_ID.mpc.impls.find(x => x[0] === cfg.blocks.mpc.impl) || [0, cfg.blocks.mpc.impl])[1];
+        const name = cfg.map + ' / ' + solver + ' · ' + new Date().toISOString().slice(5, 16).replace('T', ' ');
         const next = st.presets.concat([{name, cfg: clone(cfg)}]);
         try { localStorage.setItem('kennel.presets', JSON.stringify(next)); } catch (e) {}
         this.setState({presets: next});
       },
       onPresetLoad: e => {
         const i = e.target.value; if (i === '') return;
-        this.setState({cfg: clone(st.presets[Number(i)].cfg), presetSel: ''});
+        this.setState({cfg: normalizeCfg(st.presets[Number(i)].cfg), presetSel: ''});
       },
       onOpenYaml: () => this.setState({yamlModal:true, simText, pipeText, roundTrip:null}),
       onCloseYaml: () => this.setState({yamlModal:false}),
@@ -1325,6 +1470,11 @@ class Component extends DCLogic {
         fg: st.drawerTab === t[0] ? '#8fc9ea' : '#8b93a0', bg: st.drawerTab === t[0] ? '#101a24' : 'transparent',
         border: st.drawerTab === t[0] ? '#2f5d78' : '#232b36'})),
       drawerForm: st.drawerTab === 'form', drawerYaml: st.drawerTab === 'yaml',
+      drawerEditable: !!openId && !openFixed, drawerFixed: openFixed,
+      drawerFixedNote: openFixed
+        ? 'Outside the MVP scope — held at the stock value from the pin' +
+          (BY_ID[openId].key ? ' (' + BY_ID[openId].key + ').' : '; the pin has no selection key for this stage.')
+        : '',
       drawerFields, blockYaml,
       onCloseDrawer: () => this.setState({openBlock:null}),
       onResetParams: () => this.setCfg(c => { if (openId) c.blocks[openId].params = defaultParams(openId); }),
