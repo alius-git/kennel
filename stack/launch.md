@@ -20,7 +20,8 @@ the evidence is in [`stack/known-good/`](known-good/).
 > and how to command a gait. Turning the health signals in §6 into a pass/fail
 > CLI recipe was [#14](https://github.com/alius-git/kennel/issues/14) — done, in
 > [`stack/verify.md`](verify.md); mapping console choices onto launch args and
-> YAML keys is [#15](https://github.com/alius-git/kennel/issues/15).
+> YAML keys was [#15](https://github.com/alius-git/kennel/issues/15) — done, in
+> [`stack/mapping.md`](mapping.md).
 
 ## 1. The canonical command set — three commands, not two
 
