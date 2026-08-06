@@ -52,14 +52,14 @@ reuse the name.
 
 There is **no `world:=` launch argument**: `simulator.launch.py:9-17` selects a
 config file from `sim:=` alone and passes it wholesale
-(`simulator.launch.py:27`). Confirmed at the pin.
+(`simulator.launch.py:27`). Confirmed at the pin — see §4.2.
 
 ### 1.2 Sim options
 
 | Composer choice | Mechanism | Stock value | Latency |
 |---|---|---|---|
 | Real-time rate | `SIM:11 simulator_realtime_rate` | `1.0` (`0` = as fast as possible) | relaunch |
-| Manual stepping | `SIM:12` **and** `SIM:25` `manually_step_sim` — *duplicated key, see §4.4* | `false` | relaunch |
+| Manual stepping | `SIM:12` **and** `SIM:25` `manually_step_sim` — *duplicated key, see §4.5* | `false` | relaunch |
 | Initial robot height | `SIM:26 initial_robot_height` | `0.4` | relaunch |
 | Initial joint positions | `SIM:27 initial_joint_positions` (12 doubles) | stock crouch | relaunch |
 | Ground-truth state | `SIM:18 publish_quad_state` | `true` | relaunch |
@@ -75,7 +75,7 @@ There is **no initial robot *pose*** — only a height. Orientation and x/y spaw
 are not parameters at the pin; `init_pose(6)` takes the height and the rest is
 fixed (`drake_simulator.cpp:452`).
 
-⚠ **The two noise toggles are inert in the MVP configuration** — see §4.3.
+⚠ **The two noise toggles are inert in the MVP configuration** — see §4.4.
 
 ### 1.3 MPC stage
 
@@ -101,7 +101,7 @@ only. That is precisely why the launch args work at all (§2.1).
 
 | Composer stage | Choice | Mechanism | Values |
 |---|---|---|---|
-| Gait Sequencer | implementation | `gait_sequencer` (`:257`, default `"Simple"`) | `Simple`, `Adaptive` — **no `Bio`, see §4.2** |
+| Gait Sequencer | implementation | `gait_sequencer` (`:257`, default `"Simple"`) | `Simple`, `Adaptive` — **no `Bio`, see §4.3** |
 | Gait Sequencer | gait (Simple only) | `simple_gait_sequencer.gait` (`:258`, default `"STAND"`) | `STAND`, `STATIC_WALK`, `WALKING_TROT`, `TROT`, `FLYING_TROT`, `PACE`, `BOUND`, `ROTARY_GALLOP`, `TRAVERSE_GALLOP`, `PRONK`, `Manual`/`MANUAL` (`:682-720`) |
 | Gait Sequencer | manual gait params | `simple_gait_sequencer.manual_gait.{period,duty_factor,phase_offset}` (`:259-261`) | used only when gait is `Manual` |
 | Gait Sequencer | adaptive params | `adaptive_gait_sequencer.gait.*` (`:262-277`) — 16 keys; only `disturbance_correction` appears in `CTRL:53-55` | rest are code defaults |
@@ -113,7 +113,7 @@ only. That is precisely why the launch args work at all (§2.1).
 | Model Adaptation | Off | `use_model_adaptation` (`:59`, default `false`) — **not in `CTRL`** | `false` |
 | Model Adaptation | Kalman Filter | `use_model_adaptation: true` + `ma_mode: 0` (`CTRL:38`) | `0` = KF (the `default:` branch, `:559-570`) |
 | Model Adaptation | Least Squares | `use_model_adaptation: true` + `ma_mode: 1` | `1` = RLS |
-| Contact Logic | Default | inline — **no selection key, see §4.2** | — |
+| Contact Logic | Default | inline — **no selection key, see §4.3** | — |
 | MPC params | weights, μ, force limits | `mpc_alpha`, `mpc_state_weights_stand`, `mpc_state_weights_move`, `mpc_mu`, `mpc_fmin`, `mpc_fmax`, `mpc_warm_start` (`CTRL:23-31`) | state-weight arrays must be 12 long |
 
 **Model Adaptation is two keys, not one.** `use_model_adaptation` is the on/off
@@ -231,7 +231,7 @@ are only summarised:
 | Sim reset | `/reset_sim` (`interfaces/srv/ResetSimulation`) — `drake_simulator.cpp:479` |
 | Manual step | `/step_sim` (`interfaces/srv/StepSimulation`) — served **only when `manually_step_sim: true`** (`drake_simulator.cpp:529-530`) |
 | Emergency damping | `/set_emergency_damping_mode` (`std_srvs/Trigger`) |
-| Disturbance injection | `/disturb_simulation` (`interfaces/srv/DisturbSim`: `force[3]`, `tau[3]`, `time`) — **needs a fourth process, see §4.5** |
+| Disturbance injection | `/disturb_simulation` (`interfaces/srv/DisturbSim`: `force[3]`, `tau[3]`, `time`) — **needs a fourth process, see §4.6** |
 
 `/step_sim` existing is conditional on a *composer* choice — selecting manual
 stepping is what creates the service. The two are one contract.
@@ -269,7 +269,24 @@ the MVP. Brick is not a map.
 lookup by model instance), plus a multi-body world composition mechanism. Both
 are upstream changes, not console work.
 
-### 4.2 Stage implementations the composer names but the pin lacks — `mapping-layer bypass`
+### 4.2 No `world:=` launch argument — `mapping-layer bypass`
+
+The second gap design.md §5 anticipates, confirmed at the pin.
+`simulator.launch.py:9-17` derives its config file from `sim:=` alone and passes
+it wholesale (`:27`); there is no argument for the world, and no argument for any
+other simulator key either. Terrain choice is a YAML edit, exactly as
+[`prompts.txt`](../plan/prompts.txt)'s open-questions section predicted.
+
+**Bypass:** the map picker writes `world_urdf` **and** `world_fix_link` into the
+generated `simulator_params_go2.yaml` (§1.1) rather than emitting a launch
+argument. This is the generated-config contract, and it is why a map change is a
+Tier 2 relaunch (§5) rather than a launch-line edit.
+**Retirement:** upstream adding a `world:=` argument — at which point the map
+picker moves from the YAML route to the launch line and the rest of the composer
+is unaffected. A small upstream change that would simplify the mapping layer
+considerably.
+
+### 4.3 Stage implementations the composer names but the pin lacks — `mapping-layer bypass`
 
 The known upstream gap that design.md §5 and
 [`prompts.txt`](../plan/prompts.txt) already anticipate (**no explicit stage
@@ -293,7 +310,7 @@ leaves the running sequencer untouched (`:491-495`).
 not the composer state schema. This swap is exactly what scenario s009.repin
 rehearses.
 
-### 4.3 The sensor-noise toggles are inert as configured — `mapping-layer bypass`
+### 4.4 The sensor-noise toggles are inert as configured — `mapping-layer bypass`
 
 `imu_noise` and `joint_noise` perturb `/imu_measurement` and `/joint_states`
 only. Upstream's own comments at `SIM:28-29` say so:
@@ -310,7 +327,7 @@ nothing. Turning noise into something that matters means turning
 `publish_quad_state` off, which at this pin means a stack with no state source.
 **Retirement:** a sim-side state-estimation launch path upstream.
 
-### 4.4 `manually_step_sim` is a duplicated YAML key — round-trip hazard
+### 4.5 `manually_step_sim` is a duplicated YAML key — round-trip hazard
 
 It appears twice in the stock `SIM`, at lines 12 and 25, with different comments
 and the same value. The loader takes the last. A generator that emits the key
@@ -321,7 +338,7 @@ contract (design.md §4).
 **Bypass:** #18 defines the generated YAML as the canonical form and byte-compares
 generated-against-generated, never against the stock upstream file.
 
-### 4.5 Disturbance injection needs a fourth process — `mapping-layer bypass`
+### 4.6 Disturbance injection needs a fourth process — `mapping-layer bypass`
 
 design.md §1 locks the disturbance service as the s003/s004 mechanism. It exists
 at the pin — `sim_disturber` is built and installed (**[runtime]** present at
