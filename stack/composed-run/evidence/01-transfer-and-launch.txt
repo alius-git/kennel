@@ -1,0 +1,48 @@
+########## Kennel issue #21 -- transfer the composed run, then launch it from
+##########                    the console's own commands.txt
+#
+# Composition: mpc_solver = PARTIAL_CONDENSING_OSQP (stock HPIPM)
+#              simulator_realtime_rate = 0.5          (stock 1.0)
+#              map left at stock flat plane -- Obstacle terrain does not
+#              walk, stack/transfer.md 6.3.
+# Run folder:  run-20260806T183045Z/ (beside this file, exactly as exported)
+# Recorded 2026-08-06 on kennel-vm, pin dcf53c596339afd45b82f12c54b1e93e8273c2f4.
+
+########## 1. the transfer (issue #20's script, unchanged)
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+run folder       run-20260806T183045Z
+  simulator_params_go2.yaml  ef249170
+  mit_controller_sim_go2.yaml  3c69d87f
+guest            kennel-vm at 192.168.122.8 (libvirt 'default')
+staged           ~/kennel-staging/runs/run-20260806T183045Z
+
+[apply] applying run 'run-20260806T183045Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      ef249170  ef249170  ef249170  ef249170  OK
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+[apply] OK -- the container's config paths carry run 'run-20260806T183045Z'.
+[apply] The stack reads these at LAUNCH; relaunch for them to take effect (stack/launch.md section 1).
+
+########## 2. the launch, from the generated commands.txt
+# Note what the launcher asserts before running anything: the three blocks
+# reconstruct the file byte for byte, and they are the canonical three
+# launches of stack/launch.md 1.1. Nothing here is a hand-written copy.
+[p21-launch] commands.txt     /home/yuuser24/kennel-staging/runs/run-20260806T183045Z/commands.txt
+[p21-launch] split            3 shells, 30 payload lines, reconstructs the file exactly
+[p21-launch] launches         the canonical three, in order (stack/launch.md 1.1)
+[p21-launch] stopping anything already running
+[p21-launch] shell 1 -> /tmp/p21-sim.log  (ros2 launch simulator simulator.launch.py sim:=go2)
+[p21-launch]   /quad_state up
+[p21-launch]   settling 10 sim-s (sim clock at 1s)
+[p21-launch]   settled at sim 12s
+[p21-launch] shell 2 -> /tmp/p21-legdrv.log  (ros2 launch drivers leg_driver_launch.py sim:=go2)
+[p21-launch]   leg driver started
+[p21-launch] shell 3 -> /tmp/p21-ctrl.log  (ros2 launch controllers mit_controller.launch.py sim:=go2)
+[p21-launch]   controller started
+[p21-launch] stack is up, launched from the console's generated commands.txt
+[p21-launch] logs: /tmp/p21-sim.log /tmp/p21-legdrv.log /tmp/p21-ctrl.log (in the container)
