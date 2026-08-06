@@ -62,7 +62,7 @@ select{appearance:none}
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:16px">
           <div>
             <div style="font:600 15px 'IBM Plex Sans'">Compose experiment</div>
-            <div style="font:400 11px 'IBM Plex Mono';color:#6f7a88;margin-top:3px">builds run manifest · emits sim.yaml + pipeline.yaml · never launches processes</div>
+            <div style="font:400 11px 'IBM Plex Mono';color:#6f7a88;margin-top:3px">emits simulator_params_go2.yaml + mit_controller_sim_go2.yaml from the pin&#39;s stock files · never launches processes</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <select value="{{ presetSel }}" onChange="{{ onPresetLoad }}" style="background:#12181f;border:1px solid #232b36;color:#a8b3c0;font-size:11px;padding:6px 10px;border-radius:4px">
@@ -253,7 +253,7 @@ select{appearance:none}
                 </div>
               </div>
               <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
-                <div>
+                <div style="min-width:0">
                   <div style="display:flex;gap:8px;margin-bottom:8px">
                     <sc-for list="{{ yamlTabs }}" as="y" hint-placeholder-count="2">
                       <div onClick="{{ y.onClick }}" style="font:500 10px 'IBM Plex Mono';padding:4px 9px;border-radius:3px;cursor:pointer;color:{{ y.fg }};background:{{ y.bg }};border:1px solid {{ y.border }}">{{ y.label }}</div>
@@ -262,8 +262,9 @@ select{appearance:none}
                   </div>
                   <pre style="margin:0;background:#0a0e14;border:1px solid #1f2731;border-radius:4px;padding:12px;font:400 10px/1.65 'IBM Plex Mono';color:#a8b3c0;max-height:280px;overflow:auto;white-space:pre">{{ yamlText }}</pre>
                 </div>
-                <div>
-                  <div style="font:500 10px 'IBM Plex Mono';color:#6f7a88;margin-bottom:8px">terminal · 3 shells · run these yourself</div>
+                <div style="min-width:0">
+                  <div style="font:500 10px 'IBM Plex Mono';color:#6f7a88;margin-bottom:4px">terminal · 3 shells · run these yourself</div>
+                  <div style="font:400 9px/1.5 'IBM Plex Mono';color:#5d6875;margin-bottom:8px">the two YAMLs must already be in place at <span style="color:#7c8794">src/simulator/config/</span> and <span style="color:#7c8794">src/controllers/config/</span> inside the container · launch order matters</div>
                   <div style="display:flex;flex-direction:column;gap:8px">
                     <sc-for list="{{ commands }}" as="c" hint-placeholder-count="3">
                       <div style="background:#0a0e14;border:1px solid #1f2731;border-radius:4px;padding:9px 10px">
@@ -271,7 +272,7 @@ select{appearance:none}
                           <div style="font:500 9px 'IBM Plex Mono';color:#5d6875;letter-spacing:.05em;text-transform:uppercase">{{ c.label }}</div>
                           <div onClick="{{ c.onCopy }}" style="font:500 9px 'IBM Plex Mono';color:#8b93a0;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:1px 6px">{{ c.copyLabel }}</div>
                         </div>
-                        <div style="font:400 10px/1.6 'IBM Plex Mono';color:#8fc9ea;word-break:break-all">{{ c.cmd }}</div>
+                        <div style="font:400 10px/1.6 'IBM Plex Mono';color:#8fc9ea;white-space:pre-wrap;word-break:break-word;max-height:150px;overflow:auto">{{ c.cmd }}</div>
                       </div>
                     </sc-for>
                   </div>
@@ -645,11 +646,11 @@ select{appearance:none}
         </div>
         <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 16px">
           <div style="display:flex;flex-direction:column;min-height:0">
-            <div style="font:500 10px 'IBM Plex Mono';color:#6f7a88;margin-bottom:6px">sim.yaml</div>
+            <div style="font:500 10px 'IBM Plex Mono';color:#6f7a88;margin-bottom:6px">simulator_params_go2.yaml</div>
             <textarea value="{{ simText }}" onChange="{{ onSimText }}" spellcheck="false" style="flex:1;background:#0a0e14;border:1px solid #1f2731;border-radius:4px;padding:12px;font:400 10px/1.65 'IBM Plex Mono';color:#a8b3c0;resize:none"></textarea>
           </div>
           <div style="display:flex;flex-direction:column;min-height:0">
-            <div style="font:500 10px 'IBM Plex Mono';color:#6f7a88;margin-bottom:6px">pipeline.yaml</div>
+            <div style="font:500 10px 'IBM Plex Mono';color:#6f7a88;margin-bottom:6px">mit_controller_sim_go2.yaml</div>
             <textarea value="{{ pipeText }}" onChange="{{ onPipeText }}" spellcheck="false" style="flex:1;background:#0a0e14;border:1px solid #1f2731;border-radius:4px;padding:12px;font:400 10px/1.65 'IBM Plex Mono';color:#a8b3c0;resize:none"></textarea>
           </div>
         </div>
@@ -830,54 +831,284 @@ function normalizeCfg(cfg) {
 }
 
 function yamlVal(v) { return typeof v === 'boolean' ? (v ? 'true' : 'false') : String(v); }
-function emitSim(cfg, runId) {
-  let s = '# ' + runId + ' — sim.yaml (generated by Kennel Console)\n';
-  s += 'sim:\n  map: ' + cfg.map + '\n';
-  Object.keys(cfg.sim).forEach(k => { s += '  ' + k + ': ' + yamlVal(cfg.sim[k]) + '\n'; });
-  return s;
+
+// ─── Generated configs (issue #18) ──────────────────────────────────────────
+//
+// The console does not hand-write YAML. It takes the pin's own stock config
+// files, embedded verbatim below as templates, and substitutes only the fields
+// the composer owns. Everything else — key order, comments, spacing, even the
+// duplicated manually_step_sim at lines 12 and 25 — survives untouched, so a
+// human diffing a generated file against upstream sees exactly the composed
+// choices and nothing else.
+//
+// EVERY composed value travels by YAML, never by launch argument. mapping.md
+// §2.1 established by runtime probe that a YAML value silently overrides a
+// `-p` override of the same key, so emitting both routes would disable the
+// argument invisibly. The generated command block therefore carries no
+// mpc_*:= arguments at all — only sim:=go2.
+//
+// See composer-scope.md and generate.md.
+
+const PIN_SHA = 'dcf53c596339afd45b82f12c54b1e93e8273c2f4';   // stack/pin.lock
+
+// The source chain every container shell needs, verbatim from
+// stack/known-good/tools/prelude.sh (issue #13). Its explanatory comments live
+// in launch.md §2/§2.1; the trap worth restating is that setup_ulab_workspace
+// is the SIM setup despite the name — setup_go2_workspace pins CycloneDDS to a
+// NIC that does not exist in the guest. It ends by cd'ing to /root/ros2_ws,
+// which is also what mapping.md §2.3 requires, so no separate cd is emitted.
+const LAUNCH_PRELUDE = `source /opt/ros/humble/setup.bash
+[ -f /root/unitree_ros2/install/setup.bash ] && source /root/unitree_ros2/install/setup.bash
+source /root/ros2_ws/install/setup.bash
+export PATH="/opt/drake/bin:\${PATH}"
+export PYTHONPATH="/opt/drake/lib/python3.10/site-packages:\${PYTHONPATH}"
+export LD_LIBRARY_PATH="/opt/drake/lib:\${LD_LIBRARY_PATH}"
+export ROS_PACKAGE_PATH="/root/ros2_ws/src"
+source /root/setup_ulab_workspace.bash
+cd /root/ros2_ws`;
+
+const STOCK_SIM_YAML = `drake_simulator:
+  ros__parameters:
+    robot_urdf: "src/common/model/urdf/go2/urdf/go2_description.urdf"   # The URDF of the quadruped
+    # world_urdf: "src/common/model/urdf/terrain.urdf"  # The URDF of the world environment
+    world_urdf: "src/common/model/urdf/plane.urdf"  # The URDF of the world environment
+    world_fix_link: "plane_base_link"               # The base_link name of the world environment
+    simulator_discretization_frequency: 1000.       # Discretization frequency of the simulator
+    imu_publish_frequency: 100.                     # Publish frequency of the IMU readings (has to be less or equal to simulator_discretization_frequency)
+    joint_state_publish_frequency: 1000.            # Publish frequency of the Joint states readings (has to be less or equal to simulator_discretization_frequency)
+    sim_clock_publish_frequency: 1000.              # Publish frequency of the simulation clock under /clock topic (has to be less or equal to simulator_discretization_frequency)
+    simulator_realtime_rate: 1.0                    # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+    manually_step_sim: false                        # The simulator than is paused at the beginning and waits for the service call \`/step_sim\`
+    visualisation: true                             # If the simulation should provide a meshcat visualization
+    visualisation_update_rate: 0.05                 # Update rate of the meshcat visualization provided by simulation
+    init_kp: 50.0                                   # Initial P gain of the joints' PD controller
+    init_kd: 5.0                                    # Initial D gain of the joints' PD controller
+    respect_effort_limits: false                    # If the joint torque limits as defined in the URDF should be respected
+    publish_quad_state: true                        # If the quad state should be published under /quad_state (replaces the state estimation)
+    robot_foot_collision_names: [ "go2_description::front_left_foot_collision", # List of collision element names of the robot feet that are published as contacts in the /quad_state
+                                  "go2_description::front_right_foot_collision",
+                                  "go2_description::back_left_foot_collision",
+                                  "go2_description::back_right_foot_collision" ]
+    imu_link: "link_imu"                            # Name of the IMU link as a reference for the imu readings
+    reference_link: "base_link"                     # Name of the robot's reference link for pose and twist readings in /quad_state
+    manually_step_sim: false                        # If enabled, the simulation ignores the simulator_realtime_rate and the simulation pauses. Instead, a service /step_sim provides manual stepping
+    initial_robot_height: 0.4                      # Spawn height of the robot
+    initial_joint_positions: [ 0.126, 0.61, -1.22, -0.126, 0.61, -1.22, 0.126, 0.61, -1.22, -0.126, 0.61, -1.22 ]
+    imu_noise: [0.0, 0.0]                       #stddev of noise added to simulated imu data [angular velocity, linear acceleration] ATTENTION: THIS DOES NOT APPEAR IN QUADSTATE MESSAGE
+    joint_noise: [0.0, 0.0, 0.0, 0.0]             #stddev of noise added to simulated joint data [position, velocity, effort, acceleration] ATTENTION: THIS DOES NOT APPEAR IN QUADSTATE MESSAGE`;
+
+const STOCK_CTRL_YAML = `mit_controller_node: ##### SIMULATION
+  ros__parameters:
+    use_sim_time: True
+    initial_height: 0.30
+    leg_control_mode: 0 # 0: wbc; 3: ikin
+    joint_control_gains: # wbc
+      swing_Kp: [ 0.0, 0.0, 0.0 ]
+      swing_Kd: [ 0.0, 0.0, 0.0 ]
+      stance_Kp: [ 0.0, 0.0, 0.0 ]
+      stance_Kd: [ 0.0, 0.0, 0.0 ]
+    cartesian_joint_control_gains:
+      swing_Kp: [ 10.0, 10.0, 10.0 ]
+      swing_Kd: [ 5.0, 5.0, 5.0 ]
+      stance_Kp: [ 2.0,2.0,2.0 ]
+      stance_Kd: [ 5.0, 5.0, 5.0 ]
+    cartesian_stiffness_control_gains:
+      swing_Kp: [ 500.0, 500.0, 1000.0 ]
+      swing_Kd: [ 300.0, 300.0, 500.0 ]
+      stance_Kp: [ 50.0, 50.0, 1000.0 ]
+      stance_Kd: [ 30.0, 30.0, 30.0 ]
+    slc_swing_height: 0.05
+    slc_world_blend: 1.0
+    mpc_alpha: 0.00001
+    mpc_warm_start: 1 # 0: off,  1: warm start, 2: hot start (some solvers)
+    ########################## roll, pitch, yaw, x   , y   ,  z, rolld,pitchd,yawd, xd, yd , zd
+    mpc_state_weights_stand: [ 30.0, 30.0, 30.0, 30.0, 30.0, 30.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
+    # mpc_state_weights_move: [ 150.0, 150.0, 50.0, 0.0, 0.0, 80.0, 0.2, 0.2, 0.2, 0.3, 0.3, 0.3 ]
+    mpc_state_weights_move: [ 20.0, 200.0, 50.0, 0.0001, 0.0001, 100.0, 0.2, 0.2, 0.8, 20.0, 20.0, 0.3 ]
+    mpc_mu: 0.6
+    mpc_fmin: 0.0
+    mpc_fmax: 400.0
+    gs_shoulder_positions: [
+      0.167, 0.1738, 0.0,
+      0.167, -0.1738, 0.0,
+      -0.197, 0.1738, 0.0,
+      -0.197, -0.1738, 0.0
+    ]
+    ma_mode: 0 #0:KF, 1:RLS
+    ma_forgetting_factor: 0.5
+    ma_convergence_threshold: [0.695, 0.12, 0.11]
+    ma_process_noise: [0.005, 0.0005, 0.0005]
+    ma_measurement_noise: [1000.0, 1000.0, 10000.0, 10000.0, 1000.0]
+    raibert:
+      k: 0.03
+      filtersize: 20
+      z_on_plane: false
+    early_contact_detection: true
+    late_contact_detection: false
+    late_contact_reschedule_swing_phase: true
+    lost_contact_detection: false
+    fix_standing_position: true
+    maximum_swing_leg_progress_to_update_target: 0.5
+    adaptive_gait_sequencer:
+      gait:
+        disturbance_correction: 0.0
+    wbc:
+      inverse_dynamics:
+        foot_position_based_on_target_height: false
+        foot_position_based_on_target_orientation: false
+        transformation_filter_size: 20
+      arc_opt:
+        solver: "EiquadprogSolver"
+        model_urdf: "src/common/model/urdf/go2/urdf/go2_description.urdf"
+        feet_names: [ "fl_contact", "fr_contact","bl_contact", "br_contact" ]
+        joint_names: [ "fl_abad", "fl_shoulder", "fl_knee", "fr_abad", "fr_shoulder", "fr_knee", "bl_abad", "bl_shoulder", "bl_knee", "br_abad", "br_shoulder", "br_knee" ]
+        mu: 0.45
+        ################## x,y,z, roll, pitch, yaw
+        com_pose_weight: [ 10.,10.,10.,10.,10.,10. ]
+        com_pose_Kp: [ 300.,300.,300.,200.,200.,200. ]
+        com_pose_Kd: [ 100.,100.,100.,100.,100.,100. ]
+        ################## fx, fy, fz
+        foot_force_weight: [ 30.,30.,30. ]
+        ################## x,y,z
+        foot_pose_weight: [ 10.0,10.0,10.0 ]
+        feet_pose_Kp: [ 1200.,1200.,1200. ]
+        feet_pose_Kd: [ 500.,500.,400. ]
+    model_parameter_weights: [ 1.0, 0.5, 0.5, 0.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ]
+joy_to_target:
+  ros__parameters:
+    init_robot_height: 0.30
+    max_robot_height: 0.40
+    max_acceleration: 0.5
+
+`;
+
+// World URDFs the map picker selects between (mapping.md §1.1). The map sets
+// TWO keys — world_fix_link names the body the world is welded to, and it is
+// part of the contract even though both worlds happen to use the same name.
+const MAP_WORLD = {
+  flat_plane:       {urdf: 'src/common/model/urdf/plane.urdf',   fix: 'plane_base_link'},
+  obstacle_terrain: {urdf: 'src/common/model/urdf/terrain.urdf', fix: 'plane_base_link'}
+};
+
+// ROS types the values must land on. simulator_realtime_rate is declared
+// double (drake_simulator.cpp), so `1` would arrive as an int and be rejected
+// on type — it has to be written 1.0.
+function yamlDouble(v) {
+  const n = Number(v);
+  if (!isFinite(n)) return '0.0';
+  return Number.isInteger(n) ? n.toFixed(1) : String(n);
 }
-function emitPipeline(cfg, runId) {
-  let s = '# ' + runId + ' — pipeline.yaml (generated by Kennel Console)\npipeline:\n';
-  BLOCKS.forEach(b => {
-    const c = cfg.blocks[b.id];
-    s += '  ' + b.id + ':\n    implementation: ' + c.impl + '\n    params:\n';
-    activeParams(b.id, cfg).forEach(p => { s += '      ' + p.k + ': ' + yamlVal(c.params[p.k]) + '\n'; });
+function yamlInt(v) { return String(Math.round(Number(v) || 0)); }
+function yamlStr(v) { return '"' + String(v) + '"'; }
+
+// Replace the value on `<indent><key>: <value><gap><# comment>`, preserving the
+// indentation and holding the trailing comment in its original column where the
+// new value leaves room. Throws rather than no-op: a substitution that silently
+// matches nothing is precisely the invisible failure mapping.md §2.2 warns
+// about, and it would ship a stock config wearing a composed header.
+function subLine(text, key, value, where) {
+  const re = new RegExp('^([ \\t]*' + key + ':[ \\t]*)([^\\s#]+)([ \\t]*)(#.*)?$', 'm');
+  if (!re.test(text)) throw new Error('template anchor missing: ' + key + ' in ' + where);
+  return text.replace(re, (m, head, old, gap, comment) => {
+    const nv = String(value);
+    if (!comment) return head + nv;
+    const keep = gap.length - (nv.length - old.length);
+    return head + nv + (keep >= 1 ? ' '.repeat(keep) : ' ') + comment;
   });
-  return s;
 }
-function scalar(v) {
-  if (v === 'true') return true;
-  if (v === 'false') return false;
-  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
-  return v.replace(/^["']|["']$/g, '');
+function insertAfter(text, key, block, where) {
+  const re = new RegExp('^([ \\t]*' + key + ':.*)$', 'm');
+  if (!re.test(text)) throw new Error('template anchor missing: ' + key + ' in ' + where);
+  return text.replace(re, (m, line) => line + '\n' + block);
 }
-function parseYaml(text) {
-  const root = {}; const stack = [{indent:-1, obj:root}];
-  (text || '').split('\n').forEach(line => {
-    if (!line.trim() || line.trim().charAt(0) === '#') return;
-    const indent = line.match(/^ */)[0].length;
-    const s = line.trim(); const i = s.indexOf(':');
-    if (i < 0) return;
-    const k = s.slice(0, i).trim(); const v = s.slice(i + 1).trim();
-    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
-    const parent = stack[stack.length - 1].obj;
-    if (v === '') { const o = {}; parent[k] = o; stack.push({indent, obj:o}); }
-    else parent[k] = scalar(v);
-  });
-  return root;
+
+// Headers are deterministic on purpose: no run id, no timestamp. The same
+// composer state must produce byte-identical files across sessions, because
+// that is what makes "byte-compare generated against generated" a usable
+// contract (mapping.md §4.5). Run provenance lives in run.json (#19).
+function header(name, extra) {
+  let h = '# ' + name + ' — generated by Kennel Console\n' +
+          '# stack pin: ' + PIN_SHA + '  (stack/pin.lock)\n' +
+          '# Generated from the stock file at that pin; only composed fields differ.\n' +
+          '# Deterministic: no run id or timestamp here — see run.json.\n';
+  if (extra) h += extra;
+  return h + '#\n';
 }
-function cfgFromYaml(simText, pipeText) {
+
+function emitSimYaml(cfg) {
+  const w = MAP_WORLD[cfg.map] || MAP_WORLD.flat_plane;
+  let y = STOCK_SIM_YAML;
+  y = subLine(y, 'world_urdf', yamlStr(w.urdf), 'simulator');
+  y = subLine(y, 'world_fix_link', yamlStr(w.fix), 'simulator');
+  y = subLine(y, 'simulator_realtime_rate', yamlDouble(cfg.sim.real_time_rate), 'simulator');
+  y = subLine(y, 'publish_quad_state', yamlVal(cfg.sim.ground_truth_state), 'simulator');
+  return header('simulator_params_go2.yaml') + y.replace(/\n?$/, '\n');
+}
+
+function emitCtrlYaml(cfg) {
+  const c = cfg.blocks.mpc;
+  // The three MPC keys are ABSENT from the stock file — they are code defaults
+  // (mit_controller_node.cpp:67-69). All three are always emitted, with the
+  // composer's current values: the diff against stock then stays a clean set of
+  // added lines whichever solver is chosen, and since #17 hides the fields a
+  // solver does not consume, their values are guaranteed to be those defaults.
+  // Which of the two dependent keys this solver actually reads (mapping.md
+  // §1.3, gating at mpc.cpp:223/:230 — see composer-scope.md §2). Stated in the
+  // file so a reader is never left guessing whether a written value is live.
+  const active = activeParams('mpc', cfg).map(p => p.k);
+  const both = ['mpc_condensed_size', 'mpc_hpipm_mode'];
+  const used = both.filter(k => active.indexOf(k) >= 0);
+  const unused = both.filter(k => active.indexOf(k) < 0);
+  const note = '    # ' + c.impl + ' ' + (
+    used.length === 2 ? 'reads both keys below.'
+    : used.length === 1 ? 'reads ' + used[0] + '; ' + unused[0] + ' is declared but unused.'
+    : 'reads neither key below; both are declared but unused.') + '\n';
+  const block =
+    '    # --- composed by Kennel Console (absent from the stock file) ---\n' +
+    note +
+    '    mpc_solver: ' + yamlStr(c.impl) + '\n' +
+    '    mpc_hpipm_mode: ' + yamlStr(c.params.mpc_hpipm_mode) + '\n' +
+    '    mpc_condensed_size: ' + yamlInt(c.params.mpc_condensed_size);
+  const y = insertAfter(STOCK_CTRL_YAML, 'mpc_warm_start', block, 'controller');
+  return header('mit_controller_sim_go2.yaml',
+    '# The three mpc_* keys are absent from the stock file and are ALWAYS emitted\n' +
+    '# here, with the composer\'s current values (never as mpc_*:= launch args —\n' +
+    '# mapping.md §2.1: the YAML would win over them silently).\n') +
+    y.replace(/\n?$/, '\n');
+}
+
+// Read the composed fields back out of generated YAML. Deliberately a targeted
+// line scan and not a YAML parser: these files carry inline comments and
+// multi-line arrays that the prototype's toy parser mangles, and only four
+// simulator keys plus three controller keys are ours to read.
+function readKey(text, key) {
+  const m = (text || '').match(new RegExp('^[ \\t]*' + key + ':[ \\t]*([^\\s#]+)', 'm'));
+  return m ? m[1].replace(/^["\']|["\']$/g, '') : undefined;
+}
+// The prototype's toy YAML parser lived here. It is gone with issue #18:
+// it flattened inline comments into values and could not represent the
+// stock files' multi-line arrays, so pointing it at a real config would
+// have quietly produced wrong values. readKey() above reads the seven
+// fields the composer owns and nothing else.
+function cfgFromYaml(simText, ctrlText) {
   const cfg = defaultCfg();
-  const sim = (parseYaml(simText).sim) || {};
-  if (sim.map) cfg.map = sim.map;
-  Object.keys(cfg.sim).forEach(k => { if (sim[k] !== undefined) cfg.sim[k] = sim[k]; });
-  const pipe = (parseYaml(pipeText).pipeline) || {};
-  BLOCKS.forEach(b => {
-    const src = pipe[b.id]; if (!src) return;
-    if (src.implementation) cfg.blocks[b.id].impl = String(src.implementation);
-    const ps = src.params || {};
-    PARAMS[b.id].forEach(p => { if (ps[p.k] !== undefined) cfg.blocks[b.id].params[p.k] = ps[p.k]; });
-  });
+  const urdf = readKey(simText, 'world_urdf');
+  if (urdf) {
+    const hit = MAP_IDS.filter(id => MAP_WORLD[id].urdf === urdf);
+    if (hit.length) cfg.map = hit[0];       // unknown world → normalizeCfg defaults it
+  }
+  const rate = readKey(simText, 'simulator_realtime_rate');
+  if (rate !== undefined) cfg.sim.real_time_rate = Number(rate);
+  const gt = readKey(simText, 'publish_quad_state');
+  if (gt !== undefined) cfg.sim.ground_truth_state = gt === 'true';
+
+  const solver = readKey(ctrlText, 'mpc_solver');
+  if (solver) cfg.blocks.mpc.impl = solver;
+  const mode = readKey(ctrlText, 'mpc_hpipm_mode');
+  if (mode) cfg.blocks.mpc.params.mpc_hpipm_mode = mode;
+  const cond = readKey(ctrlText, 'mpc_condensed_size');
+  if (cond !== undefined) cfg.blocks.mpc.params.mpc_condensed_size = Number(cond);
+
   return normalizeCfg(cfg);   // pasted YAML is untrusted input like any other
 }
 function flatten(cfg) {
@@ -1229,11 +1460,24 @@ class Component extends DCLogic {
   }
   runId() { return 'RUN-2026-0724-' + String(1400 + this.state.runSeq).padStart(4, '0'); }
   commands(cfg, id) {
-    const dir = 'runs/' + id;
+    // Three shells, in this order (launch.md §1.1: the leg driver is not
+    // optional — the controller blocks forever without it). Each carries the
+    // full source chain because a non-interactive shell reads no .bashrc
+    // (launch.md §2), and the prelude ends by cd'ing to /root/ros2_ws because
+    // the configs hold paths relative to the process working directory
+    // (mapping.md §2.3).
+    //
+    // Invoked in `<package> <file>` form, never by path: the launch files parse
+    // sys.argv[4:], so a path invocation shortens argv and every argument
+    // silently vanishes (mapping.md §2.2). sim:=go2 is the only argument —
+    // everything composed is already in the YAMLs.
     return [
-      {label:'1 · simulator', cmd: 'ros2 launch kennel_sim go2_sim.launch.py map:=' + cfg.map + ' rtf:=' + cfg.sim.real_time_rate + ' config:=' + dir + '/sim.yaml'},
-      {label:'2 · controller', cmd: 'ros2 launch kennel_control pipeline.launch.py config:=' + dir + '/pipeline.yaml'},
-      {label:'3 · state estimation', cmd: 'ros2 launch kennel_estimation state_estimation.launch.py use_ground_truth:=' + (cfg.sim.ground_truth_state ? 'true' : 'false') + ' config:=' + dir + '/sim.yaml'}
+      {label:'1 · simulator',
+       cmd: LAUNCH_PRELUDE + '\nros2 launch simulator simulator.launch.py sim:=go2'},
+      {label:'2 · leg driver',
+       cmd: LAUNCH_PRELUDE + '\nros2 launch drivers leg_driver_launch.py sim:=go2'},
+      {label:'3 · MIT controller — wait ~10 s for the robot to settle first',
+       cmd: LAUNCH_PRELUDE + '\nros2 launch controllers mit_controller.launch.py sim:=go2'}
     ];
   }
   dragCol(e) {
@@ -1267,7 +1511,7 @@ class Component extends DCLogic {
     const last = buf.length ? buf[buf.length - 1] : null;
     const live = st.conn === 'connected';
     const runId = this.runId();
-    const simText = emitSim(cfg, runId), pipeText = emitPipeline(cfg, runId);
+    const simText = emitSimYaml(cfg), pipeText = emitCtrlYaml(cfg);
 
     const nav = [
       {id:'compose', label:'Compose'}, {id:'dashboard', label:'Dashboard'}, {id:'runs', label:'Runs'}
@@ -1423,7 +1667,7 @@ class Component extends DCLogic {
       adaptTargets: ['Gait Sequencer','MPC','WBC','Swing Leg Ctrl','Contact Logic'].map(l => ({label:l})),
 
       nextRunId: runId,
-      yamlTabs: [['sim','sim.yaml'],['pipeline','pipeline.yaml']].map(t => ({
+      yamlTabs: [['sim','simulator_params_go2.yaml'],['pipeline','mit_controller_sim_go2.yaml']].map(t => ({
         label:t[1], onClick: () => this.setState({yamlTab:t[0]}),
         fg: st.yamlTab === t[0] ? '#8fc9ea' : '#8b93a0', bg: st.yamlTab === t[0] ? '#101a24' : 'transparent',
         border: st.yamlTab === t[0] ? '#2f5d78' : '#232b36'})),
@@ -1457,7 +1701,12 @@ class Component extends DCLogic {
       onPipeText: e => this.setState({pipeText:e.target.value, roundTrip:null}),
       onLoadYaml: () => {
         const next = cfgFromYaml(st.simText, st.pipeText);
-        const ok = emitSim(next, runId) === st.simText.trim() + '\n' || JSON.stringify(flatten(next)) === JSON.stringify(flatten(cfgFromYaml(emitSim(next, runId), emitPipeline(next, runId))));
+        // Round-trip is a byte comparison of regenerated-against-regenerated,
+        // never against the pasted text: the paste may differ in whitespace or
+        // carry an older header, and the contract is that the composed choices
+        // survive (mapping.md §4.5).
+        const ok = emitSimYaml(next) === emitSimYaml(cfgFromYaml(emitSimYaml(next), emitCtrlYaml(next)))
+               && emitCtrlYaml(next) === emitCtrlYaml(cfgFromYaml(emitSimYaml(next), emitCtrlYaml(next)));
         this.setState({cfg: next, roundTrip: ok ? 'ok' : 'lossy'});
       },
       rtLabel: rt === 'ok' ? 'round-trip identical ✓' : rt === 'lossy' ? 'round-trip lossy ✗' : '',

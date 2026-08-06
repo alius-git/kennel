@@ -197,11 +197,11 @@ the row — not the label — is the element to search from.
 
 ## 5. Limits
 
-- **The generated YAML is still the prototype's shape.** This issue governs
-  *what is selectable*; turning the selections into the real
+- **The generated YAML was still the prototype's shape when this was written.**
+  This issue governs *what is selectable*; turning the selections into the real
   `simulator_params_go2.yaml` / `mit_controller_sim_go2.yaml` and the three-command
-  launch block is [#18](https://github.com/alius-git/kennel/issues/18). The
-  command block on screen still names fictional launch files.
+  launch block was [#18](https://github.com/alius-git/kennel/issues/18) — since
+  done, see [`generate.md`](generate.md).
 - **The §2 table is source-derived, not runtime-verified** (see the note there).
 - **Chrome only**, headless, on the host.
 - **The Dashboard is untouched** — it still runs on `MockDataSource`, and the
@@ -212,7 +212,7 @@ the row — not the label — is the element to search from.
 
 | Issue | What it takes from here |
 |---|---|
-| [#18](https://github.com/alius-git/kennel/issues/18) | The state schema and the §1 dispositions — the checklist its generator must satisfy; §2 tells it which keys to emit per solver |
+| [#18](https://github.com/alius-git/kennel/issues/18) — done, [`generate.md`](generate.md) | The state schema and the §1 dispositions; §2's 2x2 became the per-solver note written into the generated controller file |
 | [#19](https://github.com/alius-git/kennel/issues/19) | A composer state that is already legal at export time |
 | [#26](https://github.com/alius-git/kennel/issues/26) | The bypass note above |
 | [#28](https://github.com/alius-git/kennel/issues/28) | Nothing new — every gap cited here is already recorded in mapping.md §4 |

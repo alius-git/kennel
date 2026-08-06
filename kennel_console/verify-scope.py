@@ -27,7 +27,8 @@ window.__setSel = (s, val) => { const setter =
   setter.call(s, val); s.dispatchEvent(new Event('change', {bubbles:true})); };
 window.__yaml = () => { const pre = [...document.querySelectorAll('pre')]
   .map(p => p.textContent); return pre.join('\n---\n'); };
-window.__pipeYaml = () => { __click('pipeline.yaml'); return null; };
+window.__ctrlTab = 'mit_controller_sim_go2.yaml';
+window.__simTab = 'simulator_params_go2.yaml';
 true""")
 
 print("\n1. map picker — exactly two cards, Flat plane default")
@@ -36,8 +37,9 @@ check("Flat plane and Obstacle terrain both present",
 check("Brick absent from the rendered UI", ws.js("!__txt().includes('Brick')"))
 check("map cards count is 2",
       ws.js("[...document.querySelectorAll('div')].filter(d=>/μ=0.8|stairs 0.12/.test(d.textContent)&&d.children.length<=3).length>0"))
+# Since #18 the map is expressed as the pin's two real keys, not a "map:" field.
 check("default map is flat_plane (fresh session)",
-      "flat_plane" in ws.js("__yaml()"), ws.js("__yaml()").split("map:")[1].split("\n")[0].strip())
+      'world_urdf: "src/common/model/urdf/plane.urdf"' in ws.js("__yaml()"))
 
 print("\n2. solver select — exactly the four canonical strings")
 opts = ws.js("[...__solverSel().options].map(o=>o.value)")
@@ -68,9 +70,9 @@ for solver, (want_cond, want_mode) in EXPECT.items():
 
 print("\n4. emitted YAML carries canonical strings, never legacy ids")
 ws.js("__setSel(__solverSel(), 'PARTIAL_CONDENSING_HPIPM')"); time.sleep(0.35)
-ws.js("__click('pipeline.yaml')"); time.sleep(0.4)
+ws.js("__click(__ctrlTab)"); time.sleep(0.4)
 y = ws.js("__yaml()")
-check("pipeline.yaml contains PARTIAL_CONDENSING_HPIPM", "PARTIAL_CONDENSING_HPIPM" in y)
+check("controller YAML contains PARTIAL_CONDENSING_HPIPM", "PARTIAL_CONDENSING_HPIPM" in y)
 check("no legacy solver ids anywhere",
       not any(f"implementation: {k}" in y for k in ["hpipm","osqp","qpoases","adaptive","bio","kf","ls","bezier","force"]))
 check("inactive param withheld when solver is full-condensing",
@@ -91,8 +93,8 @@ print("\n6. sim options")
 txt = ws.js("__txt()")
 check("foot force noise removed", "foot force noise" not in txt)
 check("initial height fixed at stock 0.4", "0.4" in txt and "initial height" in txt)
-ws.js("__click('sim.yaml')"); time.sleep(0.4)   # tab switch needs a render tick
-check("ground-truth state defaults on", "ground_truth_state: true" in ws.js("__yaml()"))
+ws.js("__click(__simTab)"); time.sleep(0.4)   # tab switch needs a render tick
+check("ground-truth state defaults on", "publish_quad_state: true" in ws.js("__yaml()"))
 
 print("\n7. ground-truth caution (mapping.md §4.4)")
 before = ws.js("__txt().includes('no state source')")
@@ -109,7 +111,7 @@ time.sleep(0.5)
 check("toggle found and clicked", clicked)
 check("caution hidden while on, shown when toggled off",
       not before and ws.js("__txt().includes('no state source')"))
-check("YAML follows the toggle", "ground_truth_state: false" in ws.js("__yaml()"))
+check("YAML follows the toggle", "publish_quad_state: false" in ws.js("__yaml()"))
 
 print("\n8. poisoned pre-#17 preset is normalized on load")
 ws.js(r"""localStorage.setItem('kennel.presets', JSON.stringify([{name:'legacy',
@@ -126,6 +128,7 @@ window.__yaml = () => [...document.querySelectorAll('pre')].map(p=>p.textContent
 window.__click = t => { const e = [...document.querySelectorAll('*')]
   .filter(e => e.textContent.trim() === t && !e.querySelector('*'))[0];
   if (e) { (e.closest('div[style]')||e).click(); return true; } return false; };
+window.__ctrlTab = 'mit_controller_sim_go2.yaml';
 true""")
 sel = ws.js("""(() => { const s=[...document.querySelectorAll('select')]
   .find(s=>[...s.options].some(o=>/load preset/.test(o.textContent)));
@@ -135,14 +138,15 @@ sel = ws.js("""(() => { const s=[...document.querySelectorAll('select')]
 time.sleep(0.5)
 check("legacy preset loaded", sel == "loaded", sel)
 y = ws.js("__yaml()")
-check("map 'brick' normalized to flat_plane", "flat_plane" in y and "brick" not in y)
+check("map 'brick' normalized to flat_plane",
+      'world_urdf: "src/common/model/urdf/plane.urdf"' in y and "brick" not in y)
 check("legacy 'osqp' normalized to PARTIAL_CONDENSING_OSQP",
       ws.js("__solverSel().value") == "PARTIAL_CONDENSING_OSQP", ws.js("__solverSel().value"))
-check("negative real_time_rate rejected", "real_time_rate: -5" not in y, )
+check("negative real_time_rate rejected", "simulator_realtime_rate: -5" not in y)
 check("out-of-range condensed_size clamped to <= 10",
       not any(f"mpc_condensed_size: {n}" in ws.js("__yaml()") for n in [99]))
 check("fixed stages not re-armed by the preset",
-      not any(f"implementation: {k}" in ws.js("__click('pipeline.yaml'); __yaml()")
+      not any(f"implementation: {k}" in ws.js("__click(__ctrlTab); __yaml()")
               for k in ["bio","raibert","fused","ls","arcopt"]))
 
 print("\n9. seeded runs all round-trip into legal composer state")
