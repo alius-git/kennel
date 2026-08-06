@@ -208,8 +208,10 @@ property from the other direction and always runs.
   YAML validity.
 - **Only the MVP-scope fields are substituted** — by construction, since #17
   makes them the only ones selectable.
-- **The files are on screen, not on disk.** Downloading them as files is
-  [#19](https://github.com/alius-git/kennel/issues/19).
+- ~~**The files are on screen, not on disk.**~~ Lifted by
+  [#19](https://github.com/alius-git/kennel/issues/19) — Generate run writes the
+  pair, the command block and a `run.json` out as a `run-<timestamp>/` folder.
+  See [`export.md`](export.md).
 - **Copy buttons rely on the clipboard API**, which browsers gate on a user
   gesture; the panes are selectable as a fallback.
 
@@ -217,7 +219,7 @@ property from the other direction and always runs.
 
 | Issue | What it takes from here |
 |---|---|
-| [#19](https://github.com/alius-git/kennel/issues/19) | The two artifacts and the command block to write out as files; `run.json` carries the provenance deliberately kept out of the headers (§2.2) |
+| [#19](https://github.com/alius-git/kennel/issues/19) | The two artifacts and the command block to write out as files; `run.json` carries the provenance deliberately kept out of the headers (§2.2). Done — [`export.md`](export.md) |
 | [#20](https://github.com/alius-git/kennel/issues/20) | The two canonical config paths in §3, and the fact that no rebuild is needed |
 | [#21](https://github.com/alius-git/kennel/issues/21) | A composed, non-stock pair to boot and prove the values took effect |
 | [#27](https://github.com/alius-git/kennel/issues/27) | The command block, verbatim, for the quickstart |
