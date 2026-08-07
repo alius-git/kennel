@@ -142,6 +142,18 @@ without recomputing anything; `status` prints it.
 
 ## 4. Running it
 
+From the repository root. **The mode is mandatory** — there is no default:
+
+```bash
+stack/transfer/kennel-transfer.sh apply <run-folder> [--allow-pin-mismatch]
+stack/transfer/kennel-transfer.sh restore-stock
+stack/transfer/kennel-transfer.sh status
+```
+
+(Repeated from §1 on purpose: [#22](https://github.com/alius-git/kennel/issues/22)
+ran the demo from this section and lost an attempt to `kennel-transfer.sh
+<run-folder>`, because the section titled "Running it" opened on the knobs.)
+
 ### 4.1 Knobs
 
 Environment variables, matching the idiom of #10 and

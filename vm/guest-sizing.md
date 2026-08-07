@@ -170,9 +170,10 @@ virsh list --all > /dev/null                     # wake socket-activated libvirt
 cd ~/git/yuruna && pwsh test/Test-Config.ps1 -SkipSend
 ```
 
-Expect **34 PASS / 4 WARN / 0 FAIL**. The kennel sequences add no findings —
-`Test-Config.ps1` schema-validates every discoverable sequence, so this is also
-the syntax check for them.
+Expect **0 FAIL and no finding naming a kennel sequence** — the counts
+themselves drift with unrelated upstream commits and must not be gated on; see
+[`vm/provisioning.md` §4.3](provisioning.md). `Test-Config.ps1` schema-validates
+every discoverable sequence, so this is also the syntax check for them.
 
 Destroy any existing guest first, or the size will not apply (§2):
 
@@ -426,26 +427,34 @@ Taken on the kennel guest (8 vCPU / 16 GiB) during
 | **Peak RAM during colcon** | `MemTotal - min(MemAvailable)` | **7.2 GiB** | **yes — 45 % of 16 GiB** |
 | Largest single compiler RSS | `/usr/bin/time -v` | **2.46 GiB** (2 578 272 KiB) | yes |
 | OOM kills | `dmesg -T \| grep -i oom` | **none** | required — met |
-| Image build wall clock | Yuruna step log | _not measurable on this host_ | n/a |
-| colcon build wall clock | Yuruna step log | _not measurable on this host_ | n/a |
+| Image build + colcon wall clock | Yuruna step log | **1320 s = 22m00s** (2026-08-07, #22) | n/a |
+| — of which image build alone | — | _not separable; see below_ | n/a |
 
-**The two timing rows are deliberately empty, and are not expected to be filled
-on this host.** Its system clock runs ~10 % slow, so any recorded duration is
-understated by roughly that much. The defect is a kernel `tick` pinned at
-9000 µs — **not** the "oscillator error" §4.3 assumed — and it reasserts itself
-even with chrony stopped and masked. Diagnosis and the attempted fixes are in
-[`vm/provisioning.md` §6a](provisioning.md).
+**The timing rows were empty until 2026-08-07, and this is what filled them.**
+When #10 measured, the host's kernel `tick` was railed at 9000 µs and every
+duration was ~10 % understated, so the rows were left blank rather than quote a
+wrong number. That defect has since cleared — tick back to 10000 µs, adjusted
+clocks tracking `CLOCK_MONOTONIC_RAW` to 100.0 % — and
+[#22](https://github.com/alius-git/kennel/issues/22) re-took the measurement on
+a clean-state cycle. See [`vm/provisioning.md` §6a.1](provisioning.md) for the
+before/after and for why this is *latent* rather than fixed.
 
-This was **descoped deliberately**: it is a property of the development host,
-not of Kennel, and no MVP acceptance criterion depends on it. Nothing else in
-this table is affected — disk and memory are not time-derived, and the
-functional acceptance in
-[`vm/provisioning.md` §5a](provisioning.md) does not rest on timings.
+**Why the split is not separable.** The Yuruna step log times the whole
+`sshFetchAndExecute` — image build, `colcon build` and the smoke together — as
+one 1320 s step. The per-phase breakdown would have come from
+`kennel-provisioning-metrics.txt`, but the sequence's idempotency re-run
+overwrites that file with a record of its own no-op
+([`vm/provisioning.md` §6](provisioning.md), the trap box). #10's
+order-of-magnitude split — image ≈ 20 min, colcon ≈ 15 min — is not consistent
+with a 22 min total and should be treated as superseded rather than refined:
+those two figures were taken under the 9000 µs tick *and* were eyeballed.
 
-Order-of-magnitude only, for planning rather than record: the image build ran
-roughly 20 minutes and the colcon build roughly 15 on 8 vCPU. Treat both as
-~10 % low, and re-take them on a host with a sound clock before quoting them
-anywhere that matters.
+For planning, the number that matters is the whole cycle: **32m39s from
+`Remove-TestVMFiles` to 28/28 PASS**, of which 22m00s is this step. Full phase
+breakdown in [`demo/dry-run.md` §2](../demo/dry-run.md).
+
+Nothing else in this table is time-derived, so the rest stands as #10 measured
+it.
 
 **What the numbers say about the §1 decision.**
 

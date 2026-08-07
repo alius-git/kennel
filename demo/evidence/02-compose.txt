@@ -1,0 +1,31 @@
+
+[compose] the console is up and on Compose
+  [ok ] Compose view is the landing view
+  [ok ] solver dropdown present
+  [ok ] real-time rate input present
+  [ok ] starts at stock solver — PARTIAL_CONDENSING_HPIPM
+  [ok ] starts at stock rate — 1
+
+[compose] choice 1 — MPC solver -> PARTIAL_CONDENSING_OSQP
+  [ok ] dropdown holds the choice — PARTIAL_CONDENSING_OSQP
+  [ok ] controller YAML shows it — mpc_solver: "PARTIAL_CONDENSING_OSQP"
+
+[compose] choice 2 — real-time rate -> 0.75
+  [ok ] input holds the choice — 0.75
+  [ok ] simulator YAML shows it — simulator_realtime_rate: 0.75                   # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+
+[compose] map left at stock — transfer.md 6.3: obstacle terrain does not walk
+  [ok ] world_urdf is still the plane
+  [ok ] Compose view photographed — 190492 B
+
+[generate] generate run
+  [ok ] exactly one archive downloaded — ['run-20260807T153752Z.zip']
+
+ARCHIVE=/tmp/tmp.0W8TMZzrKO/run-20260807T153752Z.zip
+
+[p22-console] run folder: demo/evidence/run-20260807T153752Z
+572f510f62d229082385fc738a5a347868339011bcf47e2e71bee98e648ccf68  ./commands.txt
+3c69d87ff866dd3910a29ed0ff17e16da26ad5a36e874a424ea17e4562476962  ./mit_controller_sim_go2.yaml
+0233ad4b4fbc0bfc7c058156064a4f8f1e7f7752e64a918568444bcecdaf6acd  ./run.json
+1715821fea8922b8af83de4f32cfc2506af521708db0d16809b0dbdf0693df99  ./simulator_params_go2.yaml
+RUNDIR=demo/evidence/run-20260807T153752Z

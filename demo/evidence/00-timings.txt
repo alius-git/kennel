@@ -1,0 +1,13 @@
+# Phase marks for issue #22 — demo dry run.
+# Columns: raw_monotonic mono realtime phase
+# raw = CLOCK_MONOTONIC_RAW (true time); mono/realtime = NTP-adjusted
+# and ~10 % slow on this host (vm/provisioning.md 6a). Durations must
+# be computed from the raw column only.
+# host k8-thales  kernel 7.0.0-28-generic
+60789.431517 60476.340810 1786115084.130591 provision
+62748.098283 62434.930617 1786117042.720398 compose
+62791.370857 62478.201485 1786117085.991266 transfer
+62853.368387 62540.196570 1786117147.986351 launch
+62982.547856 62669.370961 1786117277.160742 walk
+63065.015634 62751.835500 1786117359.625282 verify
+63119.683861 62806.501580 1786117414.291362 end

@@ -1,0 +1,32 @@
+# Demo step 4 — push both YAMLs to the container config paths (issue #22).
+# Written step: stack/transfer.md 4 'Running it'.
+
+# FIRST ATTEMPT — followed section 4, which never states the command form:
+$ ./stack/transfer/kennel-transfer.sh demo/evidence/run-20260807T153752Z
+NONZERO SCRIPT EXIT: expected a mode: apply | restore-stock | status
+# The usage line lives in section 1, not in the section titled 'Running it'.
+
+# SECOND ATTEMPT — with the mode, found by scrolling back to section 1:
+$ ./stack/transfer/kennel-transfer.sh apply demo/evidence/run-20260807T153752Z
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+run folder       run-20260807T153752Z
+  simulator_params_go2.yaml  1715821f
+  mit_controller_sim_go2.yaml  3c69d87f
+guest            kennel-vm at 192.168.122.118 (libvirt 'default')
+staged           ~/kennel-staging/runs/run-20260807T153752Z
+
+[apply] stock backup materialized: simulator_params_go2.yaml (blob c0a8113b)
+[apply] stock backup materialized: mit_controller_sim_go2.yaml (blob 7fa96720)
+[apply] applying run 'run-20260807T153752Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      1715821f  1715821f  1715821f  1715821f  OK
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+[apply] OK -- the container's config paths carry run 'run-20260807T153752Z'.
+[apply] The stack reads these at LAUNCH; relaunch for them to take effect (stack/launch.md section 1).
+
+=== exit code: 0 ===

@@ -1,0 +1,197 @@
+Friction notes — issue #22 demo dry run, 2026-08-07.
+Raw, written as the run happened. The tidied version is demo/dry-run.md §4.
+
+Rule applied throughout: a note goes here when the WRITTEN STEP was insufficient
+— wrong, missing, ambiguous, or true-but-not-at-the-point-of-use. Things that
+merely surprised me but were correctly documented are not friction.
+
+
+== PRE-FLIGHT (before the clock started) ==
+
+F1  vm/provisioning.md §4.3 and vm/guest-sizing.md §3.3 both say
+    "Expect 34 PASS / 4 WARN / 0 FAIL".
+    Actually got: 33 PASS / 5 WARN / 0 FAIL.
+    Diagnosis: the extra WARN is "Framework / project staleness — project
+    2 commit(s) behind upstream". That is the yuruna-PROJECT repo, which
+    Kennel never runs, and vm/host-baseline.md §6.7 already says
+    Invoke-TestSequence deletes and re-clones project/ on every run — so the
+    warning is self-clearing and the count is guaranteed to drift whenever
+    upstream commits.
+    Why it is friction: an operator following the docs sees a number that does
+    not match, and has no way to tell "harmless upstream drift" from "you broke
+    something". I stopped and diagnosed it, which is exactly the cost.
+    FIXED: both files now state the invariant (0 FAIL, no kennel-sequence
+    finding) and explain why the counts must not be gated on.
+
+F2  vm/provisioning.md §6a and vm/guest-sizing.md §4.3/§5.4 describe the host
+    clock as a kernel tick pinned at 9000 us that makes CLOCK_REALTIME and
+    CLOCK_MONOTONIC run ~10 % slow, and say it "reasserts itself even with
+    chrony stopped and masked".
+    Measured today (demo/evidence/00-host-clock.txt): tick = 10000 us, and RAW
+    vs adjusted agree to 100.0 % over 60 s of true time. The RATE defect is
+    GONE — the host was rebooted between 2026-08-06 and 2026-08-07, which is
+    the only change. Confirmed again across the whole run: every phase in
+    00-timings.txt has raw/adjusted ratio 1.000.
+    But the OFFSET is not gone: Test-Config reports the host clock 313.2 s
+    behind real time (was 270.6 s in host-baseline.md §6.6). Visible in the
+    artifacts — the run folder is stamped run-20260807T153752Z for a Generate
+    click that really happened at ~15:43 UTC.
+    FIXED: new §6a.1 separates rate from offset, records that only the rate
+    cleared, and marks it latent rather than fixed since the mechanism was
+    never identified.
+
+F3  vm/provisioning.md §4.2's copy step is mandatory and easy to skip.
+    Both the sequences AND the guest script must be copied into the yuruna
+    clone. It is documented, and I did it — but the failure mode if you forget
+    is a cycle that boots a guest and then fetches a stale script, i.e. it
+    fails ~20 min in rather than immediately. Not a doc error; input to #27.
+
+F4  RETRACTED — I was wrong, and the check I doubted is correct.
+    Observed: the host-side dfki-quad/ clone is on branch dev at 1c9df098,
+    ahead of the pin dcf53c59, and mit_controller_sim_go2.yaml differs by 22
+    insertions between the two commits. I suspected
+    kennel_console/verify-generate.sh would derive "stock" from the working
+    tree and silently compare against off-pin bytes.
+    It does not. verify-generate.py:86-90 runs `git -C dfki-quad show <PIN>:path`
+    — it addresses the blob by SHA, so HEAD is irrelevant. Group 0 does not
+    need the clone at all: it checks the embedded templates against hardcoded
+    sha256es. Re-ran the whole suite with the clone in this state: template
+    provenance PASSES, stock comparison PASSES.
+    Recorded rather than deleted because "the nested clone drifted" is the
+    obvious worry about bypass #9, and the answer is that the tooling already
+    handles it correctly. No action.
+
+
+== PHASE 1 — PROVISION (32m39s, 28/28 PASS, exit 0) ==
+
+F5  Every cycle prints this twice, in yellow, at the two sshFetchAndExecute
+    steps:
+      WARNING: fetch-and-execute fallback:
+      'guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh' differs from HEAD,
+      so the GitHub fallback cannot match its digest.
+    Cause: the F3 copy step puts Kennel's working-tree script into the yuruna
+    clone, where it necessarily differs from yuruna's committed HEAD. Harmless
+    — the guest fetches from the host status service, which is what the warning
+    itself says — but it is alarming, it fires on a completely healthy run, and
+    nothing in vm/provisioning.md mentions it. A newcomer will stop here.
+    Fix: document it in §4.2 next to the copy step that causes it, and in #27's
+    troubleshooting section.
+
+F7  The measurement protocol's own numbers are destroyed by the next step.
+    vm/provisioning.md §6 promises the script captures peak RAM by continuous
+    MemAvailable sampling, disk deltas, and an OOM check into
+    ~/kennel-provisioning-metrics.txt, and that the final step prints it.
+    But the sequence runs the script TWICE — step 20 builds (1320 s), step 21
+    re-runs it to prove idempotency (57 s) — and the second run rewrites the
+    same file. What survives is a record of the no-op:
+      run.started 2026-08-07T15:40:34Z ... run.ended 15:41:30Z   (56 s)
+      no peak-RAM line at all, no OOM line
+    So §5.4's peak-RAM figure cannot be reproduced by running the documented
+    sequence, and anyone re-measuring gets a file describing a build that did
+    not happen. This is why the two timing rows were never fillable from the
+    cycle either.
+    Fix: document the clobber; the mechanical fix (point the idempotency step
+    at a different KENNEL_METRICS_FILE) belongs to whoever owns the sequence.
+
+
+== PHASE 2 — COMPOSE (43s) ==
+
+    Clean. serve.md §1's command worked verbatim, the %20 URL note was
+    accurate and needed, and both choices took in the UI and in the panes.
+    The generated YAML and commands.txt sha256s are identical to a throwaway
+    run made an hour earlier — #18's determinism holding, and worth recording
+    as a positive.
+
+
+== PHASE 3 — TRANSFER (1m02s) ==
+
+F6  stack/transfer.md §4 is titled "Running it" and never says how to run it.
+    It opens directly on "### 4.1 Knobs", then exit codes, then §4.3. The
+    invocation with its mandatory MODE argument is back in §1's table area
+    (line 39). I followed §4, ran
+      ./stack/transfer/kennel-transfer.sh demo/evidence/run-20260807T153752Z
+    and got
+      NONZERO SCRIPT EXIT: expected a mode: apply | restore-stock | status
+    The script's usage output is good and recovery took seconds, but the demo
+    step failed on the first attempt for a purely documentary reason.
+    Fix: put the three-line usage block at the top of §4.
+    Once given `apply`, the step was clean: five-row checksum table, OK on both
+    files, exit 0.
+
+
+== PHASE 4 — LAUNCH (2m09s) ==
+
+F8  commands.txt tells the operator to wait ~10 s, and at 10 s the simulator
+    does not exist yet. THIS IS THE MAIN FINDING OF THE RUN.
+    Block 3's generated header reads:
+      # 3 · MIT controller — wait ~10 s for the robot to settle first
+    Followed literally. At the 10 s mark:
+      - the sim log was still enumerating joints ("Joint [30]: base_link")
+      - `ros2 topic list` matched none of /clock, /quad_state, /joint_cmd
+      - i.e. starting the controller there would have failed outright
+    The stack needed roughly a minute before /clock appeared; by the time I
+    probed, sim time was 39.26 s and all four topics were present.
+    Two separate problems, and the docs only know about one:
+      (a) The advice is wall-clock, and the console lets you compose the rate
+          that invalidates it. At 0.75 the settle costs 13.3 wall seconds; at
+          0.5 it costs 20. stack/composed-run.md §3.2 documents exactly this
+          and #21 solved it by waiting in SIM seconds — but that fix lives in
+          p21-launch-from-commands.sh, NOT in the file the console generates.
+      (b) Even at rate 1.0 the number is too small, because it counts only the
+          settle and ignores simulator STARTUP. Nothing in commands.txt or
+          launch.md tells the operator to wait for the stack to be observable
+          first.
+    This is the console generating advice that its own composer can falsify.
+    It went unnoticed because every previous issue drove the launch through a
+    script that waits on observation instead of obeying the comment.
+    Fix: file against the console (#18 surface); note in launch.md §1 that the
+    controller must wait for observable readiness, not a fixed sleep.
+
+F9  stack/composed-run/tools/p21-trot-hold.sh has a hidden dependency and
+    fails without it.
+    Its header says "Runs on the GUEST, against an already-running stack",
+    which described my situation exactly. It failed:
+      [p21-trot] commanding WALKING_TROT at body_x_dot=0.3 world_z=0.30
+      timeout: failed to run command 'ros2': No such file or directory
+    Cause: every in-container call does `source /tmp/p21-env.sh`, and that file
+    is written by p21-launch-from-commands.sh. Launch the stack any other way —
+    including the way commands.txt and launch.md §1.1 describe — and the tool
+    cannot work. Neither its header nor composed-run.md §2 says so.
+    Worked around by writing /tmp/p21-env.sh from the generated block itself
+    (`head -n -1` of block 1 is exactly that env chain), after which it ran.
+    Only surfaced because #22 refused to use the sibling launcher. The two
+    tools had never been run apart.
+    Fix: document the dependency in composed-run.md §2 and in the tool header;
+    better, have the tool build the env itself or fail with a message that says
+    what is missing.
+
+
+== PHASE 5 — WALK (1m22s) ==
+
+    Clean. vm/test/verify-meshcat-host.sh printed a reachable URL as its last
+    line exactly as meshcat-exposure.md §3 promises, and the guest IP it found
+    was the one in the lease. The screenshot shows the robot upright and
+    mid-stride, ~2.5 m from the origin.
+    Unplanned corroboration, same as #21 got: Drake's own HUD reads 76 rtr%
+    against a composed 0.75.
+
+
+== PHASE 6 — VERIFY (55s) ==
+
+    Clean, and the strongest evidence in the run. verify.md §1's recipe ran
+    verbatim and returned pass=10 fail=0. Both composed values proven
+    independently:
+      check 10       measured PARTIAL_CONDENSING_OSQP, launch log agrees
+      realtime-rate  measured 0.751 against a composed 0.75
+    plus check 8 walking (vx_mean 0.249 m/s, dx 3.733 m over 15 sim-s) and
+    check 9 no-fall (belly_contact 0/15000, z median 0.302 m).
+    One cosmetic staleness: the recipe's INFO line reads "required informative,
+    #21 runs this at 0.5". Harmless, but it hardcodes a sibling issue's value
+    into a general-purpose tool's output. Not filed; noting for whoever
+    generalises the recipe.
+
+
+== NOT COVERED ==
+
+    Demo-script step 8 (the same flow unattended as the Yuruna sequence in
+    test/) is #24/#25 and was deliberately not attempted here.
