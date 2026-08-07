@@ -1,0 +1,169 @@
+# Demo step 1 — provision kennel-vm from a clean state (issue #22).
+# Written steps: vm/provisioning.md 4.3. Run verbatim, in order.
+
+$ virsh list --all > /dev/null
+$ pwsh test/Remove-TestVMFiles.ps1 -Prefix test- -Confirm:$false
+Host type: host.ubuntu.kvm
+
+There may be more host-health recommendations available. For a deeper report (config files, transports, framework/project staleness, RAM/CPU, host-specific feature state) run: pwsh test/Test-Config.ps1
+Stopping VMs with prefix 'test-'...
+
+  Stopping test-guest.ubuntu.server.24-01 [stopped]...
+    Already stopped.
+    Removed.
+
+
+Removed 1 VM(s); 0 survivor(s).
+
+Releasing host virtual display (if attached)...
+
+Running orphaned VM file cleanup: /home/thales/git/yuruna/host/ubuntu.kvm/Remove-OrphanedVMFiles.ps1
+
+
+================================================================
+  WARNING: DESTRUCTIVE OPERATION
+================================================================
+
+  This script deletes VM directories under ~/yuruna/vms/
+  that are NOT registered with libvirt.
+
+  THIS CANNOT BE UNDONE.
+
+================================================================
+
+libvirt registered VMs: 1
+
+Currently registered VMs and their on-disk artifacts:
+
+  ub26_guest
+    /home/thales/yuruna/vms/ub26_guest/seed.iso  (0.40 MB)
+    /home/thales/yuruna/vms/ub26_guest/seed.src/meta-data  (0.00 MB)
+    /home/thales/yuruna/vms/ub26_guest/seed.src/user-data  (0.04 MB)
+    /home/thales/yuruna/vms/ub26_guest/ub26_guest.qcow2  (5,854.62 MB)
+
+No orphaned VM directories found. Nothing to clean up.
+
+$ pwsh test/Invoke-TestSequence.ps1 -SequenceName workload.guest.ubuntu.server.24.kennel.stack.ssh
+Removing previous project clone: /home/thales/git/yuruna/project
+Cloning https://github.com/alissonsol/yuruna-project -> /home/thales/git/yuruna/project
+Project clone refreshed.
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Host type: host.ubuntu.kvm
+[33;1mWARNING: ===================================================================[0m
+[33;1mWARNING:  Host clock is 313.2s behind real time (limit: 120s).[0m
+[33;1mWARNING:  Guests take this clock from their virtual RTC at power-on, and[0m
+[33;1mWARNING:  their own NTP client steps them to real time seconds into the[0m
+[33;1mWARNING:  boot. That step lands mid-startup: a Kubernetes guest comes up[0m
+[33;1mWARNING:  with its pods Running but never Ready and every NodePort[0m
+[33;1mWARNING:  refusing, hours before anything blames a clock.[0m
+[33;1mWARNING: [0m
+[33;1mWARNING:  This cycle continues. Fix the clock from a console that can[0m
+[33;1mWARNING:  answer for Administrator / sudo -- run from the repo root:[0m
+[33;1mWARNING:    pwsh test/Test-Config.ps1[0m
+[33;1mWARNING:    pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1[0m
+[33;1mWARNING: ===================================================================[0m
+Track directory: /home/thales/git/yuruna/test/status/runtime
+Log directory:   /home/thales/git/yuruna/test/status/log
+OCR engines: tesseract | combine: Or
+Guest key (from baseline): guest.ubuntu.server.24
+Chain: start.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.stack.ssh
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Caching-proxy service: none -- guest will download directly.
+VM 'test-guest.ubuntu.server.24-01' not found. Creating...
+Password came from authentication mechanism: default
+See configuration at: /home/thales/git/yuruna/test/extension/authentication
+Domain 'test-guest.ubuntu.server.24-01' defined from /tmp/tmp0TpJVP.tmp
+Domain 'test-guest.ubuntu.server.24-01' started
+VM 'test-guest.ubuntu.server.24-01' created.
+VM 'test-guest.ubuntu.server.24-01' is already running.
+Log file: /home/thales/git/yuruna/test/status/log/000016.2026-08-07.15-05-13.4230bb0f56694b6582bdfe6388bff892.incomplete/000016.2026-08-07.15-05-13.4230bb0f56694b6582bdfe6388bff892.html
+
+=============================================
+  Sequence: workload.guest.ubuntu.server.24.kennel.stack.ssh
+  Chain:    3 sequence(s), 28 total step(s)
+  Range:    starting at step 1
+  VM:       test-guest.ubuntu.server.24-01
+  Guest:    guest.ubuntu.server.24
+=============================================
+
+Step list:
+  --- start.guest.ubuntu.server.24.kennel.ssh (9 step(s))
+  >> [1] waitForSeconds: Let the GRUB boot menu render
+  >> [2] pressKey: Blind-dismiss the GRUB boot menu (first attempt)
+  >> [3] waitForSeconds: Pause before retry
+  >> [4] pressKey: Blind-dismiss the GRUB boot menu (retry)
+  >> [5] waitForAndEnter: OCR: Continue with autoinstall?
+  >> [6] sshWaitReady: Wait for SSH after autoinstall (fast-fail on subiquity crash)
+  >> [7] sshExec: Smoke test: whoami/hostname
+  >> [8] sshFetchAndExecute: ubuntu.server.24.update.sh
+  >> [9] sshExec: Reboot the VM
+  --- workload.guest.ubuntu.server.24.kennel.ssh (8 step(s))
+  >> [10] sshWaitReady: Wait for sshd after reboot
+  >> [11] sshExec: Smoke test: whoami/hostname
+  >> [12] sshExec: Record the guest's CPU / memory / disk footprint
+  >> [13] sshExec: Assert 8 vCPU
+  >> [14] sshExec: Assert >= 15 GiB RAM (16 GiB configured)
+  >> [15] sshExec: Assert >= 50 GiB root filesystem
+  >> [16] sshExec: Assert the guest hostname is kennel-vm
+  >> [17] sshExec: Record the pre-build headroom baseline for #10
+  --- workload.guest.ubuntu.server.24.kennel.stack.ssh (11 step(s))
+  >> [18] sshWaitReady: Wait for sshd
+  >> [19] sshExec: Smoke test: whoami/hostname
+  >> [20] sshFetchAndExecute: Provision Docker + the pinned dfki-quad stack
+  >> [21] sshFetchAndExecute: Re-run to prove idempotency (must be a no-op refresh)
+  >> [22] sshExec: Assert the dfki-quad image exists
+  >> [23] sshExec: Assert the dfki_quad container is running
+  >> [24] sshExec: Assert the go2 workspace is built
+  >> [25] sshExec: Assert the clone sits at the stack pin
+  >> [26] sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+  >> [27] sshExec: Assert Meshcat binds a host-reachable address in the guest (#11 hop 1)
+  >> [28] sshExec: Record the build's footprint (feeds #9 §5.4)
+
+Running steps 1 to 28...
+
+
+--- start.guest.ubuntu.server.24.kennel.ssh: local steps 1-9 of 9 (global 1-9) ---
+    Sequence: Kennel (SSH): Ubuntu Server 24.04 guest sized for the dfki-quad Docker image build + colcon build of the MPC/WBC/acados stack.
+       5 s [1/9] PASS waitForSeconds: Let the GRUB boot menu render
+       0 s [2/9] PASS pressKey: Blind-dismiss the GRUB boot menu (first attempt)
+       8 s [3/9] PASS waitForSeconds: Pause before retry
+       0 s [4/9] PASS pressKey: Blind-dismiss the GRUB boot menu (retry)
+      29 s [5/9] PASS waitForAndEnter: OCR: Continue with autoinstall?
+     370 s [6/9] PASS sshWaitReady: Wait for SSH after autoinstall (fast-fail on subiquity crash)
+       0 s [7/9] PASS sshExec: Smoke test: whoami/hostname
+      60 s [8/9] PASS sshFetchAndExecute: ubuntu.server.24.update.sh
+       0 s [9/9] PASS sshExec: Reboot the VM
+     473 s [All 9 steps completed in 8 min and 53 s]
+
+--- workload.guest.ubuntu.server.24.kennel.ssh: local steps 1-8 of 8 (global 10-17) ---
+    Sequence: Kennel (SSH): assert the kennel-vm guest booted at the documented size (8 vCPU / 16 GiB / 64 G disk) and record its resource footprint.
+      11 s [1/8] PASS sshWaitReady: Wait for sshd after reboot
+       0 s [2/8] PASS sshExec: Smoke test: whoami/hostname
+       0 s [3/8] PASS sshExec: Record the guest's CPU / memory / disk footprint
+       0 s [4/8] PASS sshExec: Assert 8 vCPU
+       0 s [5/8] PASS sshExec: Assert >= 15 GiB RAM (16 GiB configured)
+       0 s [6/8] PASS sshExec: Assert >= 50 GiB root filesystem
+       0 s [7/8] PASS sshExec: Assert the guest hostname is kennel-vm
+       0 s [8/8] PASS sshExec: Record the pre-build headroom baseline for #10
+      12 s [All 8 steps completed in 0 min and 12 s]
+
+--- workload.guest.ubuntu.server.24.kennel.stack.ssh: local steps 1-11 of 11 (global 18-28) ---
+    Sequence: Kennel (SSH): provision Docker CE + the pinned dfki-quad stack in the guest, prove the go2 simulator is launchable in-container, and prove Meshcat is bound where the host can reach it.
+       0 s [1/11] PASS sshWaitReady: Wait for sshd
+       0 s [2/11] PASS sshExec: Smoke test: whoami/hostname
+[33;1mWARNING: fetch-and-execute fallback: 'guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh' differs from HEAD, so the GitHub fallback cannot match its digest. Harmless while the host status service is reachable (the guest fetches the working tree); if it is not, commit and push -- or bring the status service back up.[0m
+    1320 s [3/11] PASS sshFetchAndExecute: Provision Docker + the pinned dfki-quad stack
+[33;1mWARNING: fetch-and-execute fallback: 'guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh' differs from HEAD, so the GitHub fallback cannot match its digest. Harmless while the host status service is reachable (the guest fetches the working tree); if it is not, commit and push -- or bring the status service back up.[0m
+      57 s [4/11] PASS sshFetchAndExecute: Re-run to prove idempotency (must be a no-op refresh)
+       0 s [5/11] PASS sshExec: Assert the dfki-quad image exists
+       0 s [6/11] PASS sshExec: Assert the dfki_quad container is running
+       0 s [7/11] PASS sshExec: Assert the go2 workspace is built
+       0 s [8/11] PASS sshExec: Assert the clone sits at the stack pin
+      56 s [9/11] PASS sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+       3 s [10/11] PASS sshExec: Assert Meshcat binds a host-reachable address in the guest (#11 hop 1)
+       0 s [11/11] PASS sshExec: Record the build's footprint (feeds #9 §5.4)
+    1437 s [All 11 steps completed in 24 min and 57 s]
+
+Chain completed successfully (28 step(s) across 3 sequence(s)).
+
+=== cycle exit code: 0 ===

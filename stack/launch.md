@@ -41,6 +41,22 @@ ros2 launch controllers mit_controller.launch.py sim:=go2
 
 **There is no state-estimation command in sim** — see §3.
 
+> **Do not start the controller on a timer.** Wait for the stack to be
+> *observable*: `/clock` advancing and `/quad_state` present, then ~10 **sim**
+> seconds for the robot to settle from its 0.4 m spawn.
+>
+> The console's generated `commands.txt` says "wait ~10 s" on block 3, and
+> [#22](https://github.com/alius-git/kennel/issues/22) followed that literally.
+> At the 10-second mark the simulator was **still enumerating joints** — no
+> `/clock`, no `/quad_state`, nothing to settle onto. The number is too small
+> even at `simulator_realtime_rate: 1.0`, because it accounts for the settle and
+> not for simulator startup; and at any composed rate below 1.0 it is wrong
+> again by the reciprocal of that rate (0.75 → 13.3 s, 0.5 → 20 s of wall for
+> the settle alone). Measuring the settle in sim seconds makes it invariant
+> under the one parameter the composer is most likely to change —
+> [`stack/composed-run.md` §3.2](composed-run.md) is where that reasoning
+> lives, and [`stack/verify.md`](verify.md) applies it to every window.
+
 ### 1.1 Why the leg driver is required, and how that was established
 
 In WBC mode — `leg_control_mode: 0` in

@@ -48,6 +48,26 @@ accidental third choice would make "prove each composed value" ambiguous.
 | [`stack/composed-run/tools/p21-meshcat-shot.sh`](composed-run/tools/p21-meshcat-shot.sh) | Capture the Meshcat view from the host, aimed at the robot |
 | [`stack/composed-run/evidence/`](composed-run/evidence/) | The run folder, the transcripts, the launch logs, the screenshot |
 
+> **`p21-trot-hold.sh` and `p21-meshcat-shot.sh` depend on
+> `p21-launch-from-commands.sh` having launched the stack.** Every in-container
+> call in the trot tool does `source /tmp/p21-env.sh`, and that file is written
+> by the launcher. Launch the stack any other way — including exactly as
+> `commands.txt` and [`launch.md` §1.1](launch.md) describe — and the tool fails
+> with `timeout: failed to run command 'ros2': No such file or directory`,
+> which does not point at the cause.
+>
+> The tool headers say only "runs on the GUEST, against an already-running
+> stack", which is not sufficient. Until that is fixed, the env file is
+> reconstructible from the console's own output — it is block 1 of
+> `commands.txt` minus its final `ros2 launch` line:
+>
+> ```bash
+> head -n -1 /tmp/block1.sh > /tmp/p21-env.sh    # then docker cp into the container
+> ```
+>
+> Found by [#22](https://github.com/alius-git/kennel/issues/22), which is the
+> first issue to run these tools without the sibling launcher.
+
 ## 3. The three decisions
 
 ### 3.1 Launch from `commands.txt`, not from a hand-written copy of it

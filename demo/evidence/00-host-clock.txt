@@ -1,0 +1,17 @@
+# Host clock check, taken before the #22 run began.
+# vm/provisioning.md 6a records a kernel tick pinned at 9000 us on this host,
+# making CLOCK_REALTIME/CLOCK_MONOTONIC run ~10 % slow. Re-measured today:
+
+[p22-clock] measuring RAW vs adjusted over 60s of true time...
+  CLOCK_MONOTONIC_RAW  60.004 s   100.0 %  (reference)
+  CLOCK_MONOTONIC      60.002 s   100.0 %
+  CLOCK_REALTIME       60.002 s   100.0 %
+
+$ adjtimex --print | grep tick
+    tick   10000 us   (9000 = the defect 6a describes; 10000 = kernel default)
+    freq   -39.417 ppm   offset 0   status 0x2000
+
+VERDICT: tick is 10000 us and the adjusted clocks track RAW to 100.0 %.
+The 6a defect is NOT present on this host today. Timings below are sound on
+either clock; they are still taken from CLOCK_MONOTONIC_RAW, and the fact
+that the two agree is what makes them quotable.

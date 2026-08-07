@@ -280,6 +280,24 @@ becomes a project-tree path and this copy step retires.
 `vm/guest/` mirrors the `vm/test/` naming for exactly that reason — the layout
 already matches where the files will eventually be discovered.
 
+**Expect this warning, twice, in yellow, on a completely healthy cycle:**
+
+```
+WARNING: fetch-and-execute fallback: 'guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh'
+differs from HEAD, so the GitHub fallback cannot match its digest. Harmless while
+the host status service is reachable (the guest fetches the working tree); if it
+is not, commit and push -- or bring the status service back up.
+```
+
+It is caused by the copy above: the script now in the framework clone is
+Kennel's working-tree copy, which by construction differs from *yuruna's*
+committed HEAD, so the GitHub-fallback digest cannot match. The guest fetches
+from the host status service, so nothing is degraded. It fires at both
+`sshFetchAndExecute` steps and retires with the copy step itself
+([#23](https://github.com/alius-git/kennel/issues/23)). Recorded because
+[#22](https://github.com/alius-git/kennel/issues/22) hit it on a 28/28 PASS run
+and it reads like a failure.
+
 ### 4.3 Run
 
 ```bash
@@ -287,9 +305,17 @@ virsh list --all > /dev/null                     # wake socket-activated libvirt
 cd ~/git/yuruna && pwsh test/Test-Config.ps1 -SkipSend
 ```
 
-Expect **34 PASS / 4 WARN / 0 FAIL** — the kennel sequences add no findings, and
-because `Test-Config.ps1` schema-validates every discoverable sequence this is
-also the syntax check for the new one.
+Expect **0 FAIL, and no finding naming a kennel sequence or the guest script** —
+that is the invariant. Because `Test-Config.ps1` schema-validates every
+discoverable sequence, this is also the syntax check for the new one.
+
+**Do not gate on the PASS/WARN counts.** They were 34 PASS / 4 WARN when this
+was written and 33 PASS / 5 WARN on 2026-08-07, with no Kennel change in
+between: the gate scans the *yuruna-project* repo too, and its "project N
+commits behind upstream" check flips to WARN whenever upstream commits. That
+warning is self-clearing — `Invoke-TestSequence.ps1` re-clones `project/` on
+every run (host-baseline.md §6.7) — so the count drifts on its own. Read the
+findings, not the totals ([#22](https://github.com/alius-git/kennel/issues/22)).
 
 Destroy any existing guest first — sizing applies at VM *creation* only
 (guest-sizing.md §2):
@@ -439,6 +465,25 @@ instrumented run.
 Results are recorded in [`vm/guest-sizing.md` §5.4](guest-sizing.md), which is
 where #9's acceptance criterion reads them.
 
+> **Trap: the idempotency step overwrites the build's metrics.** The stack
+> sequence runs this script **twice** — step 20 builds, step 21 re-runs it to
+> prove idempotency — and both write `$KENNEL_METRICS_FILE`. The second run does
+> no build, so it records no peak RAM and no OOM check, and what survives on the
+> guest describes the **57-second no-op**, not the 22-minute build:
+>
+> ```
+> run.started  2026-08-07T15:40:34Z
+> run.ended    2026-08-07T15:41:30Z      <- the idempotency re-run
+> (no peak-RAM line, no OOM line)
+> ```
+>
+> Consequence: §5.4's peak-RAM figure **cannot be reproduced by running the
+> documented sequence**, which is why it is cited to #10's original run. To
+> re-measure, either read the file between steps 20 and 21, or run the script
+> directly over SSH (§4.4) with `KENNEL_METRICS_FILE` pointed somewhere the
+> re-run will not reach. Found by
+> [#22](https://github.com/alius-git/kennel/issues/22).
+
 ## 6a. Host clock — wall-clock timings from these runs are understated
 
 Recorded here because it changes how §6's numbers must be read, and because it
@@ -509,6 +554,51 @@ Worth filing on [#28](https://github.com/alius-git/kennel/issues/28): Yuruna's
 config gate detects the *offset* but reports it as advisory, and its suggested
 remedy (`chronyc makestep`) cannot fix this failure mode — it addresses the
 offset while the rate is what is actually wrong.
+
+### 6a.1 Update 2026-08-07 — the rate defect is gone, the offset is not
+
+Re-measured at the start of [#22](https://github.com/alius-git/kennel/issues/22)'s
+demo dry run, because that issue's deliverable *is* a set of timings and the
+paragraphs above say they cannot be taken here. They can now:
+
+| Clock | Elapsed over a 60.00 s true interval | |
+|-------|--------------------------------------|---|
+| `CLOCK_MONOTONIC_RAW` | 60.004 s | 100.0 % — reference |
+| `CLOCK_MONOTONIC` | 60.002 s | **100.0 %** |
+| `CLOCK_REALTIME` | 60.002 s | **100.0 %** |
+
+```
+kernel tick : 10000 us      <-- the default; was railed at 9000
+kernel freq : -39.4 ppm     <-- an ordinary discipline value, not a rail
+```
+
+The tick is off its rail and chrony is disciplining normally. Nothing in this
+repo did that; the host was rebooted between 2026-08-06 and 2026-08-07, which is
+the only change. Note what this costs the paragraphs above: the claim that the
+state "reverts even with chrony stopped, masked, and no `chronyd` process alive"
+described a **running** kernel that could not be talked down, not a persistent
+one. A reboot clears it. The mechanism was never identified, so treat this as
+*latent* rather than fixed — re-run `demo/tools/p22-clock.sh ratio 60` before
+quoting any duration, which takes a minute and is the whole check.
+
+**The two defects are separate, and only one is gone:**
+
+| | Then (2026-08-06) | Now (2026-08-07) | Affects |
+|---|---|---|---|
+| **Rate** — tick railed at 9000 µs | ~10 % slow | **sound** | durations |
+| **Offset** — clock behind real time | 270.6 s | 313.2 s (still WARNs) | absolute timestamps |
+
+So **durations measured on this host are now quotable**, and §5.4's two empty
+rows are filled by #22's run ([`demo/dry-run.md`](../demo/dry-run.md) §2).
+**Absolute timestamps are still ~5 min behind reality** — which is why
+`run.json`'s `generated_at` and the `run-<timestamp>/` folder name from a
+console export taken here read about five minutes early. That is cosmetic for
+the MVP (nothing joins on those stamps) but it is not nothing, and it is the
+part the config gate still flags.
+
+Consequence for the guidance above: "treat any Yuruna step duration measured
+here as ~10 % low" **no longer holds unconditionally**. Check the rate, then
+decide.
 
 ## 7. Contingencies
 

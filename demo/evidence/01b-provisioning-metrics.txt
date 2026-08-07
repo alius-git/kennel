@@ -1,0 +1,21 @@
+run.started                        2026-08-07T15:40:34Z
+guest.hostname                     kennel-vm
+guest.nproc                        8
+guest.memtotal_mib                 15972
+disk.used_gib.start                28
+disk.avail_gib.start               30
+docker.version                     Docker version 29.7.2, build a7dcaa6
+stack.pin                          dcf53c596339afd45b82f12c54b1e93e8273c2f4
+docker.image_size                  13GB
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          1         1         12.97GB   0B (0%)
+Containers      1         1         5.812MB   0B (0%)
+Local Volumes   0         0         0B        0B
+Build Cache     110       0         12.99GB   53.25kB
+disk.used_gib.after_colcon         28
+workspace.size                     250M
+meshcat.url_in_container           http://localhost:7000
+sim.smoke                          PASS (alive after 45s)
+disk.used_gib.end                  28
+disk.avail_gib.end                 30
+run.ended                          2026-08-07T15:41:30Z

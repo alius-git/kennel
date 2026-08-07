@@ -1,0 +1,11 @@
+# Demo step 6 — Meshcat from the host browser (issue #22).
+# Written step: vm/meshcat-exposure.md 3, one-command form.
+
+$ vm/test/verify-meshcat-host.sh
+guest            kennel-vm at 192.168.122.118 (libvirt 'default')
+listener         *:7000  -- non-loopback, port 7000
+content          HTTP 200, Meshcat page (10039 bytes)
+
+Meshcat is reachable from this host. Open in the host browser:
+http://192.168.122.118:7000/
+=== exit: 0 ===
