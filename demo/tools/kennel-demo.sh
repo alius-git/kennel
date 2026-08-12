@@ -29,6 +29,7 @@
 #
 # Knobs (all optional, environment variables):
 #   YURUNA_DIR            ~/git/yuruna       framework checkout (provision)
+#   YURUNA_IMAGE_DIR      ~/yuruna/image/ubuntu.env   where Get-Image.ps1 put the ISO
 #   KENNEL_DEMO_OUT       ~/kennel-runs      where compose unpacks run folders
 #   KENNEL_CONSOLE_PORT   8000               port compose serves the console on
 #   KENNEL_SOLVER         PARTIAL_CONDENSING_OSQP   composed + expected solver
@@ -45,6 +46,7 @@ set -uo pipefail
 
 # --- REGION: knobs
 YURUNA_DIR="${YURUNA_DIR:-$HOME/git/yuruna}"
+IMAGE_DIR="${YURUNA_IMAGE_DIR:-$HOME/yuruna/image/ubuntu.env}"
 OUT="${KENNEL_DEMO_OUT:-$HOME/kennel-runs}"
 PORT="${KENNEL_CONSOLE_PORT:-8000}"
 SOLVER="${KENNEL_SOLVER:-PARTIAL_CONDENSING_OSQP}"
@@ -114,6 +116,48 @@ do_provision() {
              "The host baseline (vm/host-baseline.md) is a prerequisite; set YURUNA_DIR if it lives elsewhere."
         exit 2
     }
+
+    # -- preflight: fail in seconds on the prerequisites that otherwise fail
+    #    20+ minutes into the run (dry-run.md F3).
+    banner "preflight"
+
+    # The three Yuruna patches (host-baseline.md §6.4) must be in the clone.
+    # `git apply --reverse --check` succeeding means the patch is present.
+    local p missing=0
+    for p in "$REPO_ROOT"/vm/patches/*.patch; do
+        if git -C "$YURUNA_DIR" apply --reverse --check "$p" >/dev/null 2>&1; then
+            say "patch applied    $(basename "$p")"
+        elif git -C "$YURUNA_DIR" apply --check "$p" >/dev/null 2>&1; then
+            fail "Yuruna patch NOT applied: $(basename "$p")." \
+                 "Apply it first:  git -C $YURUNA_DIR apply $p" \
+                 "See vm/host-baseline.md §6.4."
+            missing=1
+        else
+            fail "cannot tell whether $(basename "$p") is applied -- the Yuruna tree at" \
+                 "$YURUNA_DIR matches neither state. Is it at tag 2026.08.04? (host-baseline.md §2)"
+            missing=1
+        fi
+    done
+    [ "$missing" = 0 ] || exit 2
+
+    # The guest ISO is fetched once, up front -- Invoke-TestSequence does no
+    # image download (host-baseline.md §5.1).
+    if ! ls "$IMAGE_DIR"/*.iso >/dev/null 2>&1; then
+        fail "no guest ISO under $IMAGE_DIR (~3.2 GB, fetched once)." \
+             "cd $YURUNA_DIR/host/ubuntu.kvm/guest.ubuntu.server.24 && pwsh ./Get-Image.ps1" \
+             "Different image dir? Set YURUNA_IMAGE_DIR."
+        exit 2
+    fi
+    say "guest ISO        $(ls "$IMAGE_DIR"/*.iso | head -1)"
+
+    # Install the kennel sequences + guest script into the framework clone
+    # (provisioning.md §4.2). Idempotent, so done on every run; skipping it is
+    # F3 -- a failure ~20 min into the cycle. It also causes the yellow
+    # 'fetch-and-execute fallback ... differs from HEAD' warning, twice, on a
+    # healthy run (F5) -- expected, keep going.
+    cp "$REPO_ROOT"/vm/test/*.kennel*.yml "$YURUNA_DIR/test/sequences/" || exit 2
+    cp "$REPO_ROOT"/vm/guest/ubuntu.server.24/*.sh "$YURUNA_DIR/guest/ubuntu.server.24/" || exit 2
+    say "kennel files installed into the Yuruna clone (provisioning.md §4.2)"
     say "this DESTROYS any existing '$GUEST_HOSTNAME' guest and rebuilds it from clean (~33 min)."
     if [ "$yes" != 1 ]; then
         reply=""

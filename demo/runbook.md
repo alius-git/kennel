@@ -33,12 +33,35 @@ again — `all` is repeatable on its own.
 
 ## 2. Prerequisites (once per host)
 
-| What | Where it is established |
-|---|---|
-| Yuruna host baseline: libvirt/KVM, `pwsh`, framework clone at `~/git/yuruna`, patches applied | [`vm/host-baseline.md`](../vm/host-baseline.md) — including the ~3.2 GB Ubuntu ISO fetch (§6.7, ~9 min when cold; **not** counted in provision's 33 min) |
-| The three Yuruna patches + sizing cascade | [`vm/guest-sizing.md`](../vm/guest-sizing.md) §2–§3 |
-| `google-chrome` on the host | Only for the scripted compose (it is the operator's hands); §3 shows the by-hand alternative |
-| This repo cloned | any path — the driver locates everything relative to itself |
+From a fresh clone of this repo, in order. The full context for each step is
+[`vm/host-baseline.md`](../vm/host-baseline.md); the commands are collected here
+so the runbook stands alone.
+
+```bash
+# 1. Host baseline (host-baseline.md §2): installs KVM/libvirt + tools and
+#    clones the framework to ~/git/yuruna. Then pin it and prep unattended runs.
+bash <(curl -fsSL https://raw.githubusercontent.com/alissonsol/yuruna/refs/heads/main/install/ubuntu.kvm.sh)
+# log out/in afterwards -- it adds you to the libvirt and kvm groups
+cd ~/git/yuruna && git checkout 2026.08.04
+pwsh ~/git/yuruna/host/ubuntu.kvm/Enable-TestAutomation.ps1
+
+# 2. The three Yuruna patches (host-baseline.md §6.4). `provision` refuses to
+#    run without them -- it checks in seconds rather than failing 20 min in.
+git -C ~/git/yuruna apply /path/to/kennel/vm/patches/yuruna-save-ocrsidecar-export.patch
+git -C ~/git/yuruna apply /path/to/kennel/vm/patches/yuruna-ssh-autoinstall-confirm.patch
+git -C ~/git/yuruna apply /path/to/kennel/vm/patches/yuruna-no-password-expiry.patch
+
+# 3. The ~3.2 GB guest ISO, once (~9 min cold; NOT counted in provision's 33 min).
+cd ~/git/yuruna/host/ubuntu.kvm/guest.ubuntu.server.24 && pwsh ./Get-Image.ps1
+```
+
+`google-chrome` on the host is needed only for the scripted compose (it is the
+operator's hands) — §3.2 shows the by-hand alternative.
+
+Copying the kennel sequences and guest script into the Yuruna clone
+([`provisioning.md` §4.2](../vm/provisioning.md)) is **done by `provision`
+itself** on every run — it is the step whose omission fails twenty minutes late
+(dry run F3), so the driver never leaves it to memory.
 
 ## 3. Phase by phase
 
