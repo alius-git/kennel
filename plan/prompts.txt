@@ -1,3 +1,7 @@
+Prompts for Kennel
+
+==== Console specification - Part 1: build prompt (mock-data phase)
+
 # Build prompt: Kennel Console UI (mock-data phase)
 
 **Status:** Paste-ready prompt to scaffold the UI now, without a running ROS stack ·
@@ -62,6 +66,8 @@ headline counters); select two → side-by-side config diff.
   a fall — so every panel demonstrates its purpose immediately.
 
 
+
+==== Console specification - Part 2: full UI specification
 
 # Prompt: "Kennel Console" — Web UI for the dfki-quad Go2 simulation lab
 
@@ -213,3 +219,159 @@ multi-robot, editing URDFs/meshes, user accounts.
 - Issue #10 (M2.5): explicit stage `type:` keys in the Go2 controller YAMLs.
 - A launch argument for `world_urdf` — today terrain choice is a YAML edit only; a small
   `world:=` launch arg would simplify the console's mapping layer considerably.
+
+
+
+==== Planning - Part 1
+
+Act as a principal systems architect and product strategist. Review the Kennel project, drawing context primarily from plan/PRFAQ.txt (the product vision) and the founding console specification above.
+
+Your task is to generate two distinct, comprehensive Markdown files under plan/ that define our target personas and application ecosystem. Keep the descriptions natural, clear, and highly focused on the what and why (business and user needs) rather than the technical how — the only concrete technology choices worth repeating are the ones the console specification already locks.
+
+1. Define Personas (plan/personas.md)
+
+Create a profiles document identifying the distinct user types served by Kennel. Each persona should capture their core motivations, responsibilities within the ecosystem, primary interaction points, and what success looks like. Start from the two roles the console specification names:
+
+Alex (The Controls Researcher): Uses Kennel/console. Swaps pipeline stages and solvers, tunes parameters, injects disturbances; needs solver-level diagnostics and reproducible run manifests.
+
+Sofia (The New Lab Member / Student): Follows Kennel/guides on console defaults. Must reach "watch the Go2 walk and understand the dashboard" without reading source code.
+
+Note: Evaluate the end-to-end adoption lifecycle against the PRFAQ's own commitments and close every gap with an owned persona. The PRFAQ promises a classroom metric, names environment drift as a primary risk, ships a scripted demo, offers a documented path toward real hardware, and declares upstream the source of truth — each promise needs an owner. Record the gap analysis in the document; leave no role deferred.
+
+2. Define the Application Ecosystem (plan/applications.md)
+
+Create a foundational architecture document defining each application required in the ecosystem — the importable VM appliance, the console, the wrapped upstream stack (dfki-quad: pinned and wrapped, never forked), and the guides. For each application, provide:
+
+A clear, high-level business objective.
+
+A brief summary of core user-facing functionality.
+
+The ideal architectural patterns or high-level paradigms suited for the job (e.g., immutable appliance image, manifest-driven build pipeline, data-source seam, configure + monitor only), avoiding vendor choices.
+
+Also define the shared foundations beneath the applications: the version manifest, the DataSource/bridge contract, run manifests & the config schema, and the simulation-first safety gate.
+
+Ensure both documents seamlessly align so that every user workflow identified in the personas file maps logically to an application capability; end applications.md with that workflow alignment matrix. Maintain a professional, scannable, and definitive tone throughout.
+
+==== Planning - Part 2
+
+Act as the Principal Systems Architect for Kennel. Based on the structural baseline established in plan/personas.md and plan/applications.md, we are entering the formal verification planning phase.
+
+Create the verification framework (plan/scenarios.md): a definitive document containing 10 prioritized end-to-end test sequences covering the product's whole life — cold import and first walk, the researcher's compose/run/diagnose loop, interventions, comparison and reproduction, the mock/live seam, the classroom fleet, the upstream repin, and the safety-gated handoff toward hardware.
+
+Design these sequences to serve as the ultimate functional blueprint for an end-to-end automated system demo using the Yuruna verification framework.
+
+- Naming: sNNN.word — the scenario number plus the single best word (s001.firstwalk is the shape; find the best word for each).
+- Write each scenario in clean, highly structured natural language (do not write Yuruna script code). Scenarios describe the end-to-end user and system journey only; harness mechanics (VM provisioning, UI automation limits) are the design's concern, not this document's.
+- Format per scenario:
+
+1. ID & Title
+2. Objective & Priority: what milestone it validates and why it ranks where it does. P0 — the five-minute promise and the compose→run→diagnose loop; P1 — the researcher workflow in depth, the seam, and the classroom; P2 — lifecycle capstones that consume what the rest produce.
+3. Cross-References: the personas involved, the applications traversed, the shared foundations invoked.
+4. Step-by-Step Sequence: a concise, chronological narrative of user actions and underlying system state changes.
+5. Target Verification Point: the desired state Yuruna must assert to declare the sequence successful — name only observable state (files on disk, console UI state, topic traffic, manifest contents, elapsed time), never internal implementation detail.
+
+- The PRFAQ's three named risks — hardware overclaiming, skipping simulation, environment drift — must each land on a mechanical assertion somewhere in the ten.
+
+End scenarios.md with a traceability matrix ensuring that every persona, every application, and every shared foundation is exercised by at least one of the 10 sequences. No orphan components, no unverified workflows.
+
+==== Design - Part 1
+
+Act as the Principal Systems Architect for Kennel. Based on the planning files (plan/personas.md, plan/applications.md, plan/scenarios.md), create the design for a proof-of-concept that can later grow into the classroom fleet and the documented hardware handoff without contract changes.
+
+POC environment: one physical host carrying the hypervisor, the browser (the console's client), the Yuruna test runner, and the release artifacts; the appliance VM (kennel-vm) carrying the pinned dfki-quad stack, simulator, bridge, console server, and guides; a second seat (kennel-vm-b) only where the classroom scenario needs it. Yuruna drives VM provisioning, sequence execution, and asserts, executing plan/scenarios.md end to end.
+
+Deliverables: a master plan/design.md — locked decisions with rationale, POC topology, application inventory, foundations realization, mock boundary, repository layout, scenario execution order, growth path — plus Mermaid diagrams under plan/design/: one overall POC architecture document and one per application (for the format, see https://github.com/alissonsol/yuruna/tree/main/docs/design). Before writing, ask only the design questions the principles below do not already settle.
+
+Design principles:
+
+- The appliance is the product: a pinned, importable, resettable VM (OVA, VirtualBox-first; qcow2/KVM on the growth path). Exact versions live in a generated version manifest, never in prose.
+- The console stack is locked by its specification; all live data crosses one DataSource seam — MockDataSource first, a rosbridge WebSocket client second, Foxglove as a growth-path alternative behind the same interface. The 3D scene embeds Meshcat; never rebuild 3D rendering.
+- Upstream dfki-quad is pinned and wrapped, never forked. Kennel-local patches are minimal, documented, and headed upstream.
+- Configure + monitor, never orchestrate — everywhere: the console generates configs and commands and observes the running stack; process lifecycle belongs to the user's terminal, and the harness automates that terminal over the VM's shell channel, never through hidden orchestration.
+- Scenario-driven scope: include exactly what s001–s010 assert against; stub nothing a scenario asserts against. Every mock implements the production interface, and swapping it must not change any caller.
+- Fault injection uses only surfaces the product already has (the disturbance service plus a stress preset); nothing test-only leaks into the stack.
+- Declare the numbers the scenarios need instead of leaving them implicit: the s001 time budget, the s006 sim-nondeterminism tolerance, the s008 fleet size (the minimum honest fleet is two seats — one kept clean, one dirtied).
+- prompts.txt stays verbatim as the historical prompt record; where its references are superseded, the new corpus supersedes them — do not rewrite history.
+- Diagrams visualize the design, they do not restate it: at most seven boxes each, growth-path items on dashed edges.
+
+==== Design - Part 2
+
+Act as the Principal Systems Architect for Kennel. Create Mermaid sequence diagrams for all ten verification scenarios in plan/scenarios.md — one file per scenario under plan/design/ (seq.s001.firstwalk.md … seq.s010.handoff.md), each following the existing design-doc conventions ("One sentence:" header, links back to plan/design.md and scenarios.md).
+
+Integration:
+
+- Add the ten files to the diagram table in plan/design.md section 9 (Diagrams).
+- Verify README.md still links to plan/design.md; fix it if it does not.
+
+Diagram principles:
+
+- GitHub-first Mermaid: plain sequenceDiagram syntax only — participant/actor declarations, solid and dashed arrows, alt/opt/loop/par blocks, and Notes. Avoid box grouping, create/destroy, critical/break, themes, custom config, and HTML beyond <br />, so GitHub.com rendering is never at risk.
+- Participants are the POC components from plan/design.md (console views, DataSource seam, bridge, stack, appliance tooling, guides, the Yuruna harness) with personas declared as actors. Use identical participant names across all ten diagrams; cap each diagram at 8 lifelines, folding minor components into their nearest neighbor rather than exceeding the cap.
+- Fidelity to scenarios.md: messages follow the scenario's numbered steps in order — one message or small group per step; render rejections, drift detections, and negative controls as alt blocks; open each diagram with a Note stating the seeded preconditions and close with a Note stating the Target Verification Point Yuruna asserts.
+- Keep each diagram readable: roughly 20 messages; if a scenario needs more, group steps rather than drop them.
+
+==== POC scope cut
+
+Act as the delivery lead for Kennel. The design's OVA appliance and the full scenario suite are the destination; the POC must first prove the chain end to end with what the lab has today. Cut the scope and fix the working method before any implementation:
+
+- Host: the Yuruna ubuntu.kvm baseline (KVM/libvirt) on the development machine — the VirtualBox OVA stays on the growth path.
+- Guest: one kennel-vm guest, provisioned by a Yuruna sequence with Docker and the pinned dfki-quad stack — the appliance's precursor, not yet an importable image.
+- Console: the Kennel Console prototype served statically from the host, cut down to the compose → generate → export loop the POC needs.
+- Everything aims at one PoC moment: a config composed in the console, with observable non-stock choices, runs the stack in the guest; the robot walks; and the running stack demonstrably uses the composed values.
+
+Method: a tracking issue holds the demo script — the numbered steps a newcomer will later perform. One GitHub issue per step of the build, a branch per issue, and each issue lands with its implementation record beside the tool it records (vm/, stack/, kennel_console/, demo/): what was validated, the exact commands, measured timings, evidence, and every deviation from the plan marked as bypass or fix. Ask any questions before implementation.
+
+==== VM - Part 1: host baseline (#8)
+
+Prove the STOCK Yuruna baseline on the development host before anything Kennel-specific is added: run the ubuntu.kvm one-line installer, pin the framework clone to a release tag, prepare unattended runs, and get a clean cycle that provisions the stock guest.ubuntu.server.24 guest with the SSH workload green.
+
+If stock Yuruna cannot provision the guest on this host, patch it minimally: patches live under vm/patches/, apply to the pinned tag, and each is documented as a bypass (with its cost) or a fix (headed upstream). Never edit the framework clone silently.
+
+Record it all in vm/host-baseline.md: the validated-configuration table (framework tag and commit, host OS/CPU/RAM/disk, hypervisor versions, guest defaults), the exact commands, the cycle timing, and a deviations section prominent enough that nobody relies on the document without reading it. Nothing in this issue is Kennel-specific; it is the floor the guest issues stand on.
+
+==== VM - Part 2: the kennel-vm guest (#9, #10, #11)
+
+Three issues, in order, each landing with its implementation record under vm/:
+
+- #9 Guest sizing (vm/guest-sizing.md): size the kennel-vm guest from measurement, not guesswork — RAM, vCPU, and disk justified by what the stack build and run actually consume, with the sizing asserted during provisioning rather than assumed.
+- #10 Provisioning (vm/provisioning.md): one Yuruna sequence provisions the guest from clean with Docker and the pinned dfki-quad stack, unattended — pass/fail per step, exit 0 for the run. The sequence and guest script live in this repo and are copied into the Yuruna clone as a documented step; script that copy, because its omission is the failure that surfaces twenty minutes late.
+- #11 Meshcat exposure (vm/meshcat-exposure.md): reach the Drake Meshcat viewer from the host browser. Prefer routing to the guest over port forwards; deliver a host-side verification script whose exit codes decode the failure (simulator down vs. network vs. browser), so "Meshcat is not reachable" always has a next step.
+
+Test from cold start where feasible; record measured timings; descope defects that do not block the chain with an explicit note rather than stalling the milestone.
+
+==== Stack (#12, #13, #14, #15)
+
+Four issues against the provisioned guest, each with its record under stack/:
+
+- #12 Pin (stack/pin.lock): record the upstream dfki-quad revision the POC wraps — the full commit hash, how it was chosen, the patch policy. Every later artifact that depends on the pin references this file.
+- #13 Headless launch (stack/launch.md): the canonical command set that brings the go2 sim stack up headless in the guest's container — simulator, controller, state estimation: exactly the three commands the console's generated block will have to reproduce.
+- #14 Verification recipe (stack/verify.md): a CLI recipe that decides "up, healthy, and walking" from topics alone — no eyes needed. Distinct exit codes for "stack up but not healthy/walking" and "could not even look".
+- #15 Mapping (stack/mapping.md): map every composer choice from the console specification to the pin's actual launch args and YAML keys. Where upstream has no surface (the missing world:= launch arg), give the gap its own bypass entry instead of hiding it in prose.
+
+==== Console prototype (#16, #17, #18, #19)
+
+The specification's SPA is the growth path; the POC needs the compose → generate → export loop, honest against the pin. Four issues, each with its record under kennel_console/:
+
+- #16 Serve (serve.md): the prototype serves from the host with one command and no network — vendor the CDN runtime and fonts.
+- #17 Scope (composer-scope.md): constrain the composer to the MVP scope — exactly the choices the pin can honor and the verify recipe can prove. Record a disposition for everything else the specification shows: kept, disabled, or deferred, and why.
+- #18 Generate (generate.md): generate the real config pair and the three-command launch block from the pin's stock templates. Generation policy: a generated YAML differs from stock in exactly the composed fields and nothing else.
+- #19 Export (export.md): get the generated run out of the browser as a run folder — the two YAMLs, commands.txt, and a run.json manifest recording the composition and the pin.
+
+==== Stack - The PoC moment (#20, #21)
+
+- #20 Transfer (stack/transfer.md): script the run folder's path host → guest → container onto the config paths the stack actually reads. Prove arrival with checksums at every hop; refuse a run folder generated against another pin (its own exit code, an explicit override flag); provide restore-stock. Record which composed choices can actually walk on this pin, because #21 will need that finding.
+- #21 Composed run (stack/composed-run.md): the issue every other one has been feeding; consume them unchanged. Compose two observable non-stock choices — one per YAML, so a transfer that silently dropped either file fails a different assert; prefer choices the running stack can prove independently (a solver identity readable from the running node and echoed in the launch log; a realtime rate measurable as sim-time against wall-time). Launch from the console's generated commands.txt, verify with the #14 recipe, hold a commanded trot, capture the Meshcat view from the host. Evidence — the run folder, transcripts, launch logs, screenshot — lands under stack/composed-run/evidence/.
+
+==== Demo - Part 1: dry run (#22)
+
+Act as the demo operator, standing in for a newcomer. Perform the tracking issue's demo script start to finish, from a clean state, from the written instructions only — a repo script may be used only where the written step is "run this script". Time every phase against a monotonic clock, log every friction as a numbered finding, fix the documents where the prose was wrong, and record the run in demo/dry-run.md with evidence under demo/evidence/. The product is not a green run — it is the list of places the written steps were insufficient, and the fixes.
+
+==== Demo - Part 2: runbook (#27)
+
+Reduce the demo to a handful of commands behind one driver, demo/tools/kennel-demo.sh, wrapping the existing per-phase tools: provision, compose, transfer, launch, verify, walk — plus status, walk stop, and down. The driver adds orchestration only (guest discovery, scp, ordering, timing), so each phase still does exactly what its implementation record says it does. Waits observe the stack, never sleep. Make provision self-sufficient from a fresh clone: it performs the copy-into-Yuruna step itself, and it refuses to run in seconds when the host patches are missing rather than failing twenty minutes in. Knobs are environment variables passed through to the tools that define them.
+
+Write demo/runbook.md so it stands alone: the short path, the once-per-host prerequisites, the phase table with the dry run's measured timings, the knobs, and a troubleshooting table built from the symptoms the dry run already met. Test from cold start.
+
+==== Docs and README
+
+Introduce the repo: a root README.md with a quick start, and docs/README.md as the documentation map — the plan corpus, and the implementation record beside each tool it records. The in-depth documentation stays next to what it describes; the index only points. Both comprehensive and correct, and yet as concise as possible.
