@@ -1,0 +1,156 @@
+# serve.py refuses anything that is not a console export, by hand with curl.
+# Archives crafted from the evidence run demo/evidence/run-20260807T153752Z.
+# The listing after every refusal is the whole point: nothing is written.
+
+$ curl -s http://localhost:8085/api/health
+{
+  "kennel": true,
+  "out": "/tmp/claude-1000/-home-thales-kennel/2e17c1fc-79a3-4e56-a51b-ea0470166528/scratchpad/refuse",
+  "pin": "dcf53c596339afd45b82f12c54b1e93e8273c2f4"
+}
+
+
+$ curl -sX POST --data-binary @good.zip -H 'Content-Type: application/zip' \
+       http://localhost:8085/api/runs   -w '\nHTTP %{http_code}\n'
+{
+  "run": "run-20260830T120000Z",
+  "path": "/tmp/claude-1000/-home-thales-kennel/2e17c1fc-79a3-4e56-a51b-ea0470166528/scratchpad/refuse/run-20260830T120000Z",
+  "sha256": {
+    "simulator_params_go2.yaml": "1715821fea8922b8af83de4f32cfc2506af521708db0d16809b0dbdf0693df99",
+    "mit_controller_sim_go2.yaml": "3c69d87ff866dd3910a29ed0ff17e16da26ad5a36e874a424ea17e4562476962",
+    "commands.txt": "572f510f62d229082385fc738a5a347868339011bcf47e2e71bee98e648ccf68",
+    "run.json": "0233ad4b4fbc0bfc7c058156064a4f8f1e7f7752e64a918568444bcecdaf6acd"
+  }
+}
+
+HTTP 201
+$ ls $OUT
+  run-20260830T120000Z
+  run-20260830T120000Z.zip
+
+$ curl -sX POST --data-binary @wrongpin.zip -H 'Content-Type: application/zip' \
+       http://localhost:8085/api/runs   -w '\nHTTP %{http_code}\n'
+{
+  "error": "this run was generated against pin 0000000000000000000000000000000000000000, the stack is pinned at dcf53c596339afd45b82f12c54b1e93e8273c2f4.",
+  "detail": [
+    "Its keys have no defined meaning at this revision. Re-export from a",
+    "console served at the stack pin."
+  ]
+}
+
+HTTP 409
+$ ls $OUT
+  run-20260830T120000Z
+  run-20260830T120000Z.zip
+
+$ curl -sX POST --data-binary @three.zip -H 'Content-Type: application/zip' \
+       http://localhost:8085/api/runs   -w '\nHTTP %{http_code}\n'
+{
+  "error": "the archive is not a console export (3 entries, expected 4).",
+  "detail": [
+    "missing: run-20260830T122000Z/run.json"
+  ]
+}
+
+HTTP 400
+$ ls $OUT
+  run-20260830T120000Z
+  run-20260830T120000Z.zip
+
+$ curl -sX POST --data-binary @deflated.zip -H 'Content-Type: application/zip' \
+       http://localhost:8085/api/runs   -w '\nHTTP %{http_code}\n'
+{
+  "error": "entry 'run-20260830T123000Z/simulator_params_go2.yaml' is compressed; a console export is STORED only.",
+  "detail": [
+    "See kennel_console/export.md section 2.2."
+  ]
+}
+
+HTTP 400
+$ ls $OUT
+  run-20260830T120000Z
+  run-20260830T120000Z.zip
+
+$ curl -sX POST --data-binary @extra.zip -H 'Content-Type: application/zip' \
+       http://localhost:8085/api/runs   -w '\nHTTP %{http_code}\n'
+{
+  "error": "the archive is not a console export (5 entries, expected 4).",
+  "detail": [
+    "unexpected: run-20260830T124000Z/notes.md"
+  ]
+}
+
+HTTP 400
+$ ls $OUT
+  run-20260830T120000Z
+  run-20260830T120000Z.zip
+
+$ curl -sX POST --data-binary @badname.zip -H 'Content-Type: application/zip' \
+       http://localhost:8085/api/runs   -w '\nHTTP %{http_code}\n'
+{
+  "error": "top-level entry 'runs' is not a run-<stamp>/ folder.",
+  "detail": [
+    "Expected the shape run-YYYYMMDDTHHMMSSZ, as stampNow() emits."
+  ]
+}
+
+HTTP 400
+$ ls $OUT
+  run-20260830T120000Z
+  run-20260830T120000Z.zip
+
+$ curl -sX POST --data-binary @good.zip -H 'Content-Type: application/zip' \
+       http://localhost:8085/api/runs   -w '\nHTTP %{http_code}\n'
+{
+  "error": "/tmp/claude-1000/-home-thales-kennel/2e17c1fc-79a3-4e56-a51b-ea0470166528/scratchpad/refuse/run-20260830T120000Z already exists.",
+  "detail": [
+    "Two exports one second apart share a stamp. Compose again, or move the",
+    "existing folder aside."
+  ]
+}
+
+HTTP 409
+$ ls $OUT
+  run-20260830T120000Z
+  run-20260830T120000Z.zip
+
+$ curl -s http://localhost:8085/api/runs
+{
+  "out": "/tmp/claude-1000/-home-thales-kennel/2e17c1fc-79a3-4e56-a51b-ea0470166528/scratchpad/refuse",
+  "runs": [
+    {
+      "run": "run-20260830T120000Z",
+      "path": "/tmp/claude-1000/-home-thales-kennel/2e17c1fc-79a3-4e56-a51b-ea0470166528/scratchpad/refuse/run-20260830T120000Z",
+      "modified": "2026-08-30T20:12:06Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true
+    }
+  ]
+}
+
+# --- the server's own log ---
+  [serve.py] serving /home/thales/kennel/kennel_console on http://localhost:8085/
+  [serve.py] run folders -> /tmp/claude-1000/-home-thales-kennel/2e17c1fc-79a3-4e56-a51b-ea0470166528/scratchpad/refuse
+  [serve.py] stack pin     dcf53c596339afd45b82f12c54b1e93e8273c2f4
+  [serve.py] 20:12:06Z "GET /api/health HTTP/1.1" 200 -
+  [serve.py] 20:12:06Z "GET /api/health HTTP/1.1" 200 -
+  [serve.py] 20:12:06Z wrote /tmp/claude-1000/-home-thales-kennel/2e17c1fc-79a3-4e56-a51b-ea0470166528/scratchpad/refuse/run-20260830T120000Z
+  [serve.py] 20:12:06Z "POST /api/runs HTTP/1.1" 201 -
+  [serve.py] 20:12:06Z "POST /api/runs HTTP/1.1" 409 -
+  [serve.py] 20:12:06Z refused 409 this run was generated against pin 0000000000000000000000000000000000000000, the stack is pinned at dcf53c596339afd45b82f12c54b1e93e8273c2f4.
+  [serve.py] 20:12:06Z "POST /api/runs HTTP/1.1" 400 -
+  [serve.py] 20:12:06Z refused 400 the archive is not a console export (3 entries, expected 4).
+  [serve.py] 20:12:06Z "POST /api/runs HTTP/1.1" 400 -
+  [serve.py] 20:12:06Z refused 400 entry 'run-20260830T123000Z/simulator_params_go2.yaml' is compressed; a console export is STORED only.
+  [serve.py] 20:12:06Z "POST /api/runs HTTP/1.1" 400 -
+  [serve.py] 20:12:06Z refused 400 the archive is not a console export (5 entries, expected 4).
+  [serve.py] 20:12:06Z "POST /api/runs HTTP/1.1" 400 -
+  [serve.py] 20:12:06Z refused 400 top-level entry 'runs' is not a run-<stamp>/ folder.
+  [serve.py] 20:12:06Z "POST /api/runs HTTP/1.1" 409 -
+  [serve.py] 20:12:06Z refused 409 /tmp/claude-1000/-home-thales-kennel/2e17c1fc-79a3-4e56-a51b-ea0470166528/scratchpad/refuse/run-20260830T120000Z already exists.
+  [serve.py] 20:12:06Z "GET /api/runs HTTP/1.1" 200 -

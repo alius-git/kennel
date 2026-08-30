@@ -1,0 +1,22 @@
+# The three suites this issue must not disturb (#17, #18, #19).
+# Only the #44 label moved inside them; none asserted its literal text,
+# so none needed a change.
+
+$ ./kennel_console/verify-scope.sh 8064 9264
+10. no network escaped
+  [PASS] zero non-localhost requests — []
+
+ALL CHECKS PASSED
+
+$ ./kennel_console/verify-generate.sh 8063 9263
+9. no network escaped
+  [PASS] zero non-localhost requests — []
+
+ALL CHECKS PASSED
+
+$ ./kennel_console/verify-export.sh 8065 9265
+7. no network escaped
+  [PASS] zero non-localhost requests — []
+
+ALL CHECKS PASSED
+

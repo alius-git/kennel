@@ -10,6 +10,17 @@
 #   4. (if google-chrome is present) the page renders with all DNS blocked
 #
 # Exit 0 = the documented serve command gives a working, offline-capable console.
+#
+# KENNEL_SERVE_CMD picks the server (issue #56). Default is the historical
+# `python3 -m http.server`, which is what the offline claim in serve.md was
+# proven on and stays the thing this suite defends. Point it at serve.py to
+# assert the same properties of the server the driver now starts:
+#
+#   KENNEL_SERVE_CMD='python3 kennel_console/serve.py --port PORT' \
+#     ./kennel_console/verify-serve.sh
+#
+# PORT in the string is replaced with the port. The command must serve
+# kennel_console/ at the docroot and must not need arguments after it.
 
 set -uo pipefail
 
@@ -45,7 +56,11 @@ else
 fi
 
 echo "3. every asset is served over HTTP on :$PORT"
-python3 -m http.server "$PORT" --directory "$DIR" >/dev/null 2>&1 &
+SERVE_CMD="${KENNEL_SERVE_CMD:-python3 -m http.server PORT --directory $DIR}"
+echo "  [ -- ] server: ${SERVE_CMD//PORT/$PORT}"
+# Word-split on purpose: the knob is a command line, not a path.
+# shellcheck disable=SC2086
+${SERVE_CMD//PORT/$PORT} >/dev/null 2>&1 &
 srv=$!
 trap 'kill $srv 2>/dev/null' EXIT
 for _ in $(seq 20); do

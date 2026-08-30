@@ -3,7 +3,7 @@
 # Kennel -- demo driver: the demo-script phases behind single verbs, so an
 # operator types a handful of commands instead of ~20 (follow-up to issue #22,
 # feeding #27's quickstart; snapshot/reset/up from #51; setup/console/run and
-# the zip-accepting transfer from #54).
+# the zip-accepting transfer from #54; serve.py behind `console` from #56).
 #
 # Runs on the HOST. Every verb wraps the existing per-phase tool -- this script
 # adds orchestration only (guest discovery, scp, ordering, timing), so the
@@ -20,7 +20,9 @@
 #              (warm path: revert the disk snapshot, ~1-3 min)
 #   up         virsh start + lease/SSH wait + docker start
 #   halt       virsh shutdown + a bounded wait for the domain to stop
-#   console    python3 -m http.server on kennel_console/, backgrounded, opened
+#   console    kennel_console/serve.py on kennel_console/, backgrounded, opened
+#              (static files + the POST endpoint the console's `send to
+#              kennel-runs` button writes run folders through)
 #   compose    demo/tools/p22-console-demo.sh      (console UI, scripted clicks)
 #   transfer   stack/transfer/kennel-transfer.sh apply   (run folder OR .zip)
 #   launch     stack/composed-run/tools/p21-launch-from-commands.sh  (on guest)
@@ -56,7 +58,9 @@
 #   YURUNA_DIR            ~/git/yuruna       framework checkout (setup, provision)
 #   YURUNA_TAG            2026.08.04         framework release setup checks out
 #   YURUNA_IMAGE_DIR      ~/yuruna/image/ubuntu.env   where Get-Image.ps1 put the ISO
-#   KENNEL_DEMO_OUT       ~/kennel-runs      where compose unpacks run folders
+#   KENNEL_DEMO_OUT       ~/kennel-runs      where compose unpacks run folders,
+#                                            and where the console's send button
+#                                            writes them through serve.py
 #   KENNEL_DOWNLOADS      ~/Downloads        where the browser saves run-*.zip
 #   KENNEL_CONSOLE_PORT   8000               port compose/console serve on
 #   KENNEL_SOLVER         PARTIAL_CONDENSING_OSQP   composed solver, and the
@@ -113,7 +117,10 @@ YURUNA_BUILD_DOMAIN="${KENNEL_BUILD_DOMAIN:-test-guest.ubuntu.server.24-01}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 
-CONSOLE_URL="http://localhost:$PORT/Kennel%20Console.dc.html"
+# The origin is separate from the page URL because serve.py answers /api/
+# there as well (kennel_console/send.md section 1).
+CONSOLE_ORIGIN="http://localhost:$PORT"
+CONSOLE_URL="$CONSOLE_ORIGIN/Kennel%20Console.dc.html"
 # `provision` and `reset` run the SAME sequence; the runner's requiresSnapshot
 # probe is what makes it a 35-minute build or a 2-minute revert. Cold (no
 # snapshot): the whole chain runs and ends by taking one. Warm: every prereq is
@@ -1011,11 +1018,13 @@ do_console() {
     if console_alive; then
         say "already served on port $PORT"
     else
-        # Plan C (issue #54's sibling) replaces this one line with serve.py, which
-        # adds the POST endpoint that lets the console write the run folder here
-        # directly. The verb's surface is deliberately identical so that swap
-        # stays a one-line change.
-        nohup python3 -m http.server "$PORT" --directory "$REPO_ROOT/kennel_console" \
+        # serve.py is `python3 -m http.server --directory kennel_console` plus a
+        # POST endpoint, so the console it serves can write the run folder into
+        # OUT itself -- no Downloads hop, no unzip (kennel_console/send.md). It
+        # is passed OUT explicitly rather than through the environment so the
+        # log line says where the runs land even when the operator set
+        # KENNEL_DEMO_OUT in another shell.
+        nohup python3 "$REPO_ROOT/kennel_console/serve.py" --port "$PORT" --out "$OUT" \
             >"$CONSOLE_LOG" 2>&1 &
         echo $! > "$CONSOLE_PIDFILE"
         local t0=$SECONDS
@@ -1036,9 +1045,12 @@ do_console() {
         xdg-open "$CONSOLE_URL" >/dev/null 2>&1 &
     fi
     echo
-    say "compose the run in the browser, click 'generate run', then:"
+    say "compose the run in the browser, then either:"
+    say "  * click 'send to $(basename "$OUT")' -- it writes the run folder straight into $OUT"
+    say "  * or click 'generate run' and let the archive land in $DOWNLOADS"
+    say "then, in this terminal:"
     say "    $0 run"
-    say "it picks up the archive from $DOWNLOADS by itself -- no unzip, no path."
+    say "it finds whichever of the two is newer by itself -- no unzip, no path."
     say "stop the server with:  $0 console stop"
 }
 
@@ -1205,6 +1217,24 @@ do_down() {
 do_status() {
     "$REPO_ROOT/stack/transfer/kennel-transfer.sh" status
     echo
+    # Only when a serve.py is answering: the run folders it knows about are the
+    # ones `run` would pick between, and reading them from the server rather
+    # than from the filesystem is what proves the two agree about OUT. Gated on
+    # /api/health and not merely on the port answering -- a plain http.server
+    # would 404 here, and reporting that as "no runs" would be a lie about the
+    # directory rather than a fact about the server.
+    if curl -sf "$CONSOLE_ORIGIN/api/health" 2>/dev/null | grep -q '"kennel"'; then
+        local runs
+        runs="$(curl -sf "$CONSOLE_ORIGIN/api/runs" 2>/dev/null \
+                | sed -n 's/^[[:space:]]*"run"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+        if [ -n "$runs" ]; then
+            say "console runs in $OUT (newest first):"
+            printf '%s\n' "$runs" | head -5 | sed 's/^/[kennel-demo]   /'
+        else
+            say "console served, no run folders in $OUT yet"
+        fi
+        echo
+    fi
     local url
     if url="$("$REPO_ROOT/vm/test/verify-meshcat-host.sh" --quiet 2>/dev/null)"; then
         say "Meshcat reachable:  $url"

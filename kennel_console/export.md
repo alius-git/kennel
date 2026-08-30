@@ -198,8 +198,13 @@ older builds) and the assertions run on the bytes that land there. Needs no
 - **Where the folder lands is the browser's business.** The console cannot
   choose a directory, so #20's script takes a path to an unpacked run folder
   rather than assuming one.
-- **Unpacking is a manual step.** A real appliance would write the folder into a
-  designated workspace directory; the bypass note above is where that went.
+- **Unpacking is a manual step** — it was, when this was written. Served by
+  [`serve.py`](serve.py), a second button posts this same archive to the host,
+  which validates it and unpacks it into the run directory itself
+  ([`send.md`](send.md), issue #56). The bytes are identical either way, and
+  that suite asserts it by exporting both ways in one session. A real appliance
+  would still write the folder from inside itself; the bypass note above is
+  where the rest of that went.
 
 ## 7. What this feeds
 

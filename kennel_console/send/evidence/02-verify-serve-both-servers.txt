@@ -1,0 +1,56 @@
+# verify-serve.sh against BOTH servers (issue #56 adds KENNEL_SERVE_CMD).
+# The offline claim of serve.md was proven on http.server and still is;
+# serve.py must hold the same properties.
+
+$ ./kennel_console/verify-serve.sh 8061                    # python3 -m http.server
+1. vendored runtime vs the SRI hashes pinned in support.js
+  [ OK ] react.production.min.js
+  [ OK ] react-dom.production.min.js
+  [ OK ] babel.min.js
+2. no off-host references in what the browser loads
+  [ OK ] Kennel Console.dc.html loads only local assets
+  [ OK ] vendor/fonts/plex.css points at local woff2 only
+3. every asset is served over HTTP on :8061
+  [ -- ] server: python3 -m http.server 8061 --directory /home/thales/kennel/kennel_console
+  [ OK ] 200  Kennel%20Console.dc.html
+  [ OK ] 200  support.js
+  [ OK ] 200  vendor/react.production.min.js
+  [ OK ] 200  vendor/react-dom.production.min.js
+  [ OK ] 200  vendor/babel.min.js
+  [ OK ] 200  vendor/fonts/plex.css
+  [ OK ] 200  vendor/fonts/IBMPlexMono-400-latin.woff2
+  [ OK ] 200  vendor/fonts/IBMPlexMono-500-latin.woff2
+  [ OK ] 200  vendor/fonts/IBMPlexMono-600-latin.woff2
+  [ OK ] 200  vendor/fonts/IBMPlexSans-greek.woff2
+  [ OK ] 200  vendor/fonts/IBMPlexSans-latin.woff2
+4. headless render with all external DNS blocked
+  [ OK ] console booted offline, Compose view rendered, 0 unresolved placeholders
+
+PASS — one command serves an offline-capable console.
+
+$ KENNEL_SERVE_CMD='python3 $PWD/kennel_console/serve.py --port PORT --out <tmp>' \
+    ./kennel_console/verify-serve.sh 8062                   # serve.py
+1. vendored runtime vs the SRI hashes pinned in support.js
+  [ OK ] react.production.min.js
+  [ OK ] react-dom.production.min.js
+  [ OK ] babel.min.js
+2. no off-host references in what the browser loads
+  [ OK ] Kennel Console.dc.html loads only local assets
+  [ OK ] vendor/fonts/plex.css points at local woff2 only
+3. every asset is served over HTTP on :8062
+  [ -- ] server: python3 /home/thales/kennel/kennel_console/serve.py --port 8062 --out /tmp/kennel-serve-check
+  [ OK ] 200  Kennel%20Console.dc.html
+  [ OK ] 200  support.js
+  [ OK ] 200  vendor/react.production.min.js
+  [ OK ] 200  vendor/react-dom.production.min.js
+  [ OK ] 200  vendor/babel.min.js
+  [ OK ] 200  vendor/fonts/plex.css
+  [ OK ] 200  vendor/fonts/IBMPlexMono-400-latin.woff2
+  [ OK ] 200  vendor/fonts/IBMPlexMono-500-latin.woff2
+  [ OK ] 200  vendor/fonts/IBMPlexMono-600-latin.woff2
+  [ OK ] 200  vendor/fonts/IBMPlexSans-greek.woff2
+  [ OK ] 200  vendor/fonts/IBMPlexSans-latin.woff2
+4. headless render with all external DNS blocked
+  [ OK ] console booted offline, Compose view rendered, 0 unresolved placeholders
+
+PASS — one command serves an offline-capable console.
