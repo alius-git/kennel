@@ -1,0 +1,9 @@
+The browser joystick held full forward; max v = 0.50 m/s, gait WALKING_TROT.
+
+samples            28 over 27.0 sim-s
+mean vx            0.467 m/s   (range 0.459 .. 0.484)
+commanded          0.500 m/s  -> tracking 93% of command
+x advanced         12.49 m
+median z           0.3116 m
+belly contact      0 (0 = never fell)
+foot_contact seen  1111

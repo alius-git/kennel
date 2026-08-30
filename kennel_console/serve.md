@@ -75,13 +75,16 @@ python3 kennel_console/serve.py --port 8000 --out ~/kennel-runs
 It serves this directory exactly as the line above does — same URLs, same
 directory listing, the same `%20` — and adds three `localhost`-only `/api/`
 endpoints so the console can write its run folder to the host directly, with no
-download folder in between ([`send.md`](send.md)).
+download folder in between ([`send.md`](send.md)). `/api/health` also reports the
+rosbridge and Meshcat URLs when `kennel-demo.sh teleop` has discovered them —
+read per request, from `<out>/.kennel-bridge`, so a console that is already open
+picks them up without a restart ([`teleop.md`](teleop.md)).
 
 **`python3 -m http.server` is not deprecated by it.** It is still the command
 this record proved the offline claim on, still exactly what §2–§5 below assert,
 and still the one to use to check that nothing here depends on a live server:
 served that way the console feature-detects the absent `/api/`, renders no send
-button, and behaves as it always did. [`verify-serve.sh`](verify-serve.sh) is
+button and no teleop controls, opens no WebSocket, and behaves as it always did. [`verify-serve.sh`](verify-serve.sh) is
 run against **both** servers, and takes the server as a knob:
 
 ```bash

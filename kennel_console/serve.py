@@ -5,6 +5,7 @@ WHERE IT RUNS: HOST (the machine with the browser), from the repository root or
 anywhere -- it resolves its own directory.
 
     python3 kennel_console/serve.py [--port 8000] [--out ~/kennel-runs] [--dir DIR]
+                                    [--bridge ws://GUEST:9090/]
 
     demo/tools/kennel-demo.sh console      # what actually starts it
 
@@ -13,7 +14,8 @@ same URLs, same directory listing, same %20 in the page name (serve.md section 1
 -- plus three endpoints that let the console write its run folder where
 `kennel-demo.sh run` already reads:
 
-    GET  /api/health   {"kennel": true, "out": "<abs run dir>", "pin": "<sha>"}
+    GET  /api/health   {"kennel": true, "out": "<abs run dir>", "pin": "<sha>",
+                        "bridge": "<ws url>"|null, "meshcat": "<http url>"|null}
     POST /api/runs     body = the export archive; writes run-<stamp>/ under --out
     GET  /api/runs     the run folders present, newest first
 
@@ -59,6 +61,35 @@ RUN_DIR_RE = re.compile(r"^run-[0-9]{8}T[0-9]{6}Z$")
 # A run is ~10 kB. The cap exists so a mis-POSTed disk image is refused at the
 # header rather than buffered.
 MAX_UPLOAD = 8 * 1024 * 1024
+
+# Where `kennel-demo.sh teleop` leaves the URLs it discovered, one line each,
+# under --out. This server never runs virsh and never shells out: discovery
+# belongs to the driver, which already knows the guest, and this process stays
+# stdlib-only and localhost-bound (send.md section 7). Read per REQUEST, not at
+# startup, so starting a bridge does not mean restarting a console the operator
+# already has open.
+BRIDGE_FILE = ".kennel-bridge"
+MESHCAT_FILE = ".kennel-meshcat"
+
+# A URL this server hands to the page, which will open a WebSocket to it. Only
+# the two schemes that can mean anything here, and nothing with a control
+# character or whitespace -- the file is written by the driver, but a stray edit
+# should fail closed rather than become an attribute in the page.
+URL_RE = re.compile(r"^(?:wss?|https?)://[A-Za-z0-9.:_@\[\]-]+(?:/[^\s\x00-\x1f]*)?$")
+
+
+def side_channel(out_dir, name):
+    """First line of <out>/<name>, when it is a plausible URL. None otherwise.
+
+    Absent is the normal case: no teleop verb has run, so the console shows no
+    bridge controls -- exactly as it behaves under plain http.server.
+    """
+    try:
+        with open(os.path.join(out_dir, name), encoding="utf-8") as f:
+            value = f.readline().strip()
+    except OSError:
+        return None
+    return value if value and URL_RE.match(value) else None
 
 
 def host_pin():
@@ -229,6 +260,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     out_dir = None
     pin = None
+    bridge = None          # --bridge / $KENNEL_BRIDGE_URL, overriding the file
     server_version = "KennelConsoleServe/1.0"
 
     def _json(self, status, payload):
@@ -248,7 +280,13 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.split("?")[0] == "/api/health":
-            self._json(200, {"kennel": True, "out": self.out_dir, "pin": self.pin})
+            self._json(200, {"kennel": True, "out": self.out_dir, "pin": self.pin,
+                             # Resolved per request: `teleop` writes these while
+                             # the console is already open, and an operator who
+                             # has to restart the server to see a button has been
+                             # given a worse version of no button at all.
+                             "bridge": self.bridge or side_channel(self.out_dir, BRIDGE_FILE),
+                             "meshcat": side_channel(self.out_dir, MESHCAT_FILE)})
             return
         if self.path.split("?")[0] == "/api/runs":
             self._json(200, {"out": self.out_dir, "runs": list_runs(self.out_dir)})
@@ -301,6 +339,10 @@ def main(argv=None):
     ap.add_argument("--out", default=os.environ.get("KENNEL_DEMO_OUT")
                     or os.path.join(os.path.expanduser("~"), "kennel-runs"))
     ap.add_argument("--dir", default=HERE, help="docroot (default: kennel_console/)")
+    ap.add_argument("--bridge", default=os.environ.get("KENNEL_BRIDGE_URL"),
+                    help="rosbridge WebSocket URL to advertise in /api/health "
+                         "(default: the first line of <out>/.kennel-bridge, "
+                         "which kennel-demo.sh teleop writes)")
     args = ap.parse_args(argv)
 
     docroot = os.path.abspath(os.path.expanduser(args.dir))
@@ -318,6 +360,11 @@ def main(argv=None):
     pin = host_pin()
     Handler.out_dir = out_dir
     Handler.pin = pin
+    if args.bridge and not URL_RE.match(args.bridge):
+        print("NONZERO SCRIPT EXIT: --bridge is not a ws:// or http:// URL: %s" % args.bridge,
+              file=sys.stderr)
+        return 2
+    Handler.bridge = args.bridge
 
     def handler(*a, **kw):
         return Handler(*a, directory=docroot, **kw)
@@ -333,6 +380,8 @@ def main(argv=None):
     print("[serve.py] serving %s on http://localhost:%d/" % (docroot, args.port))
     print("[serve.py] run folders -> %s" % out_dir)
     print("[serve.py] stack pin     %s" % (pin or "UNKNOWN -- POST /api/runs will refuse"))
+    print("[serve.py] bridge       %s" % (args.bridge or
+          ("%s (when kennel-demo.sh teleop has written it)" % os.path.join(out_dir, BRIDGE_FILE))))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

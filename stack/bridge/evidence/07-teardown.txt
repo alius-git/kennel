@@ -1,0 +1,15 @@
+=== bridge really gone after teleop stop + down ===
+--- rosbridge/rosapi processes in the container ---
+(none)
+--- port 9090 ---
+closed
+--- pidfile ---
+ls: cannot access '/tmp/k13-bridge.pid': No such file or directory
+(removed)
+--- the side-channel files the console reads ---
+ls: cannot access '/home/thales/kennel-runs/.kennel-bridge': No such file or directory
+ls: cannot access '/home/thales/kennel-runs/.kennel-meshcat': No such file or directory
+(removed)
+--- /api/health no longer offers a bridge ---
+  "bridge": null,
+  "meshcat": null

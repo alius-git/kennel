@@ -91,7 +91,7 @@ Each line of output names the observable it read:
 
 | # | Check | Observable | Threshold | Provenance |
 |---|-------|-----------|-----------|------------|
-| 1 | `node-graph` | `ros2 node list` | exactly the six healthy-session nodes, no duplicates | [`launch.md`](launch.md) §6, [`known-good/06-healthy-graph.txt`](known-good/06-healthy-graph.txt) |
+| 1 | `node-graph` | `ros2 node list` | exactly the six healthy-session nodes, no duplicates — plus the three rosbridge nodes *tolerated* when `KENNEL_EXPECT_BRIDGE=1` | [`launch.md`](launch.md) §6, [`known-good/06-healthy-graph.txt`](known-good/06-healthy-graph.txt), [`bridge.md`](bridge.md) §6 |
 | 2 | `sim-clock` | `/clock` vs monotonic wall clock | advances ≥ 90 % of the requested window within the wall budget | §1.1; realtime rate reported, never asserted |
 | 3 | `state-stream` | `/quad_state` message count ÷ sim-seconds | 900–1100 Hz | 1000 Hz measured, [`launch.md`](launch.md) §6 |
 | 4 | `controller-alive` | `/controller_heartbeat` count ÷ sim-seconds | 1.5–2.5 Hz | 2 Hz measured; `controller_heartbeat_dt` default 0.5 s |
@@ -101,6 +101,14 @@ Each line of output names the observable it read:
 | 8 | `walking` | `/quad_control_target` vs `/quad_state` twist and pose | mean vx 0.20–0.35 m/s for a 0.3 m/s command, dx ≥ 0.15 m/s × window, and advance in each fifth of the window | 0.268 m/s measured, [`launch.md`](launch.md) §5 |
 | 9 | `no-fall` | `/quad_state` `belly_contact`, `z`, attitude | `belly_contact` false in every sample, **median** z in 0.20–0.45 m, tilt > 0.5 rad in ≤ 2 % of samples | §4 — every part of this was forced by an observed failure |
 | 10 | `composed-config` | `ros2 param get mpc_solver` + controller launch log | reports the active solver; asserts equality when `--expect-solver` is given | §3 |
+
+`KENNEL_EXPECT_BRIDGE=1` adds `/rosapi`, `/rosapi_params` and
+`/rosbridge_websocket` to the *allowed* set only — they are tolerated, never
+required. Without it a bridge left running reports them as `extra:`, which is
+the intended signal. `kennel-demo.sh verify` sets the knob when it can reach a
+bridge, and warns that checks 6–9 command their own trot, so a console that is
+connected and driving must be disconnected first — two publishers on
+`/quad_control_target` do not merge ([`bridge.md`](bridge.md) §7).
 
 Checks 2–4 are the **liveness gate**. If they fail, 5–9 are reported as failing
 and skipped rather than run: there is no point commanding a gait at a stack that

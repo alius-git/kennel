@@ -268,6 +268,11 @@ themselves: *send*, then `kennel-demo.sh run`. If it is ever built it should be
 off by default (`serve.py --allow-launch`), recorded here as a deviation rather
 than a bypass, and added to #26's log so nobody mistakes it for the design.
 
+> **Where this shape went next.** [`teleop.md`](teleop.md) reuses all of it: the
+> same `/api/health` probe carries the rosbridge URL, and the same "render only
+> when `state.kennel` is non-null" rule keeps the offline console offline. The
+> §6 boundary held too — the bridge is started by a driver verb, never a button.
+
 ## 7. Limits
 
 - **The host → guest hop remains.** `serve.py` writes on the host; the guest

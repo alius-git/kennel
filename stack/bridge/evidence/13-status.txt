@@ -1,0 +1,8 @@
+[kennel-demo]   run-20260830T200816Z
+[kennel-demo]   run-20260830T192838Z
+[kennel-demo]   run-20260830T192548Z
+[kennel-demo]   run-20260830T181403Z
+[kennel-demo]   run-20260830T173133Z
+
+[kennel-demo] Meshcat reachable:  http://192.168.122.32:7000/
+[kennel-demo] bridge reachable:   ws://192.168.122.32:9090/

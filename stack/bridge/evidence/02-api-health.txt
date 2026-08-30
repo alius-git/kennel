@@ -1,0 +1,7 @@
+{
+  "kennel": true,
+  "out": "/home/thales/kennel-runs",
+  "pin": "dcf53c596339afd45b82f12c54b1e93e8273c2f4",
+  "bridge": "ws://192.168.122.32:9090/",
+  "meshcat": "http://192.168.122.32:7000/"
+}

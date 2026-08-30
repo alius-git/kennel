@@ -229,6 +229,13 @@ ros2 topic pub -r 20 /quad_control_target interfaces/msg/QuadControlTarget \
 Publishing must be **continuous**, not one-shot: the controller consumes the
 latest target every cycle.
 
+> **A third way to command both of these: the browser.** `kennel-demo.sh teleop`
+> starts the rosbridge that ships unused in the pinned image, and the console's
+> Interventions joystick then publishes `/quad_control_target` at the same 20 Hz
+> and calls the same `SetParameters` service. Same surfaces as §4.1 and §4.2,
+> reached over a WebSocket instead of the CLI — [`bridge.md`](bridge.md) and
+> [`kennel_console/teleop.md`](../kennel_console/teleop.md).
+
 ### 4.3 Other controls the same node exposes
 
 Useful when a run goes bad, and all reachable from the CLI: `/set_emergency_damping_mode`

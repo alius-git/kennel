@@ -1,0 +1,4 @@
+
+pass=10 fail=0
+VERDICT: PASS -- healthy and walking
+kennel-verify: report in /tmp/kennel-verify (exit 0)

@@ -1,0 +1,37 @@
+$ (browser) E-STOP clicked while the robot was trotting forward
+E-STOP clicked
+['emergency damping requested — target zeroed', 'halted at fall · controller latched to damping', 'halted at fall · controller latched to damping', 'halted at fall · controller latched to damping', 'halted at fall · controller latched to damping', 'halted at fall · controller latched to damping', 'halted at fall · controller latched to damping', 'FALL: belly contact, pitch −38°, height 0.09 m — controller latched to damping mode']
+
+controller log, last lines:
+[mitcontrollernode-1] [INFO] [1788129031.467487206] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1788129031.467543430] [mit_controller_node]: Foot [2] has early contact
+[mitcontrollernode-1] [INFO] [1788129031.717718428] [mit_controller_node]: Foot [0] has early contact
+[mitcontrollernode-1] [INFO] [1788129031.717767450] [mit_controller_node]: Foot [3] has early contact
+[mitcontrollernode-1] [INFO] [1788129031.967661763] [mit_controller_node]: Foot [1] has early contact
+[mitcontrollernode-1] [INFO] [1788129031.967712577] [mit_controller_node]: Foot [2] has early contact
+
+quad_state 6 s after the E-STOP:
+t_sim,x,y,z,vx,vy,vz,quat_w,foot_contact,belly,n_state,n_gait,n_hb
+0.0,68.4881,-1.1886,0.0754,-0.0001,-0.0,0.0,0.9987,1111,0,1001,100,2
+1.0,68.4879,-1.1886,0.0754,-0.0001,-0.0,0.0,0.9987,1111,0,2001,200,4
+2.0,68.4878,-1.1886,0.0754,-0.0001,-0.0,0.0,0.9987,1111,0,3001,300,6
+3.0,68.4877,-1.1887,0.0754,-0.0001,0.0,0.0,0.9987,1111,0,4001,400,8
+4.0,68.4876,-1.1886,0.0754,-0.0001,0.0,0.0,0.9987,1111,0,5000,500,10
+5.0,68.4875,-1.1886,0.0754,-0.0001,-0.0,-0.0,0.9987,1111,0,6001,600,12
+6.0,68.4874,-1.1887,0.0754,-0.0001,-0.0,-0.0,0.9987,1111,0,7001,700,14
+
+--------------------------------------------------------------------------
+READ THE FIRST LINE ONLY as teleop's own message:
+
+    'emergency damping requested — target zeroed'
+
+The 'halted at fall' and 'FALL: belly contact, pitch -38 deg' lines beside it
+come from MockDataSource's SCRIPTED DEMO, which is still running the Dashboard's
+panels -- this issue does not touch the DataSource seam, so the panels narrate
+a canned fall while the real robot is driven. They describe nothing that
+happened in the simulator. See kennel_console/teleop.md section 6.
+
+WHAT THE REAL STACK DID: body height fell from ~0.311 m (trotting) to 0.0754 m
+and stayed there, velocity 0.000 m/s, position fixed at x=68.49 -- the robot sat
+down where it was, which is what emergency damping is. The 'early contact' lines
+in the controller log are the legs meeting the ground on the way down.

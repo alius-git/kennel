@@ -64,7 +64,8 @@ PASSTHROUGH_ENV="KENNEL_CONTAINER KENNEL_CONTROLLER_NODE KENNEL_GAIT
   OBSERVE_SIM_SECONDS TROT_SETTLE_SIM_SECONDS TROT_SIM_SECONDS TARGET_VX
   TARGET_Z VX_MIN VX_MAX X_ADVANCE_MIN_MPS Z_MIN Z_MAX TILT_MAX_RAD FALL_TOLERANCE
   STATE_HZ_MIN STATE_HZ_MAX HB_HZ_MIN HB_HZ_MAX OVERTIME_BUDGET
-  CLOCK_WAIT_WALL_SECONDS KENNEL_EXPECT_SOLVER KENNEL_CONTROLLER_LOG"
+  CLOCK_WAIT_WALL_SECONDS KENNEL_EXPECT_SOLVER KENNEL_CONTROLLER_LOG
+  KENNEL_EXPECT_BRIDGE"
 
 usage() {
   cat <<'EOF'
@@ -79,6 +80,12 @@ Usage: kennel-verify.sh [options]        (run on the guest, kennel-vm)
   --out DIR              where to leave the report on the guest (default
                          /tmp/kennel-verify).
   -h, --help             this text.
+
+  KENNEL_EXPECT_BRIDGE=1 tolerate the three nodes a running rosbridge adds
+                         (/rosapi, /rosapi_params, /rosbridge_websocket) in
+                         check 1. Without it a bridge left up reports `extra:`,
+                         which is the intended signal. Never REQUIRES them.
+                         `kennel-demo.sh verify` sets it when the bridge is up.
 
 Exit codes: 0 all asserts passed, 1 an assert failed, 2 infrastructure error.
 Thresholds are environment knobs; see the header of this file.
@@ -215,22 +222,40 @@ EXPECTED_NODES="/drake_simulator
 /mit_controller_node
 /safe_start_launcher"
 
+# KENNEL_EXPECT_BRIDGE=1 makes the three nodes `kennel-demo.sh teleop` adds
+# TOLERATED, never required: the bridge is optional beside the stack, and a run
+# with one up is still a healthy six-node session plus a bridge. Tolerated
+# rather than expected on purpose -- the entries also linger 10-20 s after the
+# bridge is stopped (a dead DDS participant times out, the same effect this
+# check's own comment describes), so requiring them would turn a correct
+# teardown into a red run. See stack/bridge.md §4.
+BRIDGE_NODES="/rosapi
+/rosapi_params
+/rosbridge_websocket"
+TOLERATED_NODES=""
+[ "${KENNEL_EXPECT_BRIDGE:-0}" = 1 ] && TOLERATED_NODES="$BRIDGE_NODES"
+
 timeout 25 ros2 node list 2>/dev/null | grep '^/' | sort > "$WORK/nodes.txt"
 printf '%s\n' "$EXPECTED_NODES" | sort > "$WORK/nodes.expected"
+{ printf '%s\n' "$EXPECTED_NODES"
+  [ -n "$TOLERATED_NODES" ] && printf '%s\n' "$TOLERATED_NODES"
+} | grep '^/' | sort > "$WORK/nodes.allowed"
 sort -u "$WORK/nodes.txt" > "$WORK/nodes.uniq"
 missing="$(comm -23 "$WORK/nodes.expected" "$WORK/nodes.uniq" | tr '\n' ' ')"
-extra="$(comm -13 "$WORK/nodes.expected" "$WORK/nodes.uniq" | tr '\n' ' ')"
+extra="$(comm -13 "$WORK/nodes.allowed" "$WORK/nodes.uniq" | tr '\n' ' ')"
 # Stale joy_to_target copies survive a bad teardown and show up as duplicates
 # (launch.md §7 trap 6); two nodes of the same name is not a healthy graph.
 dups="$(uniq -d "$WORK/nodes.txt" | tr '\n' ' ')"
 node_detail="$(tr '\n' ' ' < "$WORK/nodes.txt")"
+NODE_CRITERION="exactly the six healthy-session nodes, no duplicates"
+[ -n "$TOLERATED_NODES" ] && NODE_CRITERION="the six healthy-session nodes plus the three rosbridge nodes (KENNEL_EXPECT_BRIDGE=1), no duplicates"
 if [ -n "$missing" ] || [ -n "$extra" ] || [ -n "$dups" ]; then
   record FAIL "1 node-graph" "ros2 node list" \
     "${node_detail:-<empty>}[missing: ${missing:-none}][extra: ${extra:-none}][duplicate: ${dups:-none}]" \
-    "exactly the six healthy-session nodes, no duplicates"
+    "$NODE_CRITERION"
 else
   record PASS "1 node-graph" "ros2 node list" "the six expected nodes, no duplicates" \
-    "exactly the six healthy-session nodes, no duplicates"
+    "$NODE_CRITERION"
 fi
 
 # ------------------------------------------------------------- checks 2-4
