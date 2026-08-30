@@ -79,6 +79,8 @@ The in-depth documentation lives next to what it describes — the plan corpus i
   configs the pinned stack accepts.
 - [`kennel_console/export.md`](../kennel_console/export.md) — getting the
   generated artifacts out of the browser.
+- [`kennel_console/send.md`](../kennel_console/send.md) — the console writing
+  the run folder where the driver reads, through `serve.py`.
 
 ## Upstream
 

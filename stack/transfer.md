@@ -26,6 +26,15 @@ stack on the transferred files. Evidence in
 > the script. *Retirement path:* the appliance's run-manifest store and workspace
 > directory, at which point the console writes where the stack already reads and
 > this script has nothing left to do.
+>
+> **Half retired, 2026-08-30** ([#56](https://github.com/alius-git/kennel/issues/56),
+> [`kennel_console/send.md`](../kennel_console/send.md)). The run folder this
+> script consumes is now written by the console itself, through
+> `kennel_console/serve.py`, into the host's run directory — the browser's
+> download folder no longer stands in for a workspace, and `apply` starts from a
+> folder rather than from something an operator unpacked. **The host → guest hop
+> is what is left of the bypass**, and it is the whole of what retires when the
+> workspace directory lives inside the appliance.
 
 ## 1. What is delivered
 

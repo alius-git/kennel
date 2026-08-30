@@ -1,0 +1,99 @@
+$ ./kennel_console/verify-send.sh
+
+
+0. the send surface exists, and only because the server offers it
+  [PASS] GET /api/health reports a kennel server — {'kennel': True, 'out': '/tmp/tmp.uMuKBC9fMo/kennel-runs', 'pin': 'dcf53c596339afd45b82f12c54b1e93e8273c2f4'}
+  [PASS] health names the run directory — /tmp/tmp.uMuKBC9fMo/kennel-runs
+  [PASS] health names the stack pin — dcf53c596339afd45b82f12c54b1e93e8273c2f4
+  [PASS] the send button rendered
+  [PASS] it says where the bytes go — send to kennel-runs →
+  [PASS] generate run ↓ is still there
+  [PASS] the export strip still carries simulator_params_go2.yaml
+  [PASS] the export strip still carries mit_controller_sim_go2.yaml
+  [PASS] the export strip still carries commands.txt
+  [PASS] the export strip still carries run.json
+
+1. one click puts a run folder on the host's disk
+  [PASS] a new run folder appeared in OUT — run-20260830T201031Z
+  [PASS] it holds exactly the four artifacts — ['commands.txt', 'mit_controller_sim_go2.yaml', 'run.json', 'simulator_params_go2.yaml']
+  [PASS] simulator_params_go2.yaml is byte-identical to the rendered pane — 3697 B vs 3697 B
+  [PASS] mit_controller_sim_go2.yaml is byte-identical to the rendered pane — 3974 B vs 3974 B
+  [PASS] run.json carries the composed solver — PARTIAL_CONDENSING_HPIPM
+  [PASS] run.json carries the stack pin
+  [PASS] run.json's run equals the folder it landed in
+  [PASS] the strip reports the path the server wrote
+
+2. sent bytes == downloaded bytes, in one session
+  [PASS] generate run ↓ still downloads an archive — run-20260830T201032Z.zip
+  [PASS] simulator_params_go2.yaml is identical whether sent or downloaded — f2674ff56f59 vs f2674ff56f59
+  [PASS] mit_controller_sim_go2.yaml is identical whether sent or downloaded — 8b0ffdee3ad3 vs 8b0ffdee3ad3
+  [PASS] commands.txt is identical whether sent or downloaded — a83c79c99727 vs a83c79c99727
+  [PASS] run.json differs only in the stamp and the manifest id — ['generated_at', 'run', 'run_id']
+  [PASS] the two exports agree on every composed choice
+
+3. the archive kept beside the folder is the artifact the console produced
+  [PASS] run-<stamp>.zip was kept beside the folder
+  [PASS] every CRC-32 checks out
+  [PASS] four entries, all under the run folder — ['run-20260830T201031Z/simulator_params_go2.yaml', 'run-20260830T201031Z/mit_controller_sim_go2.yaml', 'run-20260830T201031Z/commands.txt', 'run-20260830T201031Z/run.json']
+  [PASS] every entry is STORED (export.md §2.2)
+  [PASS] its entries are byte-identical to the folder on disk
+
+4. the server refuses what is not a console export, and writes nothing
+  [PASS] wrong pin → 409 — 409 this run was generated against pin 00000000000000000000000000000000000
+  [PASS] three entries → 400 — 400 the archive is not a console export (3 entries, expected 4).
+  [PASS] a deflated entry → 400 — 400 entry 'run-20260830T030303Z/simulator_params_go2.yaml' is compressed; 
+  [PASS] an existing folder → 409 — 409 /tmp/tmp.uMuKBC9fMo/kennel-runs/run-20260830T201031Z already exists.
+  [PASS] not a zip at all → 400 — 400 the body is not a readable zip archive (File is not a zip file).
+  [PASS] a traversing folder name → 400 — 400 top-level entry '..' is not a run-<stamp>/ folder.
+  [PASS] nothing was written for any refused POST — []
+
+5. served by plain http.server the console is what it always was
+  [PASS] the console booted against a server with no /api/
+  [PASS] no send button
+  [PASS] generate run ↓ is unaffected
+  [PASS] zero unresolved placeholders
+  [PASS] the export strip is intact
+  [PASS] no console errors raised by the absent endpoint — 0
+
+6. no network escaped
+  [PASS] zero non-localhost requests — []
+
+ALL CHECKS PASSED
+
+serve.py said:
+  [serve.py] serving /home/thales/kennel/kennel_console on http://localhost:8071/
+  [serve.py] run folders -> /tmp/tmp.uMuKBC9fMo/kennel-runs
+  [serve.py] stack pin     dcf53c596339afd45b82f12c54b1e93e8273c2f4
+  [serve.py] 20:10:27Z "GET /Kennel%20Console.dc.html HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z "GET /Kennel%20Console.dc.html HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z "GET /support.js HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z "GET /vendor/fonts/plex.css HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z "GET /vendor/react.production.min.js HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z "GET /vendor/react-dom.production.min.js HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z "GET /api/health HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z "GET /vendor/fonts/IBMPlexMono-400-latin.woff2 HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z "GET /vendor/fonts/IBMPlexSans-latin.woff2 HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z "GET /vendor/fonts/IBMPlexMono-500-latin.woff2 HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z "GET /vendor/fonts/IBMPlexMono-600-latin.woff2 HTTP/1.1" 200 -
+  [serve.py] 20:10:27Z code 404, message File not found
+  [serve.py] 20:10:27Z "GET /favicon.ico HTTP/1.1" 404 -
+  [serve.py] 20:10:30Z "GET /api/health HTTP/1.1" 200 -
+  [serve.py] 20:10:31Z "GET /api/runs HTTP/1.1" 200 -
+  [serve.py] 20:10:31Z "GET /api/runs HTTP/1.1" 200 -
+  [serve.py] 20:10:31Z wrote /tmp/tmp.uMuKBC9fMo/kennel-runs/run-20260830T201031Z
+  [serve.py] 20:10:31Z "POST /api/runs HTTP/1.1" 201 -
+  [serve.py] 20:10:32Z "GET /api/runs HTTP/1.1" 200 -
+  [serve.py] 20:10:32Z "POST /api/runs HTTP/1.1" 409 -
+  [serve.py] 20:10:32Z refused 409 this run was generated against pin 0000000000000000000000000000000000000000, the stack is pinned at dcf53c596339afd45b82f12c54b1e93e8273c2f4.
+  [serve.py] 20:10:32Z "POST /api/runs HTTP/1.1" 400 -
+  [serve.py] 20:10:32Z refused 400 the archive is not a console export (3 entries, expected 4).
+  [serve.py] 20:10:32Z "POST /api/runs HTTP/1.1" 400 -
+  [serve.py] 20:10:32Z refused 400 entry 'run-20260830T030303Z/simulator_params_go2.yaml' is compressed; a console export is STORED only.
+  [serve.py] 20:10:32Z "POST /api/runs HTTP/1.1" 409 -
+  [serve.py] 20:10:32Z refused 409 /tmp/tmp.uMuKBC9fMo/kennel-runs/run-20260830T201031Z already exists.
+  [serve.py] 20:10:32Z "POST /api/runs HTTP/1.1" 400 -
+  [serve.py] 20:10:32Z refused 400 the body is not a readable zip archive (File is not a zip file).
+  [serve.py] 20:10:32Z "POST /api/runs HTTP/1.1" 400 -
+  [serve.py] 20:10:32Z refused 400 top-level entry '..' is not a run-<stamp>/ folder.
+
+exit 0

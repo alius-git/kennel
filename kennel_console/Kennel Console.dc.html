@@ -286,9 +286,18 @@ select{appearance:none}
                     <div style="font:500 9px 'IBM Plex Mono';color:{{ f.fg }}">{{ f.label }}</div>
                   </div>
                 </sc-for>
+                <sc-if value="{{ sendReady }}" hint-placeholder-val="{{ true }}">
+                  <div onClick="{{ onSend }}" style="border:1px solid #2f5d78;background:#14283a;border-radius:3px;padding:3px 9px;cursor:pointer;font:600 10px 'IBM Plex Mono';color:#8fc9ea" style-hover="background:#1a3448">{{ sendLabel }}</div>
+                </sc-if>
                 <div style="font:400 9px 'IBM Plex Mono';color:#5d6875;margin-left:auto">generate run ↓ saves all four together as <span style="color:#7c8794">run-&lt;timestamp&gt;.zip</span></div>
                 <sc-if value="{{ lastExport }}" hint-placeholder-val="{{ true }}">
                   <div style="font:500 9px 'IBM Plex Mono';color:#8fc9ea;width:100%">{{ lastExportLabel }} — unpack it, then transfer the two YAMLs into the container</div>
+                </sc-if>
+                <sc-if value="{{ sendMsg }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:500 9px 'IBM Plex Mono';color:{{ sendFg }};width:100%">{{ sendMsg }}</div>
+                </sc-if>
+                <sc-if value="{{ pinDiffers }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:500 9px 'IBM Plex Mono';color:#d98a84;width:100%">{{ pinDiffersLabel }}</div>
                 </sc-if>
               </div>
             </div>
@@ -1120,7 +1129,14 @@ const COMMAND_BLOCKS = [
    cmd: LAUNCH_PRELUDE + '\nros2 launch simulator simulator.launch.py sim:=go2'},
   {label: '2 · leg driver',
    cmd: LAUNCH_PRELUDE + '\nros2 launch drivers leg_driver_launch.py sim:=go2'},
-  {label: '3 · MIT controller — wait ~10 s for the robot to settle first',
+  // Issue #44: this label used to say "wait ~10 s", and #22 followed it
+  // literally into a controller started before the simulator had enumerated its
+  // joints. The number was wrong twice over — it accounted for the settle but
+  // not for simulator startup, and it drifted by 1/rate at any composed
+  // simulator_realtime_rate below 1.0. The advice below is true at every rate
+  // because it names an observable state and measures the settle in SIM
+  // seconds, the one clock the composer cannot move (launch.md §1).
+  {label: '3 · MIT controller — wait until /clock advances and /quad_state exists, then ~10 sim seconds to settle',
    cmd: LAUNCH_PRELUDE + '\nros2 launch controllers mit_controller.launch.py sim:=go2'}
 ];
 
@@ -1176,6 +1192,14 @@ function emitRunJson(cfg, runId, stamp) {
 function stampNow() {
   const iso = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
   return {iso: iso, dir: 'run-' + iso.replace(/[-:]/g, '')};
+}
+
+// The send button says where the bytes are going. serve.py reports its --out as
+// an absolute path; the last segment is the name the operator recognises and the
+// one kennel-demo.sh prints, so the label stays readable however long that is.
+function shortPath(p) {
+  const parts = String(p || '').split('/').filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : 'kennel-runs';
 }
 
 const ARTIFACT_NAMES = ['simulator_params_go2.yaml', 'mit_controller_sim_go2.yaml',
@@ -1441,6 +1465,10 @@ class Component extends DCLogic {
       yamlTab: 'sim', copied: '', runs: seedRuns(), sel: [], detail: null, pinFall: false,
       yamlModal: false, simText: '', pipeText: '', roundTrip: null, presets: [], presetSel: '',
       saved: '', lastExport: '',
+      // Null until /api/health answers (componentDidMount). Null is the normal
+      // state: served by plain http.server there is no such endpoint, and the
+      // console must then be exactly what it was before serve.py existed.
+      kennel: null, sendMsg: '', sendErr: false,
       colW: 60, rowA: 1.1, rowB: 0.95, rowC: 0.95,
       dist: {fx: 120, fy: 0, fz: 0, duration: 0.30},
       runSeq: 1
@@ -1460,7 +1488,25 @@ class Component extends DCLogic {
       const raw = localStorage.getItem('kennel.presets');
       if (raw) this.setState({presets: JSON.parse(raw)});
     } catch (e) {}
+    this.probeKennel();
     this.draw();
+  }
+
+  // Feature-detect the host server, once, and never let it matter. serve.py
+  // answers /api/health; `python3 -m http.server` answers 404 and offline
+  // answers nothing — both leave state.kennel null and the console unchanged.
+  // Everything here is deliberately defensive: this runs on the same tick that
+  // starts the 10 Hz mock DataSource, and a console that fails to boot because
+  // a *convenience* probe threw would be a far worse defect than no button.
+  // It is a same-origin request, so the suites' zero-non-localhost assertion
+  // holds (send.md §2).
+  probeKennel() {
+    try {
+      fetch('/api/health', {cache: 'no-store'})
+        .then(r => (r.ok ? r.json() : null))
+        .then(h => { if (h && h.kennel) this.setState({kennel: h}); })
+        .catch(() => {});
+    } catch (e) {}
   }
   componentWillUnmount() { if (this.ds) this.ds.stop(); }
   componentDidUpdate() {
@@ -1662,6 +1708,41 @@ class Component extends DCLogic {
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     this.setState({saved: name});
     setTimeout(() => this.setState(s => (s.saved === name ? {saved: ''} : null)), 1600);
+  }
+
+  // The other end of `save`: hand the same archive to the host instead of to
+  // the browser's downloader. Deliberately the same three lines as onGenerate —
+  // stampNow(), artifacts(), buildZip() — because the property that matters is
+  // that a sent run and a downloaded run are the same bytes. Anything that
+  // built the body differently here would be a second exporter to keep in step
+  // (export.md §2.1). The server validates and can refuse; its message is shown
+  // verbatim rather than paraphrased, because it names the pin or the path the
+  // operator has to act on. See send.md.
+  send(cfg) {
+    const stamp = stampNow();
+    const id = this.runId();
+    const files = artifacts(cfg, id, stamp);
+    const blob = buildZip(files.map(f => ({name: stamp.dir + '/' + f.name, text: f.text})),
+                          new Date(stamp.iso));
+    this.setState({sendMsg: 'sending ' + stamp.dir + ' …', sendErr: false});
+    const show = (msg, err) => this.setState({sendMsg: msg, sendErr: !!err});
+    blob.arrayBuffer()
+      .then(buf => fetch('/api/runs', {method: 'POST',
+                                       headers: {'Content-Type': 'application/zip'},
+                                       body: new Uint8Array(buf)}))
+      .then(r => r.json().then(j => ({ok: r.ok, body: j})))
+      .then(res => {
+        if (!res.ok) { show((res.body && res.body.error) || 'the server refused the run', true); return; }
+        // Same manifest staging Generate run does: the run is composed and now
+        // exists somewhere, which is exactly what the Runs view records.
+        this.setState(s => ({
+          runs: [{id: id, dur:'—', verdict:'staged', counters:'not yet run', cfg: clone(s.cfg)}].concat(s.runs),
+          runSeq: s.runSeq + 1,
+          sendMsg: 'saved ' + res.body.path,
+          sendErr: false
+        }));
+      })
+      .catch(e => show('could not reach the host server: ' + e, true));
   }
   dragCol(e) {
     e.preventDefault();
@@ -1872,6 +1953,21 @@ class Component extends DCLogic {
           .filter(f => f.name === name)[0].text)})),
       lastExport: st.lastExport,
       lastExportLabel: st.lastExport ? 'saved ' + st.lastExport : '',
+
+      // Present only when serve.py is the server (state.kennel). The pin
+      // difference is surfaced here rather than discovered at send time: the
+      // server would refuse the POST, and being told before composing beats
+      // being told after.
+      sendReady: !!st.kennel,
+      sendLabel: 'send to ' + (st.kennel ? shortPath(st.kennel.out) : 'kennel-runs') + ' →',
+      onSend: () => this.send(cfg),
+      sendMsg: st.sendMsg,
+      sendFg: st.sendErr ? '#d98a84' : '#8fc9ea',
+      pinDiffers: !!(st.kennel && st.kennel.pin && st.kennel.pin !== PIN_SHA),
+      pinDiffersLabel: st.kennel && st.kennel.pin
+        ? 'server pin differs — this export will be refused (server ' + st.kennel.pin.slice(0, 12)
+          + ', console ' + PIN_SHA.slice(0, 12) + ')'
+        : '',
 
       // Generate run does both halves of its name: it stages the manifest and
       // writes the run folder out as an archive. It no longer jumps to the Runs

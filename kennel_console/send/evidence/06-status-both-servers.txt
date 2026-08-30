@@ -1,0 +1,16 @@
+# `status` reads the run listing from the server, and only from a serve.py.
+# A plain http.server answers the port but has no /api/: reporting that as
+# "no runs" would be a lie about the directory, so the block is gated on
+# /api/health rather than on the port answering.
+
+$ python3 -m http.server 8000 --directory kennel_console &   # not serve.py
+$ ./demo/tools/kennel-demo.sh status | grep -E 'console runs|no run folders'
+  (no output -- correct: the driver says nothing about runs it cannot ask about)
+
+$ ./demo/tools/kennel-demo.sh console --no-open              # serve.py
+$ ./demo/tools/kennel-demo.sh status
+[kennel-demo] console runs in /home/thales/kennel-runs (newest first):
+[kennel-demo]   run-20260830T200816Z
+[kennel-demo]   run-20260830T192838Z
+[kennel-demo]   run-20260830T192548Z
+[kennel-demo]   run-20260830T181403Z

@@ -63,6 +63,31 @@ No build step, no `npm install`, no dependencies beyond a Python 3 that is
 already a prerequisite of the Yuruna host baseline
 ([`vm/host-baseline.md`](../vm/host-baseline.md)).
 
+### 1.1 What the driver runs instead (issue #56)
+
+[`kennel_console/serve.py`](serve.py) is the command
+[`demo/tools/kennel-demo.sh console`](../demo/tools/kennel-demo.sh) starts:
+
+```bash
+python3 kennel_console/serve.py --port 8000 --out ~/kennel-runs
+```
+
+It serves this directory exactly as the line above does — same URLs, same
+directory listing, the same `%20` — and adds three `localhost`-only `/api/`
+endpoints so the console can write its run folder to the host directly, with no
+download folder in between ([`send.md`](send.md)).
+
+**`python3 -m http.server` is not deprecated by it.** It is still the command
+this record proved the offline claim on, still exactly what §2–§5 below assert,
+and still the one to use to check that nothing here depends on a live server:
+served that way the console feature-detects the absent `/api/`, renders no send
+button, and behaves as it always did. [`verify-serve.sh`](verify-serve.sh) is
+run against **both** servers, and takes the server as a knob:
+
+```bash
+KENNEL_SERVE_CMD='python3 kennel_console/serve.py --port PORT' ./kennel_console/verify-serve.sh
+```
+
 ## 2. Offline behaviour — what issue #16 asked, and what was actually true
 
 The issue asked to "confirm it degrades fine without network, or vendor the

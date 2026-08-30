@@ -210,23 +210,37 @@ demo/tools/kennel-demo.sh console
 
 That serves `kennel_console/` in the background and opens
 `http://localhost:8000/Kennel%20Console.dc.html` in your browser. Pick the
-solver and the realtime rate, click **generate run**, and let the browser save
-the archive wherever it normally does. Then:
+solver and the realtime rate, then take either route out of the browser:
+
+- **send to kennel-runs** — the run folder is written straight into
+  `~/kennel-runs` by the server, and the strip tells you the path
+  ([`kennel_console/send.md`](../kennel_console/send.md));
+- **generate run ↓** — the archive lands wherever your browser saves.
+
+Then, either way:
 
 ```bash
 demo/tools/kennel-demo.sh run
 ```
 
-No `unzip`, and no path typed: `run` finds the archive in `~/Downloads`,
-validates it (exactly one `run-<stamp>/` holding exactly the four files of
-[`export.md` §1](../kennel_console/export.md)), unpacks it into `~/kennel-runs`,
-and applies it. If the browser saves somewhere else, set `KENNEL_DOWNLOADS`.
+No `unzip`, and no path typed. `run` takes whichever is newer: the folder in
+`~/kennel-runs` or the archive in `~/Downloads` — and it says which it picked
+and why. An archive is validated before anything is written (exactly one
+`run-<stamp>/` holding exactly the four files of
+[`export.md` §1](../kennel_console/export.md)) and unpacked into `~/kennel-runs`.
+If the browser saves somewhere else, set `KENNEL_DOWNLOADS`.
+
+The **send** button appears only when the console is served by
+`kennel_console/serve.py`, which is what `console` starts. It is the console
+asking the server whether it is there — served any other way the button is
+simply absent and nothing else changes.
 
 `console` leaves the server running so you can compose again in the same
 session; `console stop` ends it. It refuses to kill a server on that port that it
 did not start — if `lsof -i :8000` shows someone else's, that is theirs.
 
-To use a plain server instead, nothing has changed:
+To use a plain server instead, nothing has changed — the console works exactly
+as before, minus the send button:
 
 ```bash
 python3 -m http.server 8000 --directory kennel_console
@@ -288,6 +302,8 @@ Symptoms the dry run already met, plus the driver's own failure modes:
 | `run` picked the wrong run | It prints which one and why, on the line under `run`. It takes the newest by mtime across `$KENNEL_DEMO_OUT/run-*/` and `$KENNEL_DOWNLOADS/run-*.zip`, so an old browser download can win if you composed nothing since. Name it explicitly: `kennel-demo.sh run ~/Downloads/run-<stamp>.zip` |
 | `run`/`transfer`: `is missing:` or `carries entries a console export does not` | The archive is not a console export — the four files of [`export.md` §1](../kennel_console/export.md), under one `run-<stamp>/`. Nothing was written. Re-export rather than hand-assembling one |
 | `up` exits 3, or `run` hangs on the `guest` phase | The guest never became reachable within `KENNEL_UP_TIMEOUT` (600 s). Watch the boot: `virsh console <domain>` (leave with `Ctrl+]`). Raise the bound on a slow host |
+| No **send to kennel-runs** button in the console | The page asks `/api/health` once and renders it only on an answer. Check the server: `curl -s localhost:8000/api/health` should report `"kennel": true`. A plain `python3 -m http.server` has no such endpoint — that is the supported offline path, not a fault ([`send.md` §2.1](../kennel_console/send.md)) |
+| **send** says the server refused the run | The message is the server's own. `409` with two pins = composed against another revision, re-export from a console served at the stack pin; `409 … already exists` = a second send inside the same second, compose again ([`send.md` §2.3](../kennel_console/send.md)). Nothing was written either way |
 | `console`: `port 8000 answers, but .console.pid does not exist` | Another server is on that port — possibly your own `python3 -m http.server`. The driver will not kill a process it did not start. `lsof -i :8000`, or use `KENNEL_CONSOLE_PORT` |
 | `setup` exits 2 | Read the `needs you` lines: each names the command. The three it will not do for you are group membership, the host installer, and anything indicating the clone or the host was changed by someone else (§2) |
 | `WARNING: more than one domain could be 'kennel-vm'` | Two guests are asking for the same lease hostname, so discovery is a coin flip. `virsh list --all`, then `virsh undefine --nvram --remove-all-storage <the stale one>` — or pin the good one with `KENNEL_VM_DOMAIN` ([`snapshot.md` §5.2](../vm/snapshot.md)) |

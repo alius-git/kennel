@@ -20,16 +20,17 @@ release checkout, the three patches, the config, the guest ISO, the gate
 ```bash
 demo/tools/kennel-demo.sh setup       # once per host — checks and does the prerequisites
 demo/tools/kennel-demo.sh provision   # once per host, ~35 min — creates the kennel-vm guest
-demo/tools/kennel-demo.sh console     # compose a run in the browser, click "generate run"
+demo/tools/kennel-demo.sh console     # compose a run in the browser, click "send to kennel-runs"
 demo/tools/kennel-demo.sh run         # the newest run, into the VM and walking — ~5 min
 demo/tools/kennel-demo.sh down        # stop the stack (container stays up)
 ```
 
 The first two are once per host. After that the loop is the last three, and
-`run` asks nothing of you: it finds the run you just composed — the `.zip` still
-sitting in `~/Downloads` is fine — starts the guest if it is powered off, applies
-the run, launches the stack, verifies it, and prints the Meshcat URL with the
-robot already trotting.
+`run` asks nothing of you: it finds the run you just composed — written straight
+into `~/kennel-runs` by the console's **send** button, or the `.zip` still
+sitting in `~/Downloads`, whichever is newer — starts the guest if it is powered
+off, applies the run, launches the stack, verifies it, and prints the Meshcat URL
+with the robot already trotting.
 
 ```bash
 demo/tools/kennel-demo.sh walk stop   # return the gait to STAND
@@ -56,4 +57,4 @@ The in-depth documentation is indexed in [`docs/`](docs/README.md):
 - [Stack](docs/README.md#stack--running-the-pinned-dfki-quad) — launch,
   mapping, transfer, verify, and the composed run.
 - [Console](docs/README.md#console--the-kennel-console-prototype) — serving,
-  composer scope, config generation, export.
+  composer scope, config generation, export, and the send-to-host path.
