@@ -1,0 +1,24 @@
+Usage:
+  Once per host
+    kennel-demo.sh setup [--yes]     # check/do the prerequisites (runbook 2)
+    kennel-demo.sh provision [--yes] # clean guest -> baseline snapshot (~35 min; DESTROYS kennel-vm)
+
+  Each session
+    kennel-demo.sh up                # start the guest and make it reachable
+    kennel-demo.sh console [--no-open|stop]   # serve the console and open it
+    kennel-demo.sh run [run-folder|zip]       # transfer -> launch -> verify -> walk
+    kennel-demo.sh walk stop         # return the gait to STAND
+    kennel-demo.sh down              # stop the stack in the container
+    kennel-demo.sh reset             # revert to the baseline snapshot (~1-3 min)
+
+  Pieces
+    kennel-demo.sh all               # compose -> transfer -> launch -> verify -> walk (~6 min)
+    kennel-demo.sh compose [outdir]  # default outdir: ~/kennel-runs
+    kennel-demo.sh transfer [run-folder|zip]  # default: newest run, folder or zip
+    kennel-demo.sh launch
+    kennel-demo.sh verify
+    kennel-demo.sh walk              # trot + print the Meshcat URL
+    kennel-demo.sh status
+    kennel-demo.sh snapshot [--yes]  # re-take the baseline from a green guest
+    kennel-demo.sh halt              # power the guest down cleanly
+

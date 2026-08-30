@@ -1,0 +1,38 @@
+# 'transfer'/'run' refuse anything that is not a console export, and write nothing.
+# (issue #54).  2026-08-30T19:30:47Z
+
+# ~/Downloads is the one directory on the machine where a same-shaped .zip from
+# somewhere else is genuinely likely, so the archive is validated before any write.
+
+$ demo/tools/kennel-demo.sh transfer three.zip
+NONZERO SCRIPT EXIT: 'three.zip' is missing: mit_controller_sim_go2.yaml
+  Every console export carries all four (export.md §1). Re-export.
+  EXIT=2
+
+$ demo/tools/kennel-demo.sh transfer extra.zip
+NONZERO SCRIPT EXIT: 'extra.zip' carries entries a console export does not:
+  run-20260830T200000Z/notes.txt
+  Re-export rather than hand-assembling an archive.
+  EXIT=2
+
+$ demo/tools/kennel-demo.sh transfer two.zip
+NONZERO SCRIPT EXIT: 'two.zip' holds more than one top-level entry: run-a run-b.
+  A console export is exactly one run-<stamp>/ (export.md §2.2).
+  EXIT=2
+
+$ demo/tools/kennel-demo.sh transfer junk.zip
+NONZERO SCRIPT EXIT: 'junk.zip' is not readable as a zip archive.
+  The console exports run-<stamp>.zip; this is something else.
+  EXIT=2
+
+$ demo/tools/kennel-demo.sh transfer      # with nothing in either directory
+NONZERO SCRIPT EXIT: no run given, and none found in <sandbox>/empty or <sandbox>/empty.
+  Compose one in the console:  demo/tools/kennel-demo.sh console      (then click Generate run)
+  Or have the driver compose it:  demo/tools/kennel-demo.sh compose
+  Different download directory? Set KENNEL_DOWNLOADS.
+  EXIT=2
+
+# In every refused case the run directory is untouched:
+$ ls $KENNEL_DEMO_OUT
+run-20260101T000000Z
+run-20260830T190000Z

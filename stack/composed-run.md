@@ -253,6 +253,30 @@ is standing by the time the verdict prints. The screenshot therefore needs its
 own trot, from `p21-trot-hold.sh`. Perturbing #14's measurement windows to get a
 photograph would have traded evidence for a prop.
 
+### 6.4 The launcher's "stopping anything already running" needs a staged stopper
+
+The first thing `p21-launch-from-commands.sh` does is
+
+```bash
+sudo docker exec "$CONTAINER" bash -c '[ -x /root/k13-stop.sh ] && /root/k13-stop.sh'
+```
+
+which does nothing at all unless something has already put `k13-stop.sh` inside
+the container. Nothing in this tool does; `kennel-demo.sh down` does, with a
+`docker cp`. So on a guest that has not run `down` since it came up — a fresh
+`provision`, or anything after a `reset` — a **second** launch used to stack a
+second simulator on the first: the sim clock continues from the previous session
+instead of restarting near zero, the robot is still lying where the previous
+controller dropped it, and the new controller never reaches "Starting
+controller" through a stream of `early contact` faults.
+
+Since [#54](https://github.com/alius-git/kennel/issues/54), `kennel-demo.sh
+launch` stages the stopper into the container before invoking this tool, so the
+guard is true on every launch. **Anything that calls this launcher directly must
+do the same**, or accept that its stop is a no-op. The symptom to recognise is a
+settle line reporting a sim clock in the tens of seconds on what should be a
+cold start. Recorded in [`demo/runbook.md` §7.3](../demo/runbook.md).
+
 ## 7. Limits
 
 - **One composition.** Two of the composer's seven fields are exercised. The
