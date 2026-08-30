@@ -1,0 +1,19 @@
+# setup's refusal to check out over changes it cannot account for (issue #54)
+# 2026-08-30T19:08:01Z
+
+## A throwaway clone: HEAD past the tag, plus one file the operator edited.
+
+==== setup: the once-per-host prerequisites (demo/runbook.md §2) ====
+[kennel-demo] ok     yuruna clone     /tmp/claude-1000/-home-thales-kennel/dc2518c5-f327-430d-bc45-05c50e22aa82/scratchpad/fake-yuruna
+[kennel-demo] ok     groups           libvirt kvm
+[kennel-demo] needs  yuruna tag       at 9bffc1c78530, not 2026.08.04 -- and the tree has changes to keep
+[kennel-demo]        Checking out would discard or conflict with work this driver did not make:
+[kennel-demo]          my-own-work.txt
+[kennel-demo]          guest/
+
+Nothing was checked out; the tree is untouched.
+
+## And on the real clone, where every change IS accounted for
+## (3 patch targets + the copied kennel files + the gitignored test.config.yml):
+
+unexpected changes: (none)

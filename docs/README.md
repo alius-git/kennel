@@ -7,8 +7,8 @@ The in-depth documentation lives next to what it describes — the plan corpus i
 
 ## Start here
 
-- [`demo/runbook.md`](../demo/runbook.md) — the whole demo in a handful of
-  commands: prerequisites, the driver verbs, phase-by-phase expectations.
+- [`demo/runbook.md`](../demo/runbook.md) — the whole demo in five commands:
+  prerequisites, the driver verbs, phase-by-phase expectations.
 - [`plan/design.md`](../plan/design.md) — the master design: locked decisions,
   POC topology, application inventory, repository layout.
 
@@ -35,7 +35,9 @@ The in-depth documentation lives next to what it describes — the plan corpus i
 
 - [`demo/runbook.md`](../demo/runbook.md) — one driver,
   [`demo/tools/kennel-demo.sh`](../demo/tools/kennel-demo.sh), wrapping every
-  phase: provision → compose → transfer → launch → verify → walk.
+  phase: setup → provision → console → run, and the pieces underneath
+  (compose → transfer → launch → verify → walk). Its §7 is the implementation
+  record of the driver's own command surface.
 - [`demo/dry-run.md`](../demo/dry-run.md) — the implementation record of the
   by-the-book run: measured timings, frictions found, doc fixes made.
 - [`demo/evidence/`](../demo/evidence/) — captured logs, metrics, and

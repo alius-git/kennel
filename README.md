@@ -12,28 +12,36 @@ in [`plan/design.md`](plan/design.md).
 
 ## Quick start
 
-Prerequisites are once per host — Yuruna baseline, three patches, guest ISO —
-collected in [`demo/runbook.md` §2](demo/runbook.md). Then, from the repo root:
+One prerequisite is yours: the [Yuruna host
+installer](demo/runbook.md), then a re-login. `setup` does the rest — the
+release checkout, the three patches, the config, the guest ISO, the gate
+([`demo/runbook.md` §2](demo/runbook.md)). From the repo root:
 
 ```bash
+demo/tools/kennel-demo.sh setup       # once per host — checks and does the prerequisites
 demo/tools/kennel-demo.sh provision   # once per host, ~35 min — creates the kennel-vm guest
-demo/tools/kennel-demo.sh all         # the demo, ~6 min — ends with the Meshcat URL
+demo/tools/kennel-demo.sh console     # compose a run in the browser, click "generate run"
+demo/tools/kennel-demo.sh run         # the newest run, into the VM and walking — ~5 min
+demo/tools/kennel-demo.sh down        # stop the stack (container stays up)
 ```
 
-Open the printed Meshcat URL, watch the robot trot, then:
+The first two are once per host. After that the loop is the last three, and
+`run` asks nothing of you: it finds the run you just composed — the `.zip` still
+sitting in `~/Downloads` is fine — starts the guest if it is powered off, applies
+the run, launches the stack, verifies it, and prints the Meshcat URL with the
+robot already trotting.
 
 ```bash
 demo/tools/kennel-demo.sh walk stop   # return the gait to STAND
-demo/tools/kennel-demo.sh down        # stop the stack (container stays up)
 demo/tools/kennel-demo.sh reset       # or: back to a clean guest in ~90 s
+demo/tools/kennel-demo.sh all         # the same demo, composing the run for you (unattended)
 ```
 
-Once a guest exists, `provision` never needs to run again — `all` is
-repeatable on its own. `provision` ends by freezing the guest as a **baseline
-snapshot**, so no mistake ever costs 35 minutes again: `reset` returns to it in
-about ninety seconds and proves the guest came back intact
-([`vm/snapshot.md`](vm/snapshot.md)). Each phase, what it wraps, and what
-success looks like: [`demo/runbook.md`](demo/runbook.md).
+`provision` ends by freezing the guest as a **baseline snapshot**, so no mistake
+ever costs 35 minutes again: `reset` returns to it in about ninety seconds and
+proves the guest came back intact ([`vm/snapshot.md`](vm/snapshot.md)). Each
+phase, what it wraps, and what success looks like:
+[`demo/runbook.md`](demo/runbook.md).
 
 ## Documentation
 

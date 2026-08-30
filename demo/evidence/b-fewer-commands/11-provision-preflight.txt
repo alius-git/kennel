@@ -1,0 +1,19 @@
+# 'provision' preflight -- the part this branch refactored (patch_state), exercised
+# WITHOUT the destructive rebuild: the confirmation prompt is declined.
+# 2026-08-30T19:30:28Z
+
+$ demo/tools/kennel-demo.sh provision      # answering 'n' at the prompt
+
+
+==== preflight ====
+[kennel-demo] patch applied    yuruna-no-password-expiry.patch
+[kennel-demo] patch applied    yuruna-save-ocrsidecar-export.patch
+[kennel-demo] patch applied    yuruna-ssh-autoinstall-confirm.patch
+[kennel-demo] guest ISO        /home/thales/yuruna/image/ubuntu.env/host.ubuntu.kvm.guest.ubuntu.server.24.iso
+[kennel-demo] kennel files installed into the Yuruna clone (provisioning.md 4.2)
+[kennel-demo] this DESTROYS any existing 'kennel-vm' guest -- INCLUDING the baseline
+[kennel-demo] snapshot 'kennel-vm-baseline' -- and rebuilds it from clean (~35 min).
+[kennel-demo] To return to the baseline instead, without rebuilding:  demo/tools/kennel-demo.sh reset
+[kennel-demo] aborted (pass --yes to skip the prompt).
+
+EXIT=2  (2 = aborted at the prompt, as designed -- nothing was destroyed)

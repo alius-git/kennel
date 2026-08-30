@@ -1,0 +1,37 @@
+# kennel-demo.sh setup -- run twice on a ready host (issue #54 acceptance)
+# 2026-08-30T19:06:36Z
+
+## run 2 (exit 0) -- item lines only
+[kennel-demo] ok     yuruna clone     /home/thales/git/yuruna
+[kennel-demo] ok     groups           libvirt kvm
+[kennel-demo] ok     yuruna tag       2026.08.04
+[kennel-demo] ok     patch            yuruna-no-password-expiry.patch
+[kennel-demo] ok     patch            yuruna-save-ocrsidecar-export.patch
+[kennel-demo] ok     patch            yuruna-ssh-autoinstall-confirm.patch
+[kennel-demo] ok     test.config      guestSequence: guest.ubuntu.server.24
+[kennel-demo] ok     automation       host settings already captured
+[kennel-demo] ok     guest ISO        /home/thales/yuruna/image/ubuntu.env/host.ubuntu.kvm.guest.ubuntu.server.24.iso
+[kennel-demo] ok     kennel files     sequences + guest scripts already current in the clone
+[kennel-demo] ok     config gate      0 FAIL
+[kennel-demo] ok     google-chrome    present (needed only by 'compose')
+[kennel-demo] this host is ready. Next:  demo/tools/kennel-demo.sh provision   (~35 min, once per host)
+
+## run 3 (exit 0) -- item lines only
+[kennel-demo] ok     yuruna clone     /home/thales/git/yuruna
+[kennel-demo] ok     groups           libvirt kvm
+[kennel-demo] ok     yuruna tag       2026.08.04
+[kennel-demo] ok     patch            yuruna-no-password-expiry.patch
+[kennel-demo] ok     patch            yuruna-save-ocrsidecar-export.patch
+[kennel-demo] ok     patch            yuruna-ssh-autoinstall-confirm.patch
+[kennel-demo] ok     test.config      guestSequence: guest.ubuntu.server.24
+[kennel-demo] ok     automation       host settings already captured
+[kennel-demo] ok     guest ISO        /home/thales/yuruna/image/ubuntu.env/host.ubuntu.kvm.guest.ubuntu.server.24.iso
+[kennel-demo] ok     kennel files     sequences + guest scripts already current in the clone
+[kennel-demo] ok     config gate      0 FAIL
+[kennel-demo] ok     google-chrome    present (needed only by 'compose')
+[kennel-demo] this host is ready. Next:  demo/tools/kennel-demo.sh provision   (~35 min, once per host)
+
+## diff of the two runs (empty = identical)
+(identical)
+
+## the full gate output differs only in the measured host-clock offset:

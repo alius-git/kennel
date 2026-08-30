@@ -2,12 +2,16 @@
 # Version: 2026.08.30
 # Kennel -- demo driver: the demo-script phases behind single verbs, so an
 # operator types a handful of commands instead of ~20 (follow-up to issue #22,
-# feeding #27's quickstart; snapshot/reset/up from #51).
+# feeding #27's quickstart; snapshot/reset/up from #51; setup/console/run and
+# the zip-accepting transfer from #54).
 #
 # Runs on the HOST. Every verb wraps the existing per-phase tool -- this script
 # adds orchestration only (guest discovery, scp, ordering, timing), so the
 # per-phase tools stay the source of truth for what each step does:
 #
+#   setup      the once-per-host prerequisites of demo/runbook.md 2, checked
+#              and where possible done (Yuruna clone, tag, patches, config,
+#              Enable-TestAutomation.ps1, guest ISO, Test-Config gate)
 #   provision  Yuruna sequence workload.guest.ubuntu.server.24.kennel.reset.ssh
 #              (cold path: start -> sizing -> stack -> baseline -> reset)
 #   snapshot   vm/guest/.../ubuntu.server.24.kennel-baseline-prep.sh (on guest)
@@ -15,53 +19,76 @@
 #   reset      Yuruna sequence workload.guest.ubuntu.server.24.kennel.reset.ssh
 #              (warm path: revert the disk snapshot, ~1-3 min)
 #   up         virsh start + lease/SSH wait + docker start
+#   halt       virsh shutdown + a bounded wait for the domain to stop
+#   console    python3 -m http.server on kennel_console/, backgrounded, opened
 #   compose    demo/tools/p22-console-demo.sh      (console UI, scripted clicks)
-#   transfer   stack/transfer/kennel-transfer.sh apply
+#   transfer   stack/transfer/kennel-transfer.sh apply   (run folder OR .zip)
 #   launch     stack/composed-run/tools/p21-launch-from-commands.sh  (on guest)
 #   verify     stack/verify/kennel-verify.sh                         (on guest)
 #   walk       vm/test/verify-meshcat-host.sh + p21-trot-hold.sh
 #   down       stack/known-good/tools/k13-stop.sh   (in the container)
 #
 # Usage:
-#   kennel-demo.sh provision [--yes]   # clean guest -> baseline snapshot (~35 min; DESTROYS kennel-vm)
-#   kennel-demo.sh all                 # compose -> transfer -> launch -> verify -> walk (~6 min)
-#   kennel-demo.sh up                  # start the guest and make it reachable
-#   kennel-demo.sh reset               # revert to the baseline snapshot (~1-3 min)
-#   kennel-demo.sh snapshot [--yes]    # re-take the baseline from a green guest
-#   kennel-demo.sh compose [outdir]    # default outdir: ~/kennel-runs
-#   kennel-demo.sh transfer [run-folder]   # default: newest run-* in outdir
-#   kennel-demo.sh launch
-#   kennel-demo.sh verify
-#   kennel-demo.sh walk [stop]         # start (default): trot + print the Meshcat URL
-#   kennel-demo.sh down                # stop the stack in the container
-#   kennel-demo.sh status
+#   Once per host
+#     kennel-demo.sh setup [--yes]     # check/do the prerequisites (runbook 2)
+#     kennel-demo.sh provision [--yes] # clean guest -> baseline snapshot (~35 min; DESTROYS kennel-vm)
+#
+#   Each session
+#     kennel-demo.sh up                # start the guest and make it reachable
+#     kennel-demo.sh console [--no-open|stop]   # serve the console and open it
+#     kennel-demo.sh run [run-folder|zip]       # transfer -> launch -> verify -> walk
+#     kennel-demo.sh walk stop         # return the gait to STAND
+#     kennel-demo.sh down              # stop the stack in the container
+#     kennel-demo.sh reset             # revert to the baseline snapshot (~1-3 min)
+#
+#   Pieces
+#     kennel-demo.sh all               # compose -> transfer -> launch -> verify -> walk (~6 min)
+#     kennel-demo.sh compose [outdir]  # default outdir: ~/kennel-runs
+#     kennel-demo.sh transfer [run-folder|zip]  # default: newest run, folder or zip
+#     kennel-demo.sh launch
+#     kennel-demo.sh verify
+#     kennel-demo.sh walk              # trot + print the Meshcat URL
+#     kennel-demo.sh status
+#     kennel-demo.sh snapshot [--yes]  # re-take the baseline from a green guest
+#     kennel-demo.sh halt              # power the guest down cleanly
 #
 # Knobs (all optional, environment variables):
-#   YURUNA_DIR            ~/git/yuruna       framework checkout (provision)
+#   YURUNA_DIR            ~/git/yuruna       framework checkout (setup, provision)
+#   YURUNA_TAG            2026.08.04         framework release setup checks out
 #   YURUNA_IMAGE_DIR      ~/yuruna/image/ubuntu.env   where Get-Image.ps1 put the ISO
 #   KENNEL_DEMO_OUT       ~/kennel-runs      where compose unpacks run folders
-#   KENNEL_CONSOLE_PORT   8000               port compose serves the console on
-#   KENNEL_SOLVER         PARTIAL_CONDENSING_OSQP   composed + expected solver
+#   KENNEL_DOWNLOADS      ~/Downloads        where the browser saves run-*.zip
+#   KENNEL_CONSOLE_PORT   8000               port compose/console serve on
+#   KENNEL_SOLVER         PARTIAL_CONDENSING_OSQP   composed solver, and the
+#                                            expected one when no run.json says
 #   KENNEL_RATE           0.75               composed simulator_realtime_rate
 #   KENNEL_SNAPSHOT_ID    kennel-vm-baseline snapshot id AND persisted domain name
-#   KENNEL_VM_DOMAIN      (discovered)       libvirt domain, for up/snapshot
+#   KENNEL_VM_DOMAIN      (discovered)       libvirt domain, for up/halt/snapshot
 #   KENNEL_UP_TIMEOUT     600                bound on the boot wait in `up`
 #   KENNEL_GUEST_HOSTNAME / KENNEL_GUEST_IP / KENNEL_SSH_KEY / KENNEL_GUEST_USER
 #   KENNEL_LIBVIRT_NET / KENNEL_CONTAINER    as in kennel-transfer.sh
 #
 # Exit codes: 0 success; otherwise the wrapped tool's exit code, or 2 for this
 # script's own argument/infrastructure errors. `up` adds 3 = the guest never
-# became reachable within the bound.
+# became reachable within the bound. `setup` uses 2 for anything it found that
+# it cannot do for you (group membership, a missing installer, a FAIL finding).
 #
-# See demo/runbook.md for the operator-facing walkthrough and vm/snapshot.md for
-# what the baseline snapshot is and what it costs.
+# See demo/runbook.md for the operator-facing walkthrough, vm/snapshot.md for
+# what the baseline snapshot is and what it costs, and vm/host-baseline.md for
+# what `setup` is automating.
 
 set -uo pipefail
 
 # --- REGION: knobs
 YURUNA_DIR="${YURUNA_DIR:-$HOME/git/yuruna}"
+YURUNA_TAG="${YURUNA_TAG:-2026.08.04}"
 IMAGE_DIR="${YURUNA_IMAGE_DIR:-$HOME/yuruna/image/ubuntu.env}"
 OUT="${KENNEL_DEMO_OUT:-$HOME/kennel-runs}"
+# Where the browser saves the console's archive. `transfer` and `run` look here
+# as well as in OUT, so composing by hand needs no unzip and no path typed
+# (issue #54); it is a knob because "Downloads" is a desktop convention, not a
+# guarantee -- a locale or a changed Chrome setting moves it.
+DOWNLOADS="${KENNEL_DOWNLOADS:-$HOME/Downloads}"
 PORT="${KENNEL_CONSOLE_PORT:-8000}"
 SOLVER="${KENNEL_SOLVER:-PARTIAL_CONDENSING_OSQP}"
 RATE="${KENNEL_RATE:-0.75}"
@@ -92,11 +119,21 @@ CONSOLE_URL="http://localhost:$PORT/Kennel%20Console.dc.html"
 # snapshot): the whole chain runs and ends by taking one. Warm: every prereq is
 # skipped and only the revert + asserts run. See vm/snapshot.md section 2.
 SEQUENCE="workload.guest.ubuntu.server.24.kennel.reset.ssh"
+# The one guest `test.config.yml` is scoped to. The stock template lists three;
+# leaving the other two in makes every cycle build guests this repo has no use
+# for (vm/host-baseline.md §3).
+GUEST_KEY="guest.ubuntu.server.24"
 
 say()  { echo "[kennel-demo] $*"; }
 warn() { echo "[kennel-demo] WARNING: $*" >&2; }
 fail() { echo "NONZERO SCRIPT EXIT: $1" >&2; shift; for l in "$@"; do echo "  $l" >&2; done; }
-usage() { sed -n '/^# Usage:/,/^#$/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+# The Usage block groups the verbs by when you reach for them and is therefore
+# full of blank `#` separator lines -- so it is delimited by the Knobs heading
+# that follows it, never by the first blank comment line.
+usage() {
+    sed -n '/^# Usage:/,/^# Knobs/p' "${BASH_SOURCE[0]}" \
+        | sed '$d' | sed 's/^# \{0,1\}//'
+}
 banner() { echo; echo "==== $* ===="; }
 
 # --- REGION: guest plumbing (same discovery as kennel-transfer.sh)
@@ -109,24 +146,64 @@ lease_ip() {
         | cut -d/ -f1 | tail -1
 }
 
+# Set once so a verb that calls need_guest twice cannot loop through `up`
+# twice: the second failure is a real one and must be reported, not retried.
+UP_ATTEMPTED=0
+
+# True when the guest answers an authenticated SSH shell right now. Sets
+# GUEST_IP/TARGET as a side effect when it does.
+guest_reachable() {
+    local ip="${GUEST_IP:-}"
+    [ -n "$ip" ] || ip="$(lease_ip)"
+    [ -n "$ip" ] || return 1
+    ssh "${SSH_OPTS[@]}" "$GUEST_USER@$ip" true 2>/dev/null || return 1
+    GUEST_IP="$ip"; TARGET="$GUEST_USER@$ip"
+    return 0
+}
+
 need_guest() {
-    [ -n "$GUEST_IP" ] || GUEST_IP="$(lease_ip)"
-    [ -n "$GUEST_IP" ] || {
-        fail "could not discover the guest IP on libvirt network '$LIBVIRT_NET'." \
-             "Is the guest running?   virsh list --all" \
-             "If it is merely shut off:  $0 up" \
-             "Override directly with: KENNEL_GUEST_IP=192.168.122.x $0 ..."
-        exit 2
-    }
-    TARGET="$GUEST_USER@$GUEST_IP"
-    ssh "${SSH_OPTS[@]}" "$TARGET" true 2>/dev/null || {
-        fail "cannot reach the guest over SSH at $TARGET." \
+    guest_reachable && { say "guest            $GUEST_HOSTNAME at $GUEST_IP"; return 0; }
+
+    # Not reachable. Before failing, look at WHY -- and note that "no lease" is
+    # NOT the signal. libvirt keeps a lease in its file until it expires, so a
+    # guest powered off a minute ago still resolves to an IP that nothing
+    # answers on. Reachability is the only honest test; the domain state is what
+    # says whether this is fixable here.
+    #
+    # A guest that is merely powered off is not an error the operator should
+    # have to translate into another verb -- it is the state a host reboot
+    # leaves behind, and `up` is the whole fix. Only that state is corrected
+    # automatically. A domain that is already RUNNING but unreachable is a
+    # different animal (mid-boot, or a broken network) and gets the diagnosis
+    # instead of a silent ten-minute wait inside a verb as innocuous as `status`.
+    if [ "$UP_ATTEMPTED" = 0 ]; then
+        UP_ATTEMPTED=1
+        local d state
+        if d="$(pick_domain 2>/dev/null)" && [ -n "$d" ]; then
+            state="$(virsh domstate "$d" 2>/dev/null)"
+            case "$state" in
+                "shut off"|shutoff|paused|crashed)
+                    say "guest '$d' is $state -- starting it ($0 up)"
+                    up_core || exit $?
+                    guest_reachable && return 0 ;;
+            esac
+        fi
+    fi
+
+    if [ -n "${GUEST_IP:-}" ] || [ -n "$(lease_ip)" ]; then
+        fail "cannot reach the guest over SSH at $GUEST_USER@${GUEST_IP:-$(lease_ip)}." \
              "Key: $SSH_KEY" \
-             "If the guest has just booted, sshWaitReady can take several minutes." \
-             "Or let the driver wait for it:  $0 up"
-        exit 2
-    }
-    say "guest            $GUEST_HOSTNAME at $GUEST_IP"
+             "The domain is running, so this is not a power state: it may still be booting" \
+             "(sshWaitReady can take minutes), or the lease is stale." \
+             "Let the driver wait for it:  $0 up" \
+             "Watch it boot:  virsh console <domain>        (leave with Ctrl+])"
+    else
+        fail "could not discover the guest IP on libvirt network '$LIBVIRT_NET'." \
+             "Is the guest defined?   virsh list --all" \
+             "If it is running but still booting:  $0 up   (it waits, bounded)" \
+             "Override directly with: KENNEL_GUEST_IP=192.168.122.x $0 ..."
+    fi
+    exit 2
 }
 
 # --- REGION: libvirt domain plumbing (issue #51)
@@ -219,6 +296,113 @@ guest_stage() {   # $1 = repo-relative script path
 
 latest_run() { ls -dt "$OUT"/run-*/ 2>/dev/null | head -1 | sed 's:/$::'; }
 
+# The four files a console export carries (kennel_console/export.md §1). The
+# stack reads only the two YAMLs, but a folder missing either of the other two
+# is not an export -- it is something hand-assembled, and transfer says so.
+ARTIFACTS=(simulator_params_go2.yaml mit_controller_sim_go2.yaml commands.txt run.json)
+
+# Newest run the operator could plausibly have meant, across BOTH places one can
+# appear: the folders `compose` unpacks into OUT, and the archives the browser
+# drops in DOWNLOADS when the composition was done by hand. Prints
+# "<path>\t<why>" so the caller can explain its choice -- picking the wrong run
+# silently is the one failure here the operator cannot see (they get a green
+# demo of the wrong configuration).
+pick_newest_run() {
+    local best="" best_t=0 c t
+    for c in "$OUT"/run-*/ ; do
+        [ -d "$c" ] || continue
+        c="${c%/}"
+        t="$(stat -c %Y "$c" 2>/dev/null)" || continue
+        [ "$t" -gt "$best_t" ] && { best="$c"; best_t="$t"; }
+    done
+    for c in "$DOWNLOADS"/run-*.zip ; do
+        [ -f "$c" ] || continue
+        t="$(stat -c %Y "$c" 2>/dev/null)" || continue
+        # Strictly newer, so a zip and the folder unpacked FROM it resolve to the
+        # folder -- re-running `run` after one must not unpack the same bytes again.
+        [ "$t" -gt "$best_t" ] && { best="$c"; best_t="$t"; }
+    done
+    [ -n "$best" ] || return 1
+    case "$best" in
+        *.zip) printf '%s\tnewest archive in %s\n' "$best" "$DOWNLOADS" ;;
+        *)     printf '%s\tnewest run folder in %s\n' "$best" "$OUT" ;;
+    esac
+}
+
+# Validate an export archive, then unpack it into OUT. Echoes the run folder.
+#
+# The validation is before any write and is the same shape as the one
+# kennel-transfer.sh does on a folder: what arrives here came out of a browser's
+# download directory, which is also where every other .zip on the machine lives.
+# Refusing early means a mis-picked archive costs a message, not a half-written
+# run directory that the next `transfer` would happily push into the guest.
+unpack_run_zip() {   # $1 = path to run-<stamp>.zip
+    local zip="$1" entries prefix n missing=""
+    entries="$(unzip -Z1 "$zip" 2>/dev/null)" || {
+        fail "'$zip' is not readable as a zip archive." \
+             "The console exports run-<stamp>.zip; this is something else."
+        exit 2
+    }
+    prefix="$(printf '%s\n' "$entries" | cut -d/ -f1 | sort -u)"
+    [ "$(printf '%s\n' "$prefix" | wc -l)" = 1 ] || {
+        fail "'$zip' holds more than one top-level entry: $(echo $prefix)." \
+             "A console export is exactly one run-<stamp>/ (export.md §2.2)."
+        exit 2
+    }
+    case "$prefix" in
+        run-*) ;;
+        *) fail "'$zip' has top-level entry '$prefix', not a run-<stamp>/ folder." \
+                "Re-export from the console rather than hand-assembling an archive."
+           exit 2 ;;
+    esac
+    for n in "${ARTIFACTS[@]}"; do
+        printf '%s\n' "$entries" | grep -qx "$prefix/$n" || missing="$missing $n"
+    done
+    [ -z "$missing" ] || {
+        fail "'$zip' is missing:$missing" \
+             "Every console export carries all four (export.md §1). Re-export."
+        exit 2
+    }
+    # And nothing else. A stray fifth file is not a console export, and this is
+    # an archive from a browser's download directory -- the one place on the
+    # machine where a same-named zip from somewhere else is likely. Directory
+    # entries are tolerated: the console emits none (four entries, export.md
+    # §2.2) but `zip -r` writes one, and that difference is not a defect.
+    local extra
+    extra="$(printf '%s\n' "$entries" | grep -v '/$' \
+             | grep -vxF "$(printf "$prefix/%s\n" "${ARTIFACTS[@]}")")"
+    [ -z "$extra" ] || {
+        fail "'$zip' carries entries a console export does not:" \
+             "$(echo $extra)" \
+             "Re-export rather than hand-assembling an archive."
+        exit 2
+    }
+
+    mkdir -p "$OUT"
+    # -o so unpacking the same archive twice is idempotent rather than an
+    # interactive overwrite prompt in the middle of a demo. Same bytes either way.
+    unzip -q -o "$zip" -d "$OUT" || { fail "could not unpack '$zip' into $OUT."; exit 2; }
+    [ -d "$OUT/$prefix" ] || {
+        fail "'$zip' unpacked without producing $OUT/$prefix."
+        exit 2
+    }
+    echo "$OUT/$prefix"
+}
+
+# The solver the run was COMPOSED with, from its own run.json -- read the way
+# kennel-transfer.sh reads the pin out of the same file, with sed rather than a
+# JSON dependency. This is what `verify --expect-solver` must be given: taking
+# it from $KENNEL_SOLVER instead means a by-hand HPIPM run is checked against the
+# OSQP default and fails a verification it should pass.
+solver_of_run() {   # $1 = run folder
+    [ -f "$1/run.json" ] || return 1
+    local v
+    v="$(sed -n 's/.*"mpc_solver"[[:space:]]*:[[:space:]]*"\([A-Za-z_]*\)".*/\1/p' \
+         "$1/run.json" | head -1)"
+    [ -n "$v" ] || return 1
+    echo "$v"
+}
+
 # Install the kennel sequences + guest scripts into the framework clone
 # (provisioning.md 4.2). Idempotent, so every verb that runs a sequence does it
 # rather than trusting memory -- skipping it is dry-run finding F3, a failure
@@ -230,6 +414,18 @@ install_kennel_files() {
     say "kennel files installed into the Yuruna clone (provisioning.md 4.2)"
 }
 
+# applied | missing | unknown, for one patch file. `git apply --reverse
+# --check` succeeding means the tree already carries the change; plain --check
+# succeeding means it does not and the patch would still apply cleanly. Neither
+# succeeding means the tree is at some third state -- a different tag, or an
+# edit on top -- and guessing at that is how you corrupt someone's clone.
+patch_state() {   # $1 = path to a .patch
+    if   git -C "$YURUNA_DIR" apply --reverse --check "$1" >/dev/null 2>&1; then echo applied
+    elif git -C "$YURUNA_DIR" apply         --check "$1" >/dev/null 2>&1; then echo missing
+    else echo unknown
+    fi
+}
+
 need_yuruna() {
     [ -d "$YURUNA_DIR" ] || {
         fail "no Yuruna checkout at $YURUNA_DIR." \
@@ -239,6 +435,297 @@ need_yuruna() {
 }
 
 # --- REGION: verbs
+# --- REGION: setup (issue #54)
+# The once-per-host prerequisites of demo/runbook.md §2, checked in one place and
+# done where a script is allowed to do them. It is a CHECKER first and a fixer
+# second: every item prints its state, and the ones this script must not decide
+# for you (group membership, the host installer, a FAIL finding) are reported as
+# `needs you` with the command to run, never silently worked around.
+#
+# Idempotent by construction -- every item asks the host what state it is in
+# rather than remembering what a previous run did, so a second `setup` on a ready
+# host is all `ok` and changes nothing.
+SETUP_BLOCKED=0
+setup_item() {   # $1 = ok|did|needs|info, $2 = item, $3.. = detail
+    local st="$1" item="$2"; shift 2
+    printf '[kennel-demo] %-6s %-16s %s\n' "$st" "$item" "$*"
+    [ "$st" = needs ] && SETUP_BLOCKED=$((SETUP_BLOCKED + 1))
+    return 0
+}
+setup_fix() { local l; for l in "$@"; do printf '[kennel-demo]        %s\n' "$l"; done; }
+
+# Changes in the Yuruna clone that this repo did NOT put there. Everything the
+# kennel workflow writes into the clone is accounted for: the three patches touch
+# exactly the files they name, `install_kennel_files` copies the sequences and
+# guest scripts, and test.config.yml is gitignored upstream. Whatever is left is
+# somebody's own work, and `setup` will not check out over it.
+yuruna_unexpected_changes() {
+    local expected=() f pth line known
+    for f in "$REPO_ROOT"/vm/patches/*.patch; do
+        while read -r pth; do [ -n "$pth" ] && expected+=("$pth"); done \
+            < <(sed -n 's|^+++ b/||p' "$f")
+    done
+    for f in "$REPO_ROOT"/vm/test/*.kennel*.yml; do
+        [ -e "$f" ] && expected+=("test/sequences/$(basename "$f")")
+    done
+    for f in "$REPO_ROOT"/vm/guest/ubuntu.server.24/*.sh; do
+        [ -e "$f" ] && expected+=("guest/ubuntu.server.24/$(basename "$f")")
+    done
+    # IFS= is load-bearing. Porcelain writes two status columns then a space:
+    # a MODIFIED file is " M path" and a plain `read` would eat that leading
+    # space, shifting every tracked path by one character -- which silently turns
+    # the three patched files into "changes this driver did not make".
+    while IFS= read -r line; do
+        [ -n "$line" ] || continue
+        pth="${line:3}"
+        # The operator's own config and the backup §3 tells them to take.
+        case "$pth" in test/test.config.yml*) continue ;; esac
+        known=0
+        for f in "${expected[@]}"; do [ "$f" = "$pth" ] && { known=1; break; }; done
+        [ "$known" = 1 ] || echo "$pth"
+    done < <(git -C "$YURUNA_DIR" status --porcelain 2>/dev/null)
+}
+
+# The guestSequence list as it currently stands, one key per line.
+config_guest_sequence() {   # $1 = path to test.config.yml
+    awk '/^guestSequence:/ {inb=1; next} inb && /^- / {sub(/^- /, ""); print; next} inb {exit}' "$1"
+}
+
+do_setup() {
+    local yes=0
+    [ "${1:-}" = "--yes" ] && yes=1
+
+    banner "setup: the once-per-host prerequisites (demo/runbook.md §2)"
+    mkdir -p "$OUT"
+
+    # 1. The clone. Nothing below this can even be looked at without it, so it is
+    #    the one item that stops the whole verb rather than counting a block.
+    if [ -d "$YURUNA_DIR/.git" ]; then
+        setup_item ok "yuruna clone" "$YURUNA_DIR"
+    else
+        setup_item needs "yuruna clone" "not at $YURUNA_DIR"
+        setup_fix "The host installer clones it, installs KVM/libvirt/pwsh and adds you to the groups:" \
+                  "  bash <(curl -fsSL https://raw.githubusercontent.com/alissonsol/yuruna/refs/heads/main/install/ubuntu.kvm.sh)" \
+                  "Then LOG OUT AND BACK IN, and run this verb again." \
+                  "Clone somewhere else? Set YURUNA_DIR."
+        return 2
+    fi
+
+    # 2. Group membership. A script cannot give itself groups it did not start
+    #    with -- the session's credentials were fixed at login -- so this is the
+    #    canonical `needs you`, and worth distinguishing from "never added".
+    # `id -nG` with no argument reports THIS PROCESS's groups -- what the session
+    # actually has. `id -nG <user>` queries the group database -- what the user
+    # has been granted. The two differing is precisely the "added, but you have
+    # not logged back in" case, and it is worth telling apart from "never added"
+    # because the fix is completely different.
+    local g me session_groups db_groups missing_groups="" stale_groups=""
+    me="$(id -un)"
+    session_groups=" $(id -nG 2>/dev/null) "
+    db_groups=" $(id -nG "$me" 2>/dev/null) "
+    for g in libvirt kvm; do
+        case "$session_groups" in *" $g "*) continue ;; esac
+        case "$db_groups" in
+            *" $g "*) stale_groups="$stale_groups $g" ;;
+            *)        missing_groups="$missing_groups $g" ;;
+        esac
+    done
+    if [ -z "$missing_groups$stale_groups" ]; then
+        setup_item ok "groups" "libvirt kvm"
+    elif [ -n "$stale_groups" ] && [ -z "$missing_groups" ]; then
+        setup_item needs "groups" "you are in$stale_groups, but this session predates that"
+        setup_fix "Log out and back in (or: newgrp libvirt), then run this verb again."
+    else
+        setup_item needs "groups" "not a member of:$missing_groups$stale_groups"
+        setup_fix "sudo usermod -aG libvirt,kvm $me    # then log out and back in" \
+                  "The host installer does this for you (vm/host-baseline.md §2)."
+    fi
+
+    # 3. The release. Kennel is validated against exactly one Yuruna tag; a clone
+    #    at some other revision is the cause of the 'matches neither state'
+    #    patch verdict below, so it is settled first.
+    local head want unexpected
+    want="$(git -C "$YURUNA_DIR" rev-parse "$YURUNA_TAG^{commit}" 2>/dev/null)"
+    if [ -z "$want" ]; then
+        git -C "$YURUNA_DIR" fetch --tags --quiet 2>/dev/null
+        want="$(git -C "$YURUNA_DIR" rev-parse "$YURUNA_TAG^{commit}" 2>/dev/null)"
+    fi
+    head="$(git -C "$YURUNA_DIR" rev-parse HEAD 2>/dev/null)"
+    if [ -z "$want" ]; then
+        setup_item needs "yuruna tag" "tag $YURUNA_TAG not in the clone, even after fetch --tags"
+        setup_fix "git -C $YURUNA_DIR fetch --tags     # needs network" \
+                  "Set YURUNA_TAG to validate against a different release."
+    elif [ "$head" = "$want" ]; then
+        setup_item ok "yuruna tag" "$YURUNA_TAG"
+    else
+        unexpected="$(yuruna_unexpected_changes)"
+        if [ -n "$unexpected" ]; then
+            setup_item needs "yuruna tag" "at ${head:0:12}, not $YURUNA_TAG -- and the tree has changes to keep"
+            setup_fix "Checking out would discard or conflict with work this driver did not make:"
+            printf '%s\n' "$unexpected" | while read -r pth; do setup_fix "  $pth"; done
+            setup_fix "Deal with those, then re-run. Nothing was changed."
+        elif git -C "$YURUNA_DIR" checkout --quiet "$YURUNA_TAG" 2>/dev/null; then
+            setup_item did "yuruna tag" "checked out $YURUNA_TAG"
+        else
+            setup_item needs "yuruna tag" "could not check out $YURUNA_TAG"
+            setup_fix "git -C $YURUNA_DIR checkout $YURUNA_TAG"
+        fi
+    fi
+
+    # 4. The three patches. `provision` refuses without them; here they are
+    #    applied, because applying a patch the repo ships is this driver's own
+    #    business and takes milliseconds.
+    local ptc
+    for ptc in "$REPO_ROOT"/vm/patches/*.patch; do
+        case "$(patch_state "$ptc")" in
+            applied) setup_item ok "patch" "$(basename "$ptc")" ;;
+            missing)
+                if git -C "$YURUNA_DIR" apply "$ptc" 2>/dev/null; then
+                    setup_item did "patch" "applied $(basename "$ptc")"
+                else
+                    setup_item needs "patch" "$(basename "$ptc") would not apply"
+                    setup_fix "git -C $YURUNA_DIR apply $ptc      # to see why"
+                fi ;;
+            *)
+                setup_item needs "patch" "$(basename "$ptc") -- tree matches neither state"
+                setup_fix "The clone is not at $YURUNA_TAG, or something edited the same lines." \
+                          "See vm/host-baseline.md §6.4." ;;
+        esac
+    done
+
+    # 5. test.config.yml. Created from the template and scoped when absent; only
+    #    inspected when present, because it is the operator's file (gitignored
+    #    upstream) and may carry settings this driver knows nothing about.
+    local cfg="$YURUNA_DIR/test/test.config.yml" tmpl="$YURUNA_DIR/test/test.config.yml.template" seq
+    if [ ! -f "$cfg" ]; then
+        if [ ! -f "$tmpl" ]; then
+            setup_item needs "test.config" "neither test.config.yml nor its template exists"
+            setup_fix "Is $YURUNA_DIR really a Yuruna clone at $YURUNA_TAG?"
+        else
+            cp "$tmpl" "$cfg" && \
+            awk -v g="$GUEST_KEY" '
+                /^guestSequence:/ { print; print "- " g; inb=1; next }
+                inb && /^- / { next }
+                inb { inb=0 }
+                { print }' "$cfg" > "$cfg.tmp" && mv "$cfg.tmp" "$cfg"
+            setup_item did "test.config" "created from the template, guestSequence scoped to $GUEST_KEY"
+        fi
+    else
+        seq="$(config_guest_sequence "$cfg" | tr '\n' ' ' | sed 's/ *$//')"
+        if [ "$seq" = "$GUEST_KEY" ]; then
+            setup_item ok "test.config" "guestSequence: $GUEST_KEY"
+        else
+            # Not fixed automatically: a wider list is a legitimate choice for a
+            # host that validates more than kennel, and rewriting it would break
+            # that operator's other work to save this one an edit.
+            setup_item info "test.config" "guestSequence is '$seq'"
+            setup_fix "Kennel validates only $GUEST_KEY; the others cost a full guest build each." \
+                      "Scope it in $cfg (vm/host-baseline.md §3)."
+        fi
+    fi
+
+    # 6. Unattended-run prep. Guarded on the capture file rather than run every
+    #    time: Enable-TestAutomation records the host's PRIOR settings so its
+    #    sibling can restore them, and a second run against an already-modified
+    #    host would capture the automation's own values as "the operator's".
+    #    (Save-HostAutomationState refuses to overwrite for the same reason -- the
+    #    guard here is so the rest of the script does not run at all.)
+    local capture="$YURUNA_DIR/test/status/runtime/host.pre-automation.json"
+    if [ -f "$capture" ]; then
+        setup_item ok "automation" "host settings already captured"
+    else
+        # stdin from /dev/null on purpose. Enable-TestAutomation offers to
+        # apt-get any missing host packages, but only when it believes a human is
+        # there; redirected input makes it print the install line instead of
+        # blocking. `setup` must never hang waiting for an answer nobody is
+        # giving -- the missing packages, if any, are the installer's job (§2).
+        if (cd "$YURUNA_DIR" && pwsh -NoProfile host/ubuntu.kvm/Enable-TestAutomation.ps1) \
+             < /dev/null > "$OUT/.setup-automation.log" 2>&1 || [ -f "$capture" ]; then
+            setup_item did "automation" "Enable-TestAutomation.ps1 (display sleep off; reverse with Disable-TestAutomation.ps1)"
+        else
+            setup_item needs "automation" "Enable-TestAutomation.ps1 failed"
+            setup_fix "cd $YURUNA_DIR && pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1" \
+                      "Log: $OUT/.setup-automation.log"
+        fi
+    fi
+
+    # 7. The guest ISO -- ~3.2 GB and ~9 min, and not counted in provision's 35.
+    if ls "$IMAGE_DIR"/*.iso >/dev/null 2>&1; then
+        setup_item ok "guest ISO" "$(ls "$IMAGE_DIR"/*.iso | head -1)"
+    else
+        setup_item info "guest ISO" "absent from $IMAGE_DIR (~3.2 GB, ~9 min to fetch)"
+        local reply=y
+        if [ "$yes" != 1 ]; then
+            reply=""
+            read -r -p "[kennel-demo] fetch it now? [y/N] " reply || true
+        fi
+        case "$reply" in
+            y|Y|yes)
+                if (cd "$YURUNA_DIR/host/ubuntu.kvm/guest.ubuntu.server.24" && pwsh ./Get-Image.ps1); then
+                    setup_item did "guest ISO" "fetched into $IMAGE_DIR"
+                else
+                    setup_item needs "guest ISO" "Get-Image.ps1 failed"
+                    setup_fix "cd $YURUNA_DIR/host/ubuntu.kvm/guest.ubuntu.server.24 && pwsh ./Get-Image.ps1"
+                fi ;;
+            *)
+                setup_item needs "guest ISO" "skipped -- provision cannot run without it"
+                setup_fix "cd $YURUNA_DIR/host/ubuntu.kvm/guest.ubuntu.server.24 && pwsh ./Get-Image.ps1" ;;
+        esac
+    fi
+
+    # 8. The kennel sequences and guest scripts. `provision` and `reset` do this
+    #    too, on every run -- omitting it is dry-run finding F3, a failure twenty
+    #    minutes in -- so this is a convenience, not the contract.
+    # Reported as `ok` when the clone already carries the same bytes, so a second
+    # `setup` on a ready host is genuinely all-`ok` rather than reporting work it
+    # did not do. The copy itself is still unconditional -- see install_kennel_files.
+    local stale=0 src dst
+    for src in "$REPO_ROOT"/vm/test/*.kennel*.yml; do
+        cmp -s "$src" "$YURUNA_DIR/test/sequences/$(basename "$src")" || { stale=1; break; }
+    done
+    if [ "$stale" = 0 ]; then
+        for src in "$REPO_ROOT"/vm/guest/ubuntu.server.24/*.sh; do
+            cmp -s "$src" "$YURUNA_DIR/guest/ubuntu.server.24/$(basename "$src")" || { stale=1; break; }
+        done
+    fi
+    if ! install_kennel_files >/dev/null 2>&1; then
+        setup_item needs "kennel files" "could not copy them into $YURUNA_DIR"
+        setup_fix "See vm/provisioning.md §4.2 for what goes where."
+    elif [ "$stale" = 0 ]; then
+        setup_item ok "kennel files" "sequences + guest scripts already current in the clone"
+    else
+        setup_item did "kennel files" "sequences + guest scripts copied into the clone"
+    fi
+
+    # 9. The gate. Last, because the items above are what it would otherwise
+    #    report as findings, and reading it first teaches the operator nothing.
+    banner "gate: Test-Config (read the findings, not the PASS/WARN totals -- provisioning.md §4.3)"
+    virsh list --all > /dev/null 2>&1    # wake socket-activated libvirtd (§6.2)
+    if (cd "$YURUNA_DIR" && pwsh test/Test-Config.ps1 -SkipSend); then
+        setup_item ok "config gate" "0 FAIL"
+    else
+        setup_item needs "config gate" "Test-Config.ps1 reported FAIL findings (above)"
+        setup_fix "Fix the FAIL findings; WARNs are advisory." \
+                  "A host clock WARN is one of them -- advisory here, but fix it before an" \
+                  "unattended cycle:  sudo chronyc makestep   (vm/provisioning.md §6a.1)"
+    fi
+
+    # 10. Informational only: chrome is the scripted compose's hands. `run` and
+    #     the by-hand console path do not need it.
+    if command -v google-chrome >/dev/null 2>&1; then
+        setup_item ok "google-chrome" "present (needed only by 'compose')"
+    else
+        setup_item info "google-chrome" "absent -- 'compose' needs it; 'console' + 'run' do not"
+    fi
+
+    banner "setup"
+    if [ "$SETUP_BLOCKED" -gt 0 ]; then
+        say "$SETUP_BLOCKED item(s) need you. Fix them and run '$0 setup' again."
+        return 2
+    fi
+    say "this host is ready. Next:  $0 provision   (~35 min, once per host)"
+}
+
 do_provision() {
     local yes=0
     [ "${1:-}" = "--yes" ] && yes=1
@@ -249,21 +736,21 @@ do_provision() {
     banner "preflight"
 
     # The three Yuruna patches (host-baseline.md §6.4) must be in the clone.
-    # `git apply --reverse --check` succeeding means the patch is present.
     local p missing=0
     for p in "$REPO_ROOT"/vm/patches/*.patch; do
-        if git -C "$YURUNA_DIR" apply --reverse --check "$p" >/dev/null 2>&1; then
-            say "patch applied    $(basename "$p")"
-        elif git -C "$YURUNA_DIR" apply --check "$p" >/dev/null 2>&1; then
-            fail "Yuruna patch NOT applied: $(basename "$p")." \
-                 "Apply it first:  git -C $YURUNA_DIR apply $p" \
-                 "See vm/host-baseline.md §6.4."
-            missing=1
-        else
-            fail "cannot tell whether $(basename "$p") is applied -- the Yuruna tree at" \
-                 "$YURUNA_DIR matches neither state. Is it at tag 2026.08.04? (host-baseline.md §2)"
-            missing=1
-        fi
+        case "$(patch_state "$p")" in
+            applied) say "patch applied    $(basename "$p")" ;;
+            missing)
+                fail "Yuruna patch NOT applied: $(basename "$p")." \
+                     "Apply it first:  git -C $YURUNA_DIR apply $p" \
+                     "Or let the driver do it:  $0 setup" \
+                     "See vm/host-baseline.md §6.4."
+                missing=1 ;;
+            *)
+                fail "cannot tell whether $(basename "$p") is applied -- the Yuruna tree at" \
+                     "$YURUNA_DIR matches neither state. Is it at tag $YURUNA_TAG? (host-baseline.md §2)"
+                missing=1 ;;
+        esac
     done
     [ "$missing" = 0 ] || exit 2
 
@@ -332,7 +819,10 @@ do_provision() {
     say "the guest can now be returned to this state in seconds:  $0 reset"
 }
 
-do_up() {
+# The work of `up`, without the closing `status`. Split out because need_guest
+# calls it from inside another verb, where a full status dump in the middle of
+# `run`'s transfer phase would be noise rather than information.
+up_core() {
     local d state t0=$SECONDS
     d="$(pick_domain)" || exit 2
     say "domain           $d"
@@ -365,8 +855,38 @@ do_up() {
         "s=\$(sudo docker inspect --type container -f '{{.State.Status}}' '$CONTAINER' 2>/dev/null); \
          if [ \"\$s\" != running ]; then sudo docker start '$CONTAINER' >/dev/null && echo 'container started'; \
          else echo 'container already running'; fi" | sed 's/^/[kennel-demo] /'
+}
+
+do_up() {
+    up_core || exit $?
     echo
     do_status
+}
+
+do_halt() {
+    local d state t0=$SECONDS
+    d="$(pick_domain)" || exit 2
+    say "domain           $d"
+    state="$(virsh domstate "$d" 2>/dev/null)"
+    say "state            $state"
+    case "$state" in
+        "shut off"|shutoff) say "already shut off"; return 0 ;;
+    esac
+    # An ACPI shutdown, not `virsh destroy`: the guest holds a built workspace
+    # and a container, and pulling its power is how a qcow2 acquires the kind of
+    # damage a baseline snapshot exists to undo. If the guest ignores it, say so
+    # rather than escalating on the operator's behalf.
+    say "asking it to shut down (ACPI)"
+    virsh shutdown "$d" >/dev/null || { fail "virsh shutdown '$d' failed."; exit 2; }
+    while [ $((SECONDS - t0)) -lt "$UP_TIMEOUT" ]; do
+        state="$(virsh domstate "$d" 2>/dev/null)"
+        [ "$state" = "shut off" ] && { say "shut off after $((SECONDS-t0))s"; return 0; }
+        sleep 2
+    done
+    fail "'$d' was still '$state' after ${UP_TIMEOUT}s." \
+         "Watch it:  virsh console $d        (leave with Ctrl+])" \
+         "Force it (last resort, it is a power cut):  virsh destroy $d"
+    exit 3
 }
 
 do_snapshot() {
@@ -469,6 +989,79 @@ do_reset() {
     do_status
 }
 
+# --- REGION: the console as a verb (issue #54)
+# `compose` serves the console for the length of one scripted run and takes it
+# down again. Composing BY HAND needs the opposite: a server that outlives the
+# command that started it, so the operator can sit in the browser and then run
+# other verbs in the same terminal. Hence a pidfile rather than a job.
+CONSOLE_PIDFILE="$OUT/.console.pid"
+CONSOLE_LOG="$OUT/.console.log"
+
+console_alive() { curl -sf -o /dev/null "$CONSOLE_URL"; }
+
+do_console() {
+    local open=1
+    case "${1:-}" in
+        stop)      console_stop; return $? ;;
+        --no-open) open=0 ;;
+        "")        ;;
+        *) fail "console takes no argument, or --no-open, or stop."; exit 2 ;;
+    esac
+    mkdir -p "$OUT"
+    if console_alive; then
+        say "already served on port $PORT"
+    else
+        # Plan C (issue #54's sibling) replaces this one line with serve.py, which
+        # adds the POST endpoint that lets the console write the run folder here
+        # directly. The verb's surface is deliberately identical so that swap
+        # stays a one-line change.
+        nohup python3 -m http.server "$PORT" --directory "$REPO_ROOT/kennel_console" \
+            >"$CONSOLE_LOG" 2>&1 &
+        echo $! > "$CONSOLE_PIDFILE"
+        local t0=$SECONDS
+        until console_alive; do
+            [ $((SECONDS - t0)) -lt 15 ] || {
+                fail "the console did not answer on port $PORT within 15s." \
+                     "Server log: $CONSOLE_LOG" \
+                     "Is something else on that port? Set KENNEL_CONSOLE_PORT."
+                console_stop >/dev/null 2>&1
+                exit 2
+            }
+            sleep 0.25
+        done
+        say "serving          kennel_console/ on port $PORT (pid $(cat "$CONSOLE_PIDFILE"))"
+    fi
+    say "console          $CONSOLE_URL"
+    if [ "$open" = 1 ] && command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$CONSOLE_URL" >/dev/null 2>&1 &
+    fi
+    echo
+    say "compose the run in the browser, click 'generate run', then:"
+    say "    $0 run"
+    say "it picks up the archive from $DOWNLOADS by itself -- no unzip, no path."
+    say "stop the server with:  $0 console stop"
+}
+
+console_stop() {
+    if [ -f "$CONSOLE_PIDFILE" ]; then
+        local pid; pid="$(cat "$CONSOLE_PIDFILE")"
+        if kill "$pid" 2>/dev/null; then
+            say "stopped the console server (pid $pid)"
+        else
+            say "no server running at pid $pid (already gone)"
+        fi
+        rm -f "$CONSOLE_PIDFILE"
+    elif console_alive; then
+        # Someone else's http.server, or one from a previous shell. Killing a
+        # process this script did not start is not its call to make.
+        warn "port $PORT answers, but $CONSOLE_PIDFILE does not exist -- this driver did not"
+        warn "start that server, so it will not stop it. Find it with:  lsof -i :$PORT"
+        return 2
+    else
+        say "no console server running"
+    fi
+}
+
 SERVER_PID=""
 do_compose() {
     OUT="${1:-$OUT}"
@@ -496,28 +1089,85 @@ do_compose() {
     say "run folder       $(latest_run)"
 }
 
+# Set by do_transfer to the folder it actually applied, so do_verify can ask
+# THAT run what solver it was composed with rather than assuming the default.
+APPLIED_RUN=""
+
 do_transfer() {
-    local folder="${1:-}"
-    [ -n "$folder" ] || folder="$(latest_run)"
-    [ -n "$folder" ] || {
-        fail "no run folder given and none found under $OUT." \
-             "Compose one first: $0 compose"
+    local target="${1:-}" why="given on the command line" picked folder
+    if [ -z "$target" ]; then
+        picked="$(pick_newest_run)" || {
+            fail "no run given, and none found in $OUT or $DOWNLOADS." \
+                 "Compose one in the console:  $0 console      (then click Generate run)" \
+                 "Or have the driver compose it:  $0 compose" \
+                 "Different download directory? Set KENNEL_DOWNLOADS."
+            exit 2
+        }
+        target="${picked%%$'\t'*}"
+        why="${picked#*$'\t'}"
+    fi
+    [ -e "$target" ] || {
+        fail "no such run: '$target'."
         exit 2
     }
-    "$REPO_ROOT/stack/transfer/kennel-transfer.sh" apply "$folder"
+    say "run              $target"
+    say "                 ($why)"
+    if [ -f "$target" ]; then
+        case "$target" in
+            *.zip) folder="$(unpack_run_zip "$target")" || exit $?
+                   say "unpacked to      $folder" ;;
+            *) fail "'$target' is a file but not a .zip." \
+                    "Pass the run-<stamp>/ folder, or the run-<stamp>.zip the console exported."
+               exit 2 ;;
+        esac
+    else
+        folder="$target"
+    fi
+    "$REPO_ROOT/stack/transfer/kennel-transfer.sh" apply "$folder" || return $?
+    APPLIED_RUN="$folder"
 }
 
 do_launch() {
     need_guest
+    # Stage the stopper INTO the container before launching. The launcher opens
+    # with "stopping anything already running", but that line is
+    # `[ -x /root/k13-stop.sh ] && /root/k13-stop.sh` -- and until something has
+    # put the script there, it is a silent no-op. On a guest that has never run
+    # `down` (a fresh provision, or anything after a `reset`) a relaunch
+    # therefore stacks a second simulator on top of the first: the sim clock
+    # carries on from the old session, the robot is still lying where the
+    # previous controller dropped it, and the new controller never reaches
+    # "Starting controller" for a stream of early-contact faults.
+    #
+    # `down` already does exactly this copy, which is why relaunching after a
+    # `down` always looked fine. Doing it here makes the launcher's own stated
+    # behaviour true on every launch instead of only after one particular verb.
+    guest_stage stack/known-good/tools/k13-stop.sh
+    ssh "${SSH_OPTS[@]}" "$TARGET" \
+        "sudo docker cp /tmp/k13-stop.sh $CONTAINER:/root/k13-stop.sh" >/dev/null || {
+        fail "could not stage k13-stop.sh into container '$CONTAINER'."; return 2; }
     guest_stage stack/composed-run/tools/p21-launch-from-commands.sh
     ssh "${SSH_OPTS[@]}" "$TARGET" "/tmp/p21-launch-from-commands.sh"
 }
 
 do_verify() {
     need_guest
+    # The expected solver comes from the run that was just applied, and only
+    # falls back to the knob when this verb was invoked on its own (nothing was
+    # applied in this process, so the only thing left to believe is the default).
+    local expect="$SOLVER" src="\$KENNEL_SOLVER"
+    if [ -n "$APPLIED_RUN" ]; then
+        local from_run
+        if from_run="$(solver_of_run "$APPLIED_RUN")"; then
+            expect="$from_run"; src="$(basename "$APPLIED_RUN")/run.json"
+        else
+            warn "no mpc_solver in $APPLIED_RUN/run.json -- expecting '$SOLVER' from the knob."
+        fi
+    fi
+    say "expect solver    $expect  (from $src)"
     guest_stage stack/verify/kennel-verify.sh
     ssh "${SSH_OPTS[@]}" "$TARGET" \
-        "/tmp/kennel-verify.sh --expect-solver '$SOLVER' --controller-log /tmp/p21-ctrl.log"
+        "/tmp/kennel-verify.sh --expect-solver '$expect' --controller-log /tmp/p21-ctrl.log"
 }
 
 do_walk() {
@@ -563,30 +1213,56 @@ do_status() {
     fi
 }
 
+# Shared by `all` and `run`: banner, time, and stop at the first failure naming
+# the verb to resume from. Timing every phase is not decoration -- the phase
+# table in demo/runbook.md §3 is built from these numbers.
+PHASE_MARKS=""
+phase() {   # $1 = name, $2.. = command
+    local name="$1" t0=$SECONDS; shift
+    banner "$name"
+    "$@" || { fail "phase '$name' failed -- fix it and re-run from that verb."; exit 1; }
+    PHASE_MARKS="$PHASE_MARKS$name $(( SECONDS-t0 ))s\n"
+}
+
+phase_summary() {
+    banner "done"
+    printf "$PHASE_MARKS" | awk '{printf "[kennel-demo]   %-9s %s\n", $1, $2}'
+}
+
 do_all() {
-    local t0 marks=""
-    phase() {   # $1 = name, $2.. = command
-        local name="$1"; shift
-        banner "$name"
-        t0=$SECONDS
-        "$@" || { fail "phase '$name' failed -- fix it and re-run from that verb."; exit 1; }
-        marks="$marks$name $(( SECONDS-t0 ))s\n"
-    }
     phase compose  do_compose
     phase transfer do_transfer
     phase launch   do_launch
     phase verify   do_verify
     phase walk     do_walk
-    banner "done"
-    printf "$marks" | awk '{printf "[kennel-demo]   %-9s %s\n", $1, $2}'
+    phase_summary
+}
+
+# `run` is `all`'s by-hand sibling: the composition came from an operator in the
+# browser rather than from p22-console-demo.sh, so there is no compose phase and
+# the run to apply has to be FOUND -- newest folder in OUT or newest archive in
+# DOWNLOADS, whichever is newer. Everything downstream is the same five tools in
+# the same order, including the guest phase, which is what makes `run` work on a
+# host whose guest is merely powered off (need_guest brings it up).
+do_run() {
+    phase guest    need_guest
+    phase transfer do_transfer "$@"
+    phase launch   do_launch
+    phase verify   do_verify
+    phase walk     do_walk
+    phase_summary
 }
 
 # --- REGION: dispatch
 case "${1:-}" in
+    setup)     shift; do_setup "$@" ;;
     provision) shift; do_provision "$@" ;;
     up)        shift; do_up ;;
+    halt)      shift; do_halt ;;
     reset)     shift; do_reset ;;
     snapshot)  shift; do_snapshot "$@" ;;
+    console)   shift; do_console "$@" ;;
+    run)       shift; do_run "$@" ;;
     compose)   shift; do_compose "$@" ;;
     transfer)  shift; do_transfer "$@" ;;
     launch)    shift; do_launch ;;
@@ -596,6 +1272,6 @@ case "${1:-}" in
     status)    shift; do_status ;;
     all)       shift; do_all ;;
     -h|--help|help) usage ;;
-    *) fail "expected a verb: provision | up | reset | snapshot | all | compose | transfer | launch | verify | walk | down | status"
+    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | down | status"
        usage >&2; exit 2 ;;
 esac

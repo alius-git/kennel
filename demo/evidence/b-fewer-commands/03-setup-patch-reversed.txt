@@ -1,0 +1,26 @@
+# kennel-demo.sh setup -- with one patch reversed in the clone (issue #54 acceptance)
+# 2026-08-30T19:07:04Z
+
+$ git -C ~/git/yuruna apply --reverse vm/patches/yuruna-ssh-autoinstall-confirm.patch
+$ demo/tools/kennel-demo.sh setup --yes
+
+[kennel-demo] ok     yuruna clone     /home/thales/git/yuruna
+[kennel-demo] ok     groups           libvirt kvm
+[kennel-demo] ok     yuruna tag       2026.08.04
+[kennel-demo] ok     patch            yuruna-no-password-expiry.patch
+[kennel-demo] ok     patch            yuruna-save-ocrsidecar-export.patch
+[kennel-demo] did    patch            applied yuruna-ssh-autoinstall-confirm.patch
+[kennel-demo] ok     test.config      guestSequence: guest.ubuntu.server.24
+[kennel-demo] ok     automation       host settings already captured
+[kennel-demo] ok     guest ISO        /home/thales/yuruna/image/ubuntu.env/host.ubuntu.kvm.guest.ubuntu.server.24.iso
+[kennel-demo] ok     kennel files     sequences + guest scripts already current in the clone
+[kennel-demo] ok     config gate      0 FAIL
+[kennel-demo] ok     google-chrome    present (needed only by 'compose')
+[kennel-demo] this host is ready. Next:  demo/tools/kennel-demo.sh provision   (~35 min, once per host)
+EXIT=0
+
+## diff against the all-ok run -- exactly one line changed, and it is that patch
+6c6
+< [kennel-demo] ok     patch            yuruna-ssh-autoinstall-confirm.patch
+---
+> [kennel-demo] did    patch            applied yuruna-ssh-autoinstall-confirm.patch

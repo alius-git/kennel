@@ -1,0 +1,32 @@
+# The rest of the short path, and the session verbs (issue #54).
+# 2026-08-30T19:28:11Z
+
+$ demo/tools/kennel-demo.sh walk stop
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-trot] stopping the velocity target
+[p21-trot] gait returned to STAND, target zeroed
+
+$ demo/tools/kennel-demo.sh down
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] stack stopped in container 'dfki_quad'. The container itself is left running.
+
+$ demo/tools/kennel-demo.sh status
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.32 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run run-20260830T192548Z
+[status] runs staged run-20260830T181403Z run-20260830T192548Z 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      ef249170  ef249170  ef249170  run-20260830T192548Z
+  mit_controller_sim_go2.yaml    8b0ffdee  8b0ffdee  8b0ffdee  run-20260830T192548Z
+
+
+[kennel-demo] Meshcat not reachable (simulator not running, or guest down).
+
+$ demo/tools/kennel-demo.sh console stop
+[kennel-demo] stopped the console server (pid 245293)
