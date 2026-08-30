@@ -1,0 +1,286 @@
+=== provision #2: with the persisted VM 'kennel-vm-baseline' AND its snapshot present beforehand ===
+=== (this is the run the F3 sweep defect turned into a silent no-op; see vm/snapshot.md 6) ===
+2026-08-30T18:16:47Z
+--- domains before ---
+ Id   Name                 State
+-------------------------------------
+ 8    kennel-vm-baseline   running
+ -    ub26_guest           shut off
+
+--- snapshot before ---
+ Name                 Creation Time               State
+-----------------------------------------------------------
+ kennel-vm-baseline   2026-08-30 15:11:21 -0300   shutoff
+
+
+
+==== preflight ====
+[kennel-demo] patch applied    yuruna-no-password-expiry.patch
+[kennel-demo] patch applied    yuruna-save-ocrsidecar-export.patch
+[kennel-demo] patch applied    yuruna-ssh-autoinstall-confirm.patch
+[kennel-demo] guest ISO        /home/thales/yuruna/image/ubuntu.env/host.ubuntu.kvm.guest.ubuntu.server.24.iso
+[kennel-demo] kennel files installed into the Yuruna clone (provisioning.md 4.2)
+[kennel-demo] this DESTROYS any existing 'kennel-vm' guest -- INCLUDING the baseline
+[kennel-demo] snapshot 'kennel-vm-baseline' -- and rebuilds it from clean (~35 min).
+[kennel-demo] To return to the baseline instead, without rebuilding:  demo/tools/kennel-demo.sh reset
+
+==== gate: Test-Config (read the findings, not the PASS/WARN totals -- provisioning.md §4.3) ====
+
+=== Config file ===
+  [PASS] Config file found: /home/thales/git/yuruna/test/test.config.yml
+
+=== YAML structure ===
+  [PASS] YAML is valid and parsed successfully.
+
+=== Config key names ===
+  [PASS] No retired config keys.
+
+=== Config schema vs template ===
+  [PASS] test.config.yml reconciled to the template: sorted to alphabetical order.
+
+=== Host requirements (quick) ===
+  [PASS] Host type detected: host.ubuntu.kvm
+There may be more host-health recommendations available. For a deeper report (config files, transports, framework/project staleness, RAM/CPU, host-specific feature state) run: pwsh test/Test-Config.ps1
+  [PASS] Host requirements quick check passed.
+
+=== Host clock ===
+  [WARN] Host clock is 457.6s behind real time (limit 120s). Guests inherit this clock at power-on and get stepped to real time mid-boot; a Kubernetes guest then comes up with pods Running but never Ready and every NodePort refusing.
+          Fix with: pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1  (elevated / with sudo)
+
+=== Host capacity ===
+  [PASS] RAM = 28.2 GiB.
+  [PASS] Logical CPUs = 16 (AMD Ryzen 7 8845HS w/ Radeon 780M Graphics).
+
+=== Host-specific feature state ===
+  [PASS] qemu-system-x86_64 found on PATH.
+  [PASS] libvirtd: active.
+  [PASS] /dev/kvm present.
+
+=== Framework / project staleness ===
+        framework (/home/thales/git/yuruna): no upstream tracking branch -- skipping ahead/behind.
+  [PASS] project (/home/thales/git/yuruna/project): up to date with f37b639842cb5c7ccf2a4f2666e5c35e264ba7a0.
+  [PASS] projectUrl reachable (git ls-remote HEAD exit 0): https://github.com/alissonsol/yuruna-project
+
+=== GitHub connectivity ===
+  [PASS] DNS resolved 'github.com' -> 4.228.31.150
+  [PASS] TCP connection to github.com:443 succeeded.
+
+=== Top-level settings ===
+  [PASS] 'notification' block is present.
+  [PASS] 'vmImage.alwaysRedownload' = False
+  [PASS] 'vmStart.testVmNamePrefix' = 'test-'
+  [PASS] 'testCycle.recentDisplayCount' = 30
+  [PASS] 'statusService' block present (enabled=True, port=8080).
+  [PASS] 'repositories.frameworkUrl' = 'https://github.com/alissonsol/yuruna'
+  [PASS] 'repositories.projectUrl' = 'https://github.com/alissonsol/yuruna-project'
+  [PASS] 'testCycle.stopOnFailure' = False
+
+=== Extension configs ===
+  [PASS] authentication/authentication.config.yml: schema-valid (/home/thales/git/yuruna/test/extension/authentication/authentication.config.yml)
+  [PASS] notification/notification.config.yml: schema-valid (/home/thales/git/yuruna/test/extension/notification/notification.config.yml)
+  [WARN] status/extension/notification/transports.yml missing -- copy from transports.yml.template and populate before the next cycle: /home/thales/git/yuruna/test/extension/notification/transports.yml.template -> /home/thales/git/yuruna/test/status/extension/notification/transports.yml
+  [PASS] vault.yml: schema-valid (/home/thales/git/yuruna/test/status/extension/authentication/vault.yml)
+
+=== Authentication users mapping (users.yml) ===
+  [PASS] users.yml: schema-valid (/home/thales/git/yuruna/test/status/extension/authentication/users.yml)
+  [PASS] users.yml: strict=True, 14 logical user(s) declared.
+  [PASS] users.yml strict mode: every sequence-referenced logical username is declared (scanned: /home/thales/git/yuruna/test/sequences, /home/thales/git/yuruna/project/test, /home/thales/git/yuruna/project/book/test, /home/thales/git/yuruna/project/example/text-to-sql/test, /home/thales/git/yuruna/project/example/website/test).
+
+=== Sequence files (parse + snippets) ===
+  [PASS] _snippets.yml: 1 snippet(s) in /home/thales/git/yuruna/test/sequences.
+  [PASS] Sequence files loaded + snippet-expanded OK: 33 file(s) across 5 dir(s).
+
+=== networkStorage: pool (ypool-nas) replication ===
+        pool.networkReplicate = false and networkStorage poolStorageNetworkPath / poolStorageNetworkUser / poolStorageLocalPath are not all set -- replication is off (optional). Populate all three to pre-validate the share before enabling.
+
+=== networkStorage: stash (stash service) ===
+        networkStorage stash* not fully set -- the stash service is off (optional). Set stashStorageNetworkPath / stashStorageNetworkUser / stashStorageLocalPath to enable it.
+
+=== Extension services (pool registry) ===
+        No caching-proxy service address is known, so there is no pool aggregator to ask -- this host resolves extension services locally (or by pin) only.
+
+=== pool (intent sync) ===
+        pool.enabled = false and pool.intentGitUrl is empty -- pool intent sync is off (optional). Populate intentGitUrl to pre-validate the store before enabling.
+
+=== Resend transport settings ===
+  [WARN] transports.resend not configured in transports.yml -- email transport will warn at runtime.
+
+=== Resend API connectivity ===
+  [PASS] DNS resolved 'api.resend.com' -> 172.66.165.132
+  [PASS] TCP connection to api.resend.com:443 succeeded.
+
+=== Live smoke notification (config.smoke) ===
+  [WARN] Skipping live send (-SkipSend was specified).
+
+=== Bootstrap script encoding (ASCII, no BOM) ===
+  [PASS] irm|iex installer and guest scripts are BOM-less 7-bit ASCII.
+
+-----------------------------------------
+  PASS:  34   WARN:   4   FAIL:   0
+-----------------------------------------
+
+============================================================
+  WARNINGS (4) -- advisory; the cycle can still start:
+============================================================
+
+  [1/4] in section: Host clock
+        Host clock is 457.6s behind real time (limit 120s). Guests inherit this clock at power-on and get stepped to real time mid-boot; a Kubernetes guest then comes up with pods Running but never Ready and every NodePort refusing.
+
+  [2/4] in section: Extension configs
+        status/extension/notification/transports.yml missing -- copy from transports.yml.template and populate before the next cycle: /home/thales/git/yuruna/test/extension/notification/transports.yml.template -> /home/thales/git/yuruna/test/status/extension/notification/transports.yml
+
+  [3/4] in section: Resend transport settings
+        transports.resend not configured in transports.yml -- email transport will warn at runtime.
+
+  [4/4] in section: Live smoke notification (config.smoke)
+        Skipping live send (-SkipSend was specified).
+
+============================================================
+  END OF WARNINGS (4)
+============================================================
+
+==== provision: workload.guest.ubuntu.server.24.kennel.reset.ssh (cold path -- ends in snapshot 'kennel-vm-baseline') ====
+Host type: host.ubuntu.kvm
+
+There may be more host-health recommendations available. For a deeper report (config files, transports, framework/project staleness, RAM/CPU, host-specific feature state) run: pwsh test/Test-Config.ps1
+Stopping VMs with prefix 'test-', 'kennel-vm-baseline'...
+
+  Stopping kennel-vm-baseline [running]...
+    Stopped.
+    Removed.
+
+
+Removed 1 VM(s); 0 survivor(s).
+
+Releasing host virtual display (if attached)...
+
+Running orphaned VM file cleanup: /home/thales/git/yuruna/host/ubuntu.kvm/Remove-OrphanedVMFiles.ps1
+
+
+================================================================
+  WARNING: DESTRUCTIVE OPERATION
+================================================================
+
+  This script deletes VM directories under ~/yuruna/vms/
+  that are NOT registered with libvirt.
+
+  THIS CANNOT BE UNDONE.
+
+================================================================
+
+libvirt registered VMs: 1
+
+Currently registered VMs and their on-disk artifacts:
+
+  ub26_guest
+    /home/thales/yuruna/vms/ub26_guest/seed.iso  (0.40 MB)
+    /home/thales/yuruna/vms/ub26_guest/seed.src/meta-data  (0.00 MB)
+    /home/thales/yuruna/vms/ub26_guest/seed.src/user-data  (0.04 MB)
+    /home/thales/yuruna/vms/ub26_guest/ub26_guest.qcow2  (5,854.62 MB)
+
+No orphaned VM directories found. Nothing to clean up.
+Removing previous project clone: /home/thales/git/yuruna/project
+Cloning https://github.com/alissonsol/yuruna-project -> /home/thales/git/yuruna/project
+Project clone refreshed.
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Host type: host.ubuntu.kvm
+[33;1mWARNING: ===================================================================[0m
+[33;1mWARNING:  Host clock is 457.6s behind real time (limit: 120s).[0m
+[33;1mWARNING:  Guests take this clock from their virtual RTC at power-on, and[0m
+[33;1mWARNING:  their own NTP client steps them to real time seconds into the[0m
+[33;1mWARNING:  boot. That step lands mid-startup: a Kubernetes guest comes up[0m
+[33;1mWARNING:  with its pods Running but never Ready and every NodePort[0m
+[33;1mWARNING:  refusing, hours before anything blames a clock.[0m
+[33;1mWARNING: [0m
+[33;1mWARNING:  This cycle continues. Fix the clock from a console that can[0m
+[33;1mWARNING:  answer for Administrator / sudo -- run from the repo root:[0m
+[33;1mWARNING:    pwsh test/Test-Config.ps1[0m
+[33;1mWARNING:    pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1[0m
+[33;1mWARNING: ===================================================================[0m
+Track directory: /home/thales/git/yuruna/test/status/runtime
+Log directory:   /home/thales/git/yuruna/test/status/log
+OCR engines: tesseract | combine: Or
+Guest key (from baseline): guest.ubuntu.server.24
+Chain: start.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.stack.ssh -> workload.guest.ubuntu.server.24.kennel.baseline.ssh -> workload.guest.ubuntu.server.24.kennel.reset.ssh
+requiresSnapshot: snapshot 'kennel-vm-baseline' not on host -- running full baseline chain (cold path; VM will be renamed to 'kennel-vm-baseline' at saveDiskSnapshot).
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Caching-proxy service: none -- guest will download directly.
+VM 'test-guest.ubuntu.server.24-01' not found. Creating...
+Password came from authentication mechanism: default
+See configuration at: /home/thales/git/yuruna/test/extension/authentication
+Domain 'test-guest.ubuntu.server.24-01' defined from /tmp/tmpiNRpvt.tmp
+Domain 'test-guest.ubuntu.server.24-01' started
+VM 'test-guest.ubuntu.server.24-01' created.
+VM 'test-guest.ubuntu.server.24-01' is already running.
+Log file: /home/thales/git/yuruna/test/status/log/000023.2026-08-30.18-17-06.4230bb0f56694b6582bdfe6388bff892.incomplete/000023.2026-08-30.18-17-06.4230bb0f56694b6582bdfe6388bff892.html
+
+=============================================
+  Sequence: workload.guest.ubuntu.server.24.kennel.reset.ssh
+  Chain:    5 sequence(s), 45 total step(s)
+  Range:    starting at step 1
+  VM:       test-guest.ubuntu.server.24-01
+  Guest:    guest.ubuntu.server.24
+=============================================
+
+Step list:
+  --- start.guest.ubuntu.server.24.kennel.ssh (9 step(s))
+  >> [1] waitForSeconds: Let the GRUB boot menu render
+  >> [2] pressKey: Blind-dismiss the GRUB boot menu (first attempt)
+  >> [3] waitForSeconds: Pause before retry
+  >> [4] pressKey: Blind-dismiss the GRUB boot menu (retry)
+  >> [5] waitForAndEnter: OCR: Continue with autoinstall?
+  >> [6] sshWaitReady: Wait for SSH after autoinstall (fast-fail on subiquity crash)
+  >> [7] sshExec: Smoke test: whoami/hostname
+  >> [8] sshFetchAndExecute: ubuntu.server.24.update.sh
+  >> [9] sshExec: Reboot the VM
+  --- workload.guest.ubuntu.server.24.kennel.ssh (8 step(s))
+  >> [10] sshWaitReady: Wait for sshd after reboot
+  >> [11] sshExec: Smoke test: whoami/hostname
+  >> [12] sshExec: Record the guest's CPU / memory / disk footprint
+  >> [13] sshExec: Assert 8 vCPU
+  >> [14] sshExec: Assert >= 15 GiB RAM (16 GiB configured)
+  >> [15] sshExec: Assert >= 50 GiB root filesystem
+  >> [16] sshExec: Assert the guest hostname is kennel-vm
+  >> [17] sshExec: Record the pre-build headroom baseline for #10
+  --- workload.guest.ubuntu.server.24.kennel.stack.ssh (11 step(s))
+  >> [18] sshWaitReady: Wait for sshd
+  >> [19] sshExec: Smoke test: whoami/hostname
+  >> [20] sshFetchAndExecute: Provision Docker + the pinned dfki-quad stack
+  >> [21] sshFetchAndExecute: Re-run to prove idempotency (must be a no-op refresh)
+  >> [22] sshExec: Assert the dfki-quad image exists
+  >> [23] sshExec: Assert the dfki_quad container is running
+  >> [24] sshExec: Assert the go2 workspace is built
+  >> [25] sshExec: Assert the clone sits at the stack pin
+  >> [26] sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+  >> [27] sshExec: Assert Meshcat binds a host-reachable address in the guest (#11 hop 1)
+  >> [28] sshExec: Record the build's footprint (feeds #9 §5.4)
+  --- workload.guest.ubuntu.server.24.kennel.baseline.ssh (5 step(s))
+  >> [29] sshWaitReady: Wait for sshd
+  >> [30] sshExec: Smoke test: whoami/hostname
+  >> [31] sshFetchAndExecute: Clean the guest to a baseline (stop stack, assert stock + built, clear staging)
+  >> [32] sshExec: Assert the baseline record carries the stack pin
+  >> [33] saveDiskSnapshot: Freeze the baseline as disk snapshot 'kennel-vm-baseline' (renames the domain; leaves it stopped)
+  --- workload.guest.ubuntu.server.24.kennel.reset.ssh (12 step(s))
+  >> [34] loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+  >> [35] sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+  >> [36] sshExec: Smoke test: whoami/hostname
+  >> [37] sshExec: Assert the guest that came back is kennel-vm
+  >> [38] sshExec: Assert the restored guest carries the baseline record at the stack pin
+  >> [39] sshExec: Assert the clone sits at the stack pin
+  >> [40] sshExec: Assert no tracked file differs from the pin (configs are stock)
+  >> [41] sshExec: Start the dfki_quad container and assert it is running
+  >> [42] sshExec: Assert the go2 workspace survived the revert
+  >> [43] sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+  >> [44] sshExec: Assert no composed run is applied (a baseline is stock)
+  >> [45] sshExec: Record what the reset returned (feeds vm/snapshot.md)
+
+Running steps 1 to 45...
+
+
+--- start.guest.ubuntu.server.24.kennel.ssh: local steps 1-9 of 9 (global 1-9) ---
+    Sequence: Kennel (SSH): Ubuntu Server 24.04 guest sized for the dfki-quad Docker image build + colcon build of the MPC/WBC/acados stack.
+       5 s [1/9] PASS waitForSeconds: Let the GRUB boot menu render
+       0 s [2/9] PASS pressKey: Blind-dismiss the GRUB boot menu (first attempt)
+       8 s [3/9] PASS waitForSeconds: Pause before retry
+       0 s [4/9] PASS pressKey: Blind-dismiss the GRUB boot menu (retry)
+      29 s [5/9] PASS waitForAndEnter: OCR: Continue with autoinstall?

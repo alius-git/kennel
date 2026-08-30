@@ -1,0 +1,27 @@
+=== negative control: baseline prep refuses a guest with a composed run applied ===
+(re-run after fixing the untracked-files defect; see vm/snapshot.md §5)
+2026-08-30T17:17:40Z
+
+[kennel-demo] guest            kennel-vm at 192.168.122.118
+
+==== baseline prep (on the guest) ====
+[kennel-demo] this re-takes the baseline snapshot 'kennel-vm-baseline', overwriting any existing one.
+
+[1;36m==== stop the stack ====[0m
+container 'dfki_quad' is already 'exited' -- nothing to stop
+container state: exited
+
+[1;36m==== assert the clone is stock ====[0m
+HEAD=dcf53c596339afd45b82f12c54b1e93e8273c2f4
+pin =dcf53c596339afd45b82f12c54b1e93e8273c2f4
+NONZERO SCRIPT EXIT: the dfki-quad clone has modified tracked files -- this guest is NOT stock.
+  A snapshot taken now would return this composed state on every reset.
+     M ws/src/controllers/config/mit_controller_sim_go2.yaml
+     M ws/src/simulator/config/simulator_params_go2.yaml
+  Put the stock configs back first, from the HOST:
+    stack/transfer/kennel-transfer.sh restore-stock
+  (it materializes them from the pin object, so it works whatever HEAD says)
+NONZERO SCRIPT EXIT: the guest is not a clean baseline (prep exited 1) -- refusing to snapshot it.
+  A dirty baseline is worse than none: every future reset would return it.
+  Fix what the prep script named above, then re-run:  demo/tools/kennel-demo.sh snapshot
+EXIT=1

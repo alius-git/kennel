@@ -1,0 +1,88 @@
+=== host state AFTER saveDiskSnapshot (the rename) ===
+2026-08-30T17:18:37Z
+
+--- virsh list --all ---
+ Id   Name                 State
+-------------------------------------
+ -    kennel-vm-baseline   shut off
+ -    ub26_guest           shut off
+
+--- virsh snapshot-list kennel-vm-baseline ---
+ Name                 Creation Time               State
+-----------------------------------------------------------
+ kennel-vm-baseline   2026-08-30 14:18:26 -0300   shutoff
+
+--- virsh domblklist kennel-vm-baseline ---
+ Target   Source
+-------------------------------------------------------------------------------------------
+ vda      /home/thales/yuruna/vms/kennel-vm-baseline/kennel-vm-baseline.qcow2
+ sda      /home/thales/yuruna/image/ubuntu.env/host.ubuntu.kvm.guest.ubuntu.server.24.iso
+ sdb      /home/thales/yuruna/vms/kennel-vm-baseline/seed.iso
+
+--- do those paths exist? ---
+/home/thales/yuruna/vms/kennel-vm-baseline/kennel-vm-baseline.qcow2                        PRESENT
+/home/thales/yuruna/image/ubuntu.env/host.ubuntu.kvm.guest.ubuntu.server.24.iso            PRESENT
+/home/thales/yuruna/vms/kennel-vm-baseline/seed.iso                                        PRESENT
+--- virsh pool-list --all ---
+ Name                             State      Autostart
+--------------------------------------------------------
+ test-amazon-linux-2023-01        inactive   yes
+ test-guest.ubuntu.server.24-01   active     yes
+ ub26_guest                       active     yes
+ ub26_host                        inactive   yes
+ ubuntu.env                       active     yes
+
+--- old pool target still exists? ---
+<path>/home/thales/yuruna/vms/test-guest.ubuntu.server.24-01</path>
+ls: cannot access '/home/thales/yuruna/vms/test-guest.ubuntu.server.24-01': No such file or directory
+--- ls ~/yuruna/vms ---
+/home/thales/yuruna/vms/:
+total 16
+drwxrwxr-x 4 thales thales  4096 Aug 30 14:18 .
+drwxrwxr-x 4 thales thales  4096 Jun 26 10:28 ..
+drwxrwxr-x 3 thales thales  4096 Aug 30 14:18 kennel-vm-baseline
+drwxrwxr-x 3 thales libvirt 4096 Jun 26 10:58 ub26_guest
+
+/home/thales/yuruna/vms/kennel-vm-baseline/:
+total 26224824
+drwxrwxr-x 3 thales       thales        4096 Aug 30 14:18 .
+drwxrwxr-x 4 thales       thales        4096 Aug 30 14:18 ..
+-rw-r--r-- 1 libvirt-qemu kvm    26853179475 Aug 30 14:18 kennel-vm-baseline.qcow2
+-rw-rw-r-- 1 libvirt-qemu kvm         462848 Aug  7 12:05 seed.iso
+drwxrwxr-x 2 thales       thales        4096 Aug  7 12:05 seed.src
+--- qemu-img info (after snapshot) ---
+image: /home/thales/yuruna/vms/kennel-vm-baseline/kennel-vm-baseline.qcow2
+file format: qcow2
+virtual size: 64 GiB (68719476736 bytes)
+disk size: 25 GiB
+cluster_size: 65536
+Snapshot list:
+ID        TAG               VM SIZE                DATE     VM CLOCK     ICOUNT
+1         kennel-vm-baseline      0 B 2026-08-30 14:18:26 00:00:00.000          0
+Format specific information:
+    compat: 1.1
+    compression type: zlib
+    lazy refcounts: false
+    refcount bits: 16
+    corrupt: false
+    extended l2: false
+Child node '/file':
+    filename: /home/thales/yuruna/vms/kennel-vm-baseline/kennel-vm-baseline.qcow2
+    protocol type: file
+    file length: 25 GiB (26853179904 bytes)
+    disk size: 25 GiB
+--- manifest ---
+{"vmName":"kennel-vm-baseline","snapshotId":"kennel-vm-baseline","hostType":"host.ubuntu.kvm","hostName":"k8-thales","takenAtUtc":"2026-08-30T17:18:26.9794642Z","writerPid":223340,"cycleStartUtc":null,"runId":null,"manifestVersion":1}--- stale pool after the rename ---
+Name:           test-guest.ubuntu.server.24-01
+UUID:           a5bf87ce-eea1-42b7-ba40-c1f5b48f0011
+State:          running
+Persistent:     yes
+Autostart:      yes
+Capacity:       716.93 GiB
+Allocation:     568.31 GiB
+Available:      148.61 GiB
+
+--- pool-refresh on it ---
+error: Failed to refresh pool test-guest.ubuntu.server.24-01
+error: cannot open directory '/home/thales/yuruna/vms/test-guest.ubuntu.server.24-01': No such file or directory
+

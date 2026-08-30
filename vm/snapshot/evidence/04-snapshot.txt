@@ -1,0 +1,56 @@
+=== snapshot: prep + rename + Save-VMDiskSnapshot (convenience baseline, pre-provision) ===
+2026-08-30T17:17:53Z
+
+[kennel-demo] guest            kennel-vm at 192.168.122.118
+
+==== baseline prep (on the guest) ====
+[kennel-demo] this re-takes the baseline snapshot 'kennel-vm-baseline', overwriting any existing one.
+
+[1;36m==== stop the stack ====[0m
+container is running -- stopping the stack inside it first
+stopping container 'dfki_quad' (bounded at 30s)
+container state: exited
+
+[1;36m==== assert the clone is stock ====[0m
+HEAD=dcf53c596339afd45b82f12c54b1e93e8273c2f4
+pin =dcf53c596339afd45b82f12c54b1e93e8273c2f4
+tracked files: no modifications (configs are stock at the pin)
+untracked (build artifacts, expected):
+    ws/.kennel-built-dcf53c596339afd45b82f12c54b1e93e8273c2f4
+
+[1;36m==== assert the workspace is built ====[0m
+build stamp      /home/yuuser24/dfki-quad/ws/.kennel-built-dcf53c596339afd45b82f12c54b1e93e8273c2f4
+colcon install   /home/yuuser24/dfki-quad/ws/install/setup.bash
+
+[1;36m==== clear the staging directory ====[0m
+removing /home/yuuser24/kennel-staging (160K)
+staging: absent (no run is current in a baseline)
+
+[1;36m==== record the baseline ====[0m
+/home/yuuser24/.kennel-baseline:
+    pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4
+    image_id=sha256:d80aa4f78e789253604bff2463fc0ae758585182bf1929a6efe1ef6b4326424f
+    created=2026-08-30T17:26:02Z
+
+[1;36m==== reclaim ====[0m
+free on /: 30 GiB -> 30 GiB
+
+[1;32m==== this guest is a clean baseline. ====[0m
+
+==== save disk snapshot ====
+[kennel-demo] domain           test-guest.ubuntu.server.24-01
+[kennel-demo] snapshot id      kennel-vm-baseline
+manifest: /home/thales/git/yuruna/test/status/runtime/snapshots/kennel-vm-baseline__kennel-vm-baseline.manifest.json
+
+==== baseline ====
+[kennel-demo]  Name                 Creation Time               State
+[kennel-demo] -----------------------------------------------------------
+[kennel-demo]  kennel-vm-baseline   2026-08-30 14:18:26 -0300   shutoff
+[kennel-demo] 
+[kennel-demo] the domain is now 'kennel-vm-baseline' and it is STOPPED -- that is the documented
+[kennel-demo] contract of saveDiskSnapshot. Bring it back with:  demo/tools/kennel-demo.sh up   (or demo/tools/kennel-demo.sh reset)
+
+real	0m33.133s
+user	0m0.809s
+sys	0m0.330s
+EXIT=0
