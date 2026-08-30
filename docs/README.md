@@ -49,6 +49,8 @@ The in-depth documentation lives next to what it describes — the plan corpus i
   and definition.
 - [`vm/provisioning.md`](../vm/provisioning.md) — provisioning the guest with
   Docker and the pinned dfki-quad stack, via Yuruna sequences.
+- [`vm/snapshot.md`](../vm/snapshot.md) — the baseline snapshot: freezing the
+  provisioned guest so `reset` returns to it in seconds instead of 35 minutes.
 - [`vm/meshcat-exposure.md`](../vm/meshcat-exposure.md) — reaching Meshcat from
   the host browser: the two network hops.
 

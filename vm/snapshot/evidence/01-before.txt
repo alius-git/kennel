@@ -1,0 +1,73 @@
+=== host state BEFORE any snapshot work (2026-08-30) ===
+2026-08-30T17:16:01Z
+
+--- virsh list --all ---
+ Id   Name                             State
+-------------------------------------------------
+ -    test-guest.ubuntu.server.24-01   shut off
+ -    ub26_guest                       shut off
+
+--- virsh pool-list --all ---
+ Name                             State      Autostart
+--------------------------------------------------------
+ test-amazon-linux-2023-01        inactive   yes
+ test-guest.ubuntu.server.24-01   active     yes
+ ub26_guest                       active     yes
+ ub26_host                        inactive   yes
+ ubuntu.env                       active     yes
+
+--- virsh snapshot-list test-guest.ubuntu.server.24-01 ---
+ Name   Creation Time   State
+-------------------------------
+
+--- virsh domblklist test-guest.ubuntu.server.24-01 ---
+ Target   Source
+-------------------------------------------------------------------------------------------------------
+ vda      /home/thales/yuruna/vms/test-guest.ubuntu.server.24-01/test-guest.ubuntu.server.24-01.qcow2
+ sda      /home/thales/yuruna/image/ubuntu.env/host.ubuntu.kvm.guest.ubuntu.server.24.iso
+ sdb      /home/thales/yuruna/vms/test-guest.ubuntu.server.24-01/seed.iso
+
+--- ls ~/yuruna/vms ---
+/home/thales/yuruna/vms/:
+total 16
+drwxrwxr-x 4 thales thales  4096 Aug  7 12:05 .
+drwxrwxr-x 4 thales thales  4096 Jun 26 10:28 ..
+drwxrwxr-x 3 thales thales  4096 Aug  7 12:05 test-guest.ubuntu.server.24-01
+drwxrwxr-x 3 thales libvirt 4096 Jun 26 10:58 ub26_guest
+
+/home/thales/yuruna/vms/test-guest.ubuntu.server.24-01/:
+total 26211764
+drwxrwxr-x 3 thales       thales        4096 Aug  7 12:05 .
+drwxrwxr-x 4 thales       thales        4096 Aug  7 12:05 ..
+-rw-rw-r-- 1 libvirt-qemu kvm         462848 Aug  7 12:05 seed.iso
+drwxrwxr-x 2 thales       thales        4096 Aug  7 12:05 seed.src
+-rw-r--r-- 1 libvirt-qemu kvm    26839744512 Aug  9 14:50 test-guest.ubuntu.server.24-01.qcow2
+
+/home/thales/yuruna/vms/ub26_guest/:
+total 5995596
+drwxrwxr-x 3 thales       libvirt       4096 Jun 26 10:58 .
+drwxrwxr-x 4 thales       thales        4096 Aug  7 12:05 ..
+-rw-rw-r-- 1 libvirt-qemu kvm         419840 Jun 26 10:58 seed.iso
+drwxrwxr-x 2 thales       libvirt       4096 Jun 26 10:58 seed.src
+-rw-r--r-- 1 thales       libvirt 6139019264 Jun 30 09:52 ub26_guest.qcow2
+--- qemu-img info ---
+image: /home/thales/yuruna/vms/test-guest.ubuntu.server.24-01/test-guest.ubuntu.server.24-01.qcow2
+file format: qcow2
+virtual size: 64 GiB (68719476736 bytes)
+disk size: 25 GiB
+cluster_size: 65536
+Format specific information:
+    compat: 1.1
+    compression type: zlib
+    lazy refcounts: false
+    refcount bits: 16
+    corrupt: false
+    extended l2: false
+Child node '/file':
+    filename: /home/thales/yuruna/vms/test-guest.ubuntu.server.24-01/test-guest.ubuntu.server.24-01.qcow2
+    protocol type: file
+    file length: 25 GiB (26839744512 bytes)
+    disk size: 25 GiB
+--- df -h / ---
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p5  717G  569G  113G  84% /

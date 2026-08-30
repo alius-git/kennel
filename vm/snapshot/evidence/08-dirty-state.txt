@@ -1,0 +1,17 @@
+=== qcow2 after a dirtying run (caveat A.2.3) ===
+2026-08-30T17:23:12Z
+qemu-img: Could not open '/home/thales/yuruna/vms/kennel-vm-baseline/kennel-vm-baseline.qcow2': Failed to get shared "write" lock
+Is another process using the image [/home/thales/yuruna/vms/kennel-vm-baseline/kennel-vm-baseline.qcow2]?
+--- guest-side state before reset ---
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run run-20260830T172131Z
+=== qcow2 while the guest RUNS (needs -U; the disk is write-locked) ===
+virtual size: 64 GiB (68719476736 bytes)
+disk size: 25 GiB
+Snapshot list:
+1         kennel-vm-baseline      0 B 2026-08-30 14:18:26 00:00:00.000          0
+    file length: 25 GiB (26886340608 bytes)
+    disk size: 25 GiB
+--- host file size ---
+-rw-r--r-- 1 libvirt-qemu kvm 26886340608 Aug 30 14:23 /home/thales/yuruna/vms/kennel-vm-baseline/kennel-vm-baseline.qcow2

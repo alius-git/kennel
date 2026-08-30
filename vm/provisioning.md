@@ -19,6 +19,13 @@ prerequisites for anything here.
 > instead of shipping a pre-baked image, the MVP builds the stack in-place on a
 > stock guest, every time. *Retirement path:* the `appliance/build` pipeline,
 > which bakes exactly this result into a distributable image.
+>
+> [#51](https://github.com/alius-git/kennel/issues/51) took the first step down
+> that path without building an image: what this script produces is now **frozen
+> as a disk snapshot** the moment it is green, so the appliance is built once per
+> host rather than once per mistake. That snapshot is the MVP's stand-in for the
+> design's reset-to-baseline, and it retires into the same OVA. See
+> [`vm/snapshot.md`](snapshot.md).
 
 ## 1. What is delivered
 
@@ -39,6 +46,13 @@ start.guest.ubuntu.server.24.kennel.ssh      # create + install the 8 vCPU / 16 
 Putting #9's asserts in the chain is deliberate: a wrong-sized guest fails in
 seconds on the `nproc`/`MemTotal` checks instead of hours later, inside a colcon
 build that was never going to fit.
+
+Since [#51](https://github.com/alius-git/kennel/issues/51) the chain has two more
+links after this one — `…kennel.baseline.ssh` freezes the result as a disk
+snapshot and `…kennel.reset.ssh` proves the revert — so the sequence an operator
+now names is the **reset** one, and provisioning ends in a baseline it can return
+to. See [`vm/snapshot.md`](snapshot.md); everything below still describes what
+happens in between.
 
 ## 2. The script, phase by phase
 
@@ -318,12 +332,36 @@ every run (host-baseline.md §6.7) — so the count drifts on its own. Read the
 findings, not the totals ([#22](https://github.com/alius-git/kennel/issues/22)).
 
 Destroy any existing guest first — sizing applies at VM *creation* only
-(guest-sizing.md §2):
+(guest-sizing.md §2). **Both** names, since [#51](https://github.com/alius-git/kennel/issues/51): once a
+baseline snapshot has been taken the guest is no longer called `test-…`, because
+`saveDiskSnapshot` renamed it to the snapshot id *precisely so* the cycle sweep
+would leave it alone. A clean rebuild has to opt back in by name.
 
 ```bash
-pwsh test/Remove-TestVMFiles.ps1 -Prefix test- -Confirm:$false
-pwsh test/Invoke-TestSequence.ps1 -SequenceName workload.guest.ubuntu.server.24.kennel.stack.ssh
+pwsh -NoProfile -Command "& ./test/Remove-TestVMFiles.ps1 -Prefix @('test-','kennel-vm-baseline') -Confirm:\$false"
+pwsh test/Invoke-TestSequence.ps1 -SequenceName workload.guest.ubuntu.server.24.kennel.reset.ssh
 ```
+
+Two things in those two lines are easy to get wrong:
+
+- **`-Prefix a,b` does not work from a shell.** The parameter is `[string[]]`,
+  but comma-as-array is a PowerShell *parser* feature, and arguments arriving
+  through a bash `argv` bind as the literal strings they are — so
+  `-Prefix test-,kennel-vm-baseline` passes **one** prefix named
+  `test-,kennel-vm-baseline`, matches no VM, and cheerfully reports "No VMs
+  found" while deleting nothing. Hence the `-Command` form with a real array
+  literal. The tell is the sweep's own label: `'test-', 'kennel-vm-baseline'`
+  is right, `'test-,kennel-vm-baseline'` is the bug
+  ([`snapshot.md` §6](snapshot.md), F3). Also **do not pass `-WhatIf`** to that
+  script — it is not honoured, and the "dry run" deletes the VM (F4).
+- **The top-level sequence is now the `reset` one**, not `…kennel.stack.ssh`. It
+  chains through the stack sequence and two more, so a cold run does everything
+  this document describes *and* ends by snapshotting the result. Gate on
+  **0 FAIL**, never on a step count — the chain is 45 steps today and was 28
+  before #51.
+
+Or, with the preflight checks and the prompt:
+`demo/tools/kennel-demo.sh provision`.
 
 To confirm the chain and the cascade before spending the boot time:
 

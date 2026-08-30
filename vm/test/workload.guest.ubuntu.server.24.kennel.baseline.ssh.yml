@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=../schemas/sequence.schema.yml
+# (schema path is relative to test/sequences/ in the Yuruna clone, where this
+#  file is copied to run -- see vm/provisioning.md section 4.2)
+
+# Kennel baseline snapshot -- issue #51.
+#
+# The PRODUCER half of the pair. It takes a guest that is already "stack ready"
+# (the #10 chain), makes it a clean baseline, and freezes it:
+#
+#   start.guest.ubuntu.server.24.kennel.ssh                 # create the guest
+#     -> workload.guest.ubuntu.server.24.kennel.ssh         # assert the sizing (#9)
+#       -> workload.guest.ubuntu.server.24.kennel.stack.ssh # provision the stack (#10)
+#         -> THIS                                           # clean it, snapshot it (#51)
+#
+# `saveDiskSnapshot` does two things, in this order, and the order is not
+# incidental: it RENAMES the domain to the snapshot id (relocating
+# ~/yuruna/vms/<old> -> <id> and rewriting the disk paths in the XML), and only
+# then takes the snapshot. libvirt freezes a copy of the domain XML into the
+# snapshot metadata, so a snapshot taken before the rename would keep the old
+# name and the old disk paths forever and fail to revert
+# (host/ubuntu.kvm/modules/Yuruna.Host.psm1, Save-VMDiskSnapshot).
+#
+# It also LEAVES THE VM STOPPED. Nothing may follow it in this sequence; the
+# consumer (workload.guest.ubuntu.server.24.kennel.reset.ssh) starts from a
+# loadDiskSnapshot, which is what brings the guest back up.
+#
+# Declares no sizing variables on purpose: the planner cascades them down from
+# start.guest.ubuntu.server.24.kennel.ssh. The CONSUMER has to restate them --
+# on the warm path the prereqs never run, so the cascade has nothing to cascade
+# from. See that file's comment.
+
+sequenceGuid: 420ada1e-1bb2-41b1-a60b-f2773081b323
+sequenceRevision: 1
+
+description: "Kennel (SSH): make the provisioned kennel-vm guest a clean baseline -- stack stopped, no composed run, clone stock at the pin, workspace built -- and freeze it as disk snapshot 'kennel-vm-baseline'."
+keystrokeMechanism: ssh
+resource:
+  ubuntu.server.24:
+    - workload.guest.ubuntu.server.24.kennel.stack.ssh
+
+component:
+  - action: sshWaitReady
+    timeoutSeconds: 300
+    description: "Wait for sshd"
+
+  - action: sshExec
+    command: "whoami && hostname"
+    description: "Smoke test: whoami/hostname"
+
+workload:
+  # The work itself. Same copy-into-the-framework-clone bypass as the #10 script
+  # (vm/provisioning.md section 4.2), and it produces the same yellow
+  # "differs from HEAD" warning on a healthy run -- expected, keep going.
+  #
+  # The script is where every "this is a baseline" claim is asserted; the
+  # sequence's job is to run it and to re-state the pin independently below.
+  # 900 s is generous for what is a container stop plus a few file operations:
+  # the only slow thing in it is `docker stop`, which is itself bounded.
+  - action: sshFetchAndExecute
+    command: "/usr/local/lib/yuruna/fetch-and-execute.sh guest/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh"
+    timeoutSeconds: 900
+    description: "Clean the guest to a baseline (stop stack, assert stock + built, clear staging)"
+
+  # Independent restatement of the pin, exactly as the #10 sequence does for the
+  # clone. The prep script's DFKI_QUAD_COMMIT is a derived copy of
+  # stack/pin.lock; this step is the drift check between the two, and it is the
+  # last gate before the state becomes permanent.
+  #
+  # NB: no ${...} anywhere -- Yuruna expands ${name} in step parameters.
+  - action: sshExec
+    command: "cat \"$HOME/.kennel-baseline\"; grep -qx 'pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4' \"$HOME/.kennel-baseline\""
+    description: "Assert the baseline record carries the stack pin"
+
+  # Renames the domain to 'kennel-vm-baseline', relocates its storage, snapshots
+  # it, and leaves it STOPPED. Nothing may follow.
+  #
+  # The id is both the snapshot name and the persisted VM name -- the runner's
+  # requiresSnapshot probe looks for snapshot <id> on VM <id>. It must therefore
+  # be valid as a libvirt domain name, and it must NOT start with the sweep
+  # prefix `test-`, or the next cycle's Remove-TestVMFiles would delete the very
+  # thing this step exists to preserve.
+  - action: saveDiskSnapshot
+    id: kennel-vm-baseline
+    description: "Freeze the baseline as disk snapshot 'kennel-vm-baseline' (renames the domain; leaves it stopped)"

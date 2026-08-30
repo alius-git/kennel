@@ -1,0 +1,226 @@
+=== reset twice in a row (idempotent warm path) ===
+2026-08-30T17:28:28Z
+
+### reset A (from a dirty, running guest)
+[kennel-demo] kennel files installed into the Yuruna clone (provisioning.md 4.2)
+
+==== reset: workload.guest.ubuntu.server.24.kennel.reset.ssh (warm path -- revert to 'kennel-vm-baseline') ====
+[kennel-demo] no Test-Config gate here: reset spends seconds, not the 35 minutes the gate
+[kennel-demo] exists to protect. provision still gates.
+Removing previous project clone: /home/thales/git/yuruna/project
+Cloning https://github.com/alissonsol/yuruna-project -> /home/thales/git/yuruna/project
+Project clone refreshed.
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Host type: host.ubuntu.kvm
+[33;1mWARNING: ===================================================================[0m
+[33;1mWARNING:  Host clock is 457.6s behind real time (limit: 120s).[0m
+[33;1mWARNING:  Guests take this clock from their virtual RTC at power-on, and[0m
+[33;1mWARNING:  their own NTP client steps them to real time seconds into the[0m
+[33;1mWARNING:  boot. That step lands mid-startup: a Kubernetes guest comes up[0m
+[33;1mWARNING:  with its pods Running but never Ready and every NodePort[0m
+[33;1mWARNING:  refusing, hours before anything blames a clock.[0m
+[33;1mWARNING: [0m
+[33;1mWARNING:  This cycle continues. Fix the clock from a console that can[0m
+[33;1mWARNING:  answer for Administrator / sudo -- run from the repo root:[0m
+[33;1mWARNING:    pwsh test/Test-Config.ps1[0m
+[33;1mWARNING:    pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1[0m
+[33;1mWARNING: ===================================================================[0m
+Track directory: /home/thales/git/yuruna/test/status/runtime
+Log directory:   /home/thales/git/yuruna/test/status/log
+OCR engines: tesseract | combine: Or
+Guest key (from baseline): guest.ubuntu.server.24
+  Stopping concurrent VM 'kennel-vm-baseline' before the cycle starts.
+Chain: start.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.stack.ssh -> workload.guest.ubuntu.server.24.kennel.baseline.ssh -> workload.guest.ubuntu.server.24.kennel.reset.ssh
+requiresSnapshot: snapshot 'kennel-vm-baseline' present on persisted VM 'kennel-vm-baseline' -- skipping baseline chain (warm path).
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Caching-proxy service: none -- guest will download directly.
+VM 'kennel-vm-baseline' already exists. Reusing.
+VM 'kennel-vm-baseline': skipping pre-sequence start -- first step is loadDiskSnapshot (handler will start the VM after the restore).
+Log file: /home/thales/git/yuruna/test/status/log/000019.2026-08-30.17-28-39.4230bb0f56694b6582bdfe6388bff892.incomplete/000019.2026-08-30.17-28-39.4230bb0f56694b6582bdfe6388bff892.html
+
+=============================================
+  Sequence: workload.guest.ubuntu.server.24.kennel.reset.ssh
+  Chain:    5 sequence(s), 12 total step(s)
+  Range:    starting at step 1
+  VM:       kennel-vm-baseline
+  Guest:    guest.ubuntu.server.24
+=============================================
+
+Step list:
+  --- workload.guest.ubuntu.server.24.kennel.reset.ssh (12 step(s))
+  >> [1] loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+  >> [2] sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+  >> [3] sshExec: Smoke test: whoami/hostname
+  >> [4] sshExec: Assert the guest that came back is kennel-vm
+  >> [5] sshExec: Assert the restored guest carries the baseline record at the stack pin
+  >> [6] sshExec: Assert the clone sits at the stack pin
+  >> [7] sshExec: Assert no tracked file differs from the pin (configs are stock)
+  >> [8] sshExec: Start the dfki_quad container and assert it is running
+  >> [9] sshExec: Assert the go2 workspace survived the revert
+  >> [10] sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+  >> [11] sshExec: Assert no composed run is applied (a baseline is stock)
+  >> [12] sshExec: Record what the reset returned (feeds vm/snapshot.md)
+
+Running steps 1 to 12...
+
+
+--- workload.guest.ubuntu.server.24.kennel.reset.ssh: local steps 1-12 of 12 (global 1-12) ---
+    Sequence: Kennel (SSH): revert the kennel-vm guest to the 'kennel-vm-baseline' disk snapshot and prove what came back is the appliance -- stock at the pin, container running, workspace built, simulator launchable.
+       1 s [1/12] PASS loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+      11 s [2/12] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+       0 s [3/12] PASS sshExec: Smoke test: whoami/hostname
+       0 s [4/12] PASS sshExec: Assert the guest that came back is kennel-vm
+       0 s [5/12] PASS sshExec: Assert the restored guest carries the baseline record at the stack pin
+       0 s [6/12] PASS sshExec: Assert the clone sits at the stack pin
+       0 s [7/12] PASS sshExec: Assert no tracked file differs from the pin (configs are stock)
+       1 s [8/12] PASS sshExec: Start the dfki_quad container and assert it is running
+       0 s [9/12] PASS sshExec: Assert the go2 workspace survived the revert
+      56 s [10/12] PASS sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+       0 s [11/12] PASS sshExec: Assert no composed run is applied (a baseline is stock)
+       0 s [12/12] PASS sshExec: Record what the reset returned (feeds vm/snapshot.md)
+      71 s [All 12 steps completed in 1 min and 11 s]
+
+Chain completed successfully (12 step(s) across 5 sequence(s)).
+[kennel-demo] reset in 1m22s
+[kennel-demo] the guest is back at the baseline: stock configs at the pin, container running,
+[kennel-demo] workspace built, no run applied. Compose and launch with:  demo/tools/kennel-demo.sh all
+
+==== baseline record ====
+[kennel-demo] guest            kennel-vm at 192.168.122.118
+[kennel-demo] pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4
+[kennel-demo] image_id=sha256:d80aa4f78e789253604bff2463fc0ae758585182bf1929a6efe1ef6b4326424f
+[kennel-demo] created=2026-08-30T17:26:02Z
+
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.118 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run <none -- stock, or never applied>
+[status] runs staged 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      eb31c744  eb31c744  eb31c744  unknown
+  mit_controller_sim_go2.yaml    40683000  40683000  40683000  unknown
+
+
+[kennel-demo] Meshcat not reachable (simulator not running, or guest down).
+
+real	1m24.007s
+user	0m12.629s
+sys	0m2.269s
+EXIT_A=0
+
+### reset B (immediately again, from the just-reset guest)
+[kennel-demo] kennel files installed into the Yuruna clone (provisioning.md 4.2)
+
+==== reset: workload.guest.ubuntu.server.24.kennel.reset.ssh (warm path -- revert to 'kennel-vm-baseline') ====
+[kennel-demo] no Test-Config gate here: reset spends seconds, not the 35 minutes the gate
+[kennel-demo] exists to protect. provision still gates.
+Removing previous project clone: /home/thales/git/yuruna/project
+Cloning https://github.com/alissonsol/yuruna-project -> /home/thales/git/yuruna/project
+Project clone refreshed.
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Host type: host.ubuntu.kvm
+[33;1mWARNING: ===================================================================[0m
+[33;1mWARNING:  Host clock is 457.6s behind real time (limit: 120s).[0m
+[33;1mWARNING:  Guests take this clock from their virtual RTC at power-on, and[0m
+[33;1mWARNING:  their own NTP client steps them to real time seconds into the[0m
+[33;1mWARNING:  boot. That step lands mid-startup: a Kubernetes guest comes up[0m
+[33;1mWARNING:  with its pods Running but never Ready and every NodePort[0m
+[33;1mWARNING:  refusing, hours before anything blames a clock.[0m
+[33;1mWARNING: [0m
+[33;1mWARNING:  This cycle continues. Fix the clock from a console that can[0m
+[33;1mWARNING:  answer for Administrator / sudo -- run from the repo root:[0m
+[33;1mWARNING:    pwsh test/Test-Config.ps1[0m
+[33;1mWARNING:    pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1[0m
+[33;1mWARNING: ===================================================================[0m
+Track directory: /home/thales/git/yuruna/test/status/runtime
+Log directory:   /home/thales/git/yuruna/test/status/log
+OCR engines: tesseract | combine: Or
+Guest key (from baseline): guest.ubuntu.server.24
+  Stopping concurrent VM 'kennel-vm-baseline' before the cycle starts.
+Chain: start.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.stack.ssh -> workload.guest.ubuntu.server.24.kennel.baseline.ssh -> workload.guest.ubuntu.server.24.kennel.reset.ssh
+requiresSnapshot: snapshot 'kennel-vm-baseline' present on persisted VM 'kennel-vm-baseline' -- skipping baseline chain (warm path).
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Caching-proxy service: none -- guest will download directly.
+VM 'kennel-vm-baseline' already exists. Reusing.
+VM 'kennel-vm-baseline': skipping pre-sequence start -- first step is loadDiskSnapshot (handler will start the VM after the restore).
+Log file: /home/thales/git/yuruna/test/status/log/000020.2026-08-30.17-30-02.4230bb0f56694b6582bdfe6388bff892.incomplete/000020.2026-08-30.17-30-02.4230bb0f56694b6582bdfe6388bff892.html
+
+=============================================
+  Sequence: workload.guest.ubuntu.server.24.kennel.reset.ssh
+  Chain:    5 sequence(s), 12 total step(s)
+  Range:    starting at step 1
+  VM:       kennel-vm-baseline
+  Guest:    guest.ubuntu.server.24
+=============================================
+
+Step list:
+  --- workload.guest.ubuntu.server.24.kennel.reset.ssh (12 step(s))
+  >> [1] loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+  >> [2] sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+  >> [3] sshExec: Smoke test: whoami/hostname
+  >> [4] sshExec: Assert the guest that came back is kennel-vm
+  >> [5] sshExec: Assert the restored guest carries the baseline record at the stack pin
+  >> [6] sshExec: Assert the clone sits at the stack pin
+  >> [7] sshExec: Assert no tracked file differs from the pin (configs are stock)
+  >> [8] sshExec: Start the dfki_quad container and assert it is running
+  >> [9] sshExec: Assert the go2 workspace survived the revert
+  >> [10] sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+  >> [11] sshExec: Assert no composed run is applied (a baseline is stock)
+  >> [12] sshExec: Record what the reset returned (feeds vm/snapshot.md)
+
+Running steps 1 to 12...
+
+
+--- workload.guest.ubuntu.server.24.kennel.reset.ssh: local steps 1-12 of 12 (global 1-12) ---
+    Sequence: Kennel (SSH): revert the kennel-vm guest to the 'kennel-vm-baseline' disk snapshot and prove what came back is the appliance -- stock at the pin, container running, workspace built, simulator launchable.
+       1 s [1/12] PASS loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+      10 s [2/12] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+       0 s [3/12] PASS sshExec: Smoke test: whoami/hostname
+       0 s [4/12] PASS sshExec: Assert the guest that came back is kennel-vm
+       0 s [5/12] PASS sshExec: Assert the restored guest carries the baseline record at the stack pin
+       0 s [6/12] PASS sshExec: Assert the clone sits at the stack pin
+       0 s [7/12] PASS sshExec: Assert no tracked file differs from the pin (configs are stock)
+       0 s [8/12] PASS sshExec: Start the dfki_quad container and assert it is running
+       0 s [9/12] PASS sshExec: Assert the go2 workspace survived the revert
+      56 s [10/12] PASS sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+       0 s [11/12] PASS sshExec: Assert no composed run is applied (a baseline is stock)
+       0 s [12/12] PASS sshExec: Record what the reset returned (feeds vm/snapshot.md)
+      70 s [All 12 steps completed in 1 min and 10 s]
+
+Chain completed successfully (12 step(s) across 5 sequence(s)).
+[kennel-demo] reset in 1m21s
+[kennel-demo] the guest is back at the baseline: stock configs at the pin, container running,
+[kennel-demo] workspace built, no run applied. Compose and launch with:  demo/tools/kennel-demo.sh all
+
+==== baseline record ====
+[kennel-demo] guest            kennel-vm at 192.168.122.118
+[kennel-demo] pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4
+[kennel-demo] image_id=sha256:d80aa4f78e789253604bff2463fc0ae758585182bf1929a6efe1ef6b4326424f
+[kennel-demo] created=2026-08-30T17:26:02Z
+
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.118 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run <none -- stock, or never applied>
+[status] runs staged 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      eb31c744  eb31c744  eb31c744  unknown
+  mit_controller_sim_go2.yaml    40683000  40683000  40683000  unknown
+
+
+[kennel-demo] Meshcat not reachable (simulator not running, or guest down).
+
+real	1m22.767s
+user	0m11.590s
+sys	0m2.227s
+EXIT_B=0

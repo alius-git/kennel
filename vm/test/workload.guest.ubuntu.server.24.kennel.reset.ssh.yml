@@ -1,0 +1,163 @@
+# yaml-language-server: $schema=../schemas/sequence.schema.yml
+# (schema path is relative to test/sequences/ in the Yuruna clone, where this
+#  file is copied to run -- see vm/provisioning.md section 4.2)
+
+# Kennel reset-to-baseline -- issue #51.
+#
+# The CONSUMER half of the pair, and the sequence `kennel-demo.sh reset` runs.
+# It reverts the guest to the frozen baseline and proves the thing that came
+# back is the appliance: right host, right pin, container up, workspace present,
+# simulator launchable.
+#
+# Two paths, chosen by the runner's `requiresSnapshot` probe before any work:
+#
+#   WARM (snapshot 'kennel-vm-baseline' exists on VM 'kennel-vm-baseline'):
+#     every prereq sequence is SKIPPED and only the steps below run, against the
+#     persisted VM. Seconds to revert, then a boot. This is the everyday path.
+#
+#   COLD (no such snapshot): the full chain runs --
+#     start -> sizing (#9) -> stack (#10) -> baseline (#51 producer) -> THIS.
+#     The build VM is created as `test-guest.ubuntu.server.24-01`, the producer's
+#     saveDiskSnapshot renames it to `kennel-vm-baseline` mid-chain, and the
+#     runner follows the rename into these steps. That is why `provision` runs
+#     THIS sequence as its top level: provisioning now ends in a snapshot.
+#
+# WHY THE VARIABLES ARE RESTATED HERE. Sizing is declared once, in
+# start.guest.ubuntu.server.24.kennel.ssh, and cascaded down the chain -- which
+# is exactly what the warm path does not do. With the prereqs skipped there is
+# no start sequence to cascade from, so anything baked into the disk that a step
+# below might reference has to be stated here or it is simply absent. `username`
+# and `hostname` are the ones that matter (they address the guest); the sizing
+# pair is restated with them so a COLD run through this file creates the same
+# 8 vCPU / 16 GiB guest the snapshot was taken on. They must stay equal to the
+# values in the start sequence -- a mismatch means the sizing that reaches a
+# cold-path guest is not the sizing the baseline was built at.
+#
+# LOADDISKSNAPSHOT MUST BE THE FIRST STEP. The runner skips its pre-sequence
+# `Start-VM` when the first executed step is a loadDiskSnapshot, because the
+# handler starts the VM itself after the restore (Invoke-TestSequence.ps1,
+# Get-FirstExecutedStepAction). Executed steps are `component` ++ `workload`, so
+# it goes at the top of `component`. Moving it into `workload` would leave the
+# runner starting the VM first and reverting a running guest.
+
+sequenceGuid: 42bd09f0-fcbe-42fd-a002-7b3e4541fc48
+sequenceRevision: 1
+
+description: "Kennel (SSH): revert the kennel-vm guest to the 'kennel-vm-baseline' disk snapshot and prove what came back is the appliance -- stock at the pin, container running, workspace built, simulator launchable."
+keystrokeMechanism: ssh
+
+requiresSnapshot:
+  id: kennel-vm-baseline
+
+resource:
+  ubuntu.server.24:
+    - workload.guest.ubuntu.server.24.kennel.baseline.ssh
+
+variables:
+  username: yuuser24
+  hostname: kennel-vm
+  memoryStartupBytes: 16GB
+  cores: 8
+
+component:
+  - action: loadDiskSnapshot
+    id: kennel-vm-baseline
+    description: "Revert the disk to 'kennel-vm-baseline' and start the guest"
+
+  # The guest boots fresh from the snapshot disk: no RAM state is restored, so
+  # it re-DHCPs and re-handshakes SSH. 600 s is a boot bound, not a revert
+  # bound -- the revert itself is seconds.
+  - action: sshWaitReady
+    timeoutSeconds: 600
+    description: "Wait for sshd after the revert (fresh boot, new lease)"
+
+  - action: sshExec
+    command: "whoami && hostname"
+    description: "Smoke test: whoami/hostname"
+
+workload:
+  # --- Identity. Every host-side kennel tool finds this guest by its DHCP lease
+  # HOSTNAME, never by domain name (vm/meshcat-exposure.md section 3.1) -- which
+  # is precisely why renaming the domain to `kennel-vm-baseline` breaks nothing.
+  # The corollary is that the hostname is load-bearing, so it is asserted.
+  #
+  # NB: no ${...} anywhere in these commands -- Yuruna expands ${name} in step
+  # parameters, so plain $h / $c / $s are used instead.
+  - action: sshExec
+    command: "h=$(hostname); echo \"hostname=$h (want kennel-vm)\"; [ \"$h\" = kennel-vm ]"
+    description: "Assert the guest that came back is kennel-vm"
+
+  # --- The pin is FROZEN INSIDE the snapshot. Repinning (scenario s009) is a
+  # `provision` from clean, not a reset. This assert is what catches a snapshot
+  # taken at another pin being served to a repo that has moved on; it re-states
+  # the SHA independently of both stack/pin.lock and the prep script's literal,
+  # the same enforcement-by-assertion the #10 sequence uses.
+  - action: sshExec
+    command: "cat \"$HOME/.kennel-baseline\"; grep -qx 'pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4' \"$HOME/.kennel-baseline\""
+    description: "Assert the restored guest carries the baseline record at the stack pin"
+
+  - action: sshExec
+    command: "c=$(git -C \"$HOME/dfki-quad\" rev-parse HEAD); echo \"pin=$c\"; [ \"$c\" = dcf53c596339afd45b82f12c54b1e93e8273c2f4 ]"
+    description: "Assert the clone sits at the stack pin"
+
+  # A reset must return STOCK configs, which is the whole point of reverting
+  # rather than restore-stock'ing: the baseline was asserted clean before it was
+  # frozen, so a modified tracked file here means the snapshot itself is bad.
+  #
+  # --untracked-files=no is not a loosening. A correctly provisioned guest
+  # always carries untracked build artifacts in this clone -- the build stamp
+  # `ws/.kennel-built-<pin>` is inside the worktree and upstream's .gitignore
+  # does not cover it -- so a bare --porcelain can never be empty and would
+  # reject every real baseline. The composed YAMLs are TRACKED and overwritten
+  # in place, so `transfer` still shows up here as ' M'.
+  - action: sshExec
+    command: "d=$(git -C \"$HOME/dfki-quad\" status --porcelain --untracked-files=no); echo \"modified_tracked=[$d]\"; [ -z \"$d\" ]"
+    description: "Assert no tracked file differs from the pin (configs are stock)"
+
+  # --- The container has NO --restart policy, by design (vm/provisioning.md
+  # section 3.2), so it is stopped after every boot -- and the baseline stopped
+  # it deliberately besides. Starting it is part of what `reset` delivers;
+  # without this the guest comes back without the thing that runs the stack.
+  - action: sshExec
+    command: "sudo docker start dfki_quad >/dev/null; s=$(sudo docker inspect --type container -f '{{.State.Status}}' dfki_quad); echo \"container=$s (want running)\"; [ \"$s\" = running ]"
+    description: "Start the dfki_quad container and assert it is running"
+
+  - action: sshExec
+    command: "sudo docker exec dfki_quad test -f /root/ros2_ws/install/setup.bash && echo 'colcon workspace installed'"
+    description: "Assert the go2 workspace survived the revert"
+
+  # --- The acceptance criterion, restated as a launch that survives a bounded
+  # window. COPIED VERBATIM from workload.guest.ubuntu.server.24.kennel.stack.ssh
+  # and deliberately not rewritten: this one command carries five teardown fixes
+  # found the hard way (vm/provisioning.md section 5a) -- the unitree_ros2
+  # overlay must be sourced explicitly because `docker exec bash -c` never reads
+  # .bashrc; an unbounded `wait` hangs because the Drake sim ignores SIGINT to
+  # the launcher; a negative-PID kill can hit this shell's own process group;
+  # and `pkill -f 'ros2 launch simulator'` matches THIS shell, whose cmdline
+  # contains that text. Hence: signal, wait bounded, hard-kill the pid, then
+  # reap by exact process NAME (-x). Keep it byte-identical to the #10 step.
+  - action: sshExec
+    command: "sudo docker exec dfki_quad bash -c 'source /opt/ros/humble/setup.bash; if [ -f /root/unitree_ros2/install/setup.bash ]; then source /root/unitree_ros2/install/setup.bash; fi; source /root/ros2_ws/install/setup.bash; source /root/setup_ulab_workspace.bash; ros2 launch simulator simulator.launch.py sim:=go2 > /tmp/sim-assert.log 2>&1 & LP=$!; sleep 45; if ! kill -0 $LP 2>/dev/null; then echo SIM_FAILED; tail -40 /tmp/sim-assert.log; exit 1; fi; echo SIM_OK; kill -INT $LP 2>/dev/null || true; for _ in $(seq 1 10); do kill -0 $LP 2>/dev/null || break; sleep 1; done; kill -KILL $LP 2>/dev/null || true; pkill -KILL -x simulator 2>/dev/null || true; pkill -KILL -x ros2 2>/dev/null || true; exit 0'"
+    timeoutSeconds: 300
+    description: "Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable"
+
+  # --- No composed run may be current. This is the half of "stock" that the
+  # tracked-files assert above cannot see: `transfer` writes the YAMLs into the
+  # clone (caught there) AND leaves ~/kennel-staging/current-run naming the run
+  # (caught here). A baseline that came back still claiming a current run would
+  # send p21-launch-from-commands.sh at a run folder the revert deleted.
+  #
+  # Written as an assert rather than an echo on purpose: Yuruna captures sshExec
+  # output only when a step FAILS, so a step that merely prints leaves no record
+  # of a passing run anywhere -- not in the HTML log, not in cycle.events.ndjson.
+  # Anything worth knowing has to be worth failing on.
+  - action: sshExec
+    command: "r=$(cat \"$HOME/kennel-staging/current-run\" 2>/dev/null || true); echo \"current_run=[$r] (want empty)\"; [ -z \"$r\" ]"
+    description: "Assert no composed run is applied (a baseline is stock)"
+
+  # --- Evidence block. Prints rather than asserts, and therefore is only ever
+  # seen when something else in this sequence fails -- see the note above. The
+  # durable host-side record is what `kennel-demo.sh reset` prints itself.
+  - action: sshExec
+    command: "echo '--- baseline record ---'; cat \"$HOME/.kennel-baseline\"; echo '--- disk ---'; df -h /; echo '--- container ---'; sudo docker ps --format '{{.Names}} {{.Status}}'"
+    description: "Record what the reset returned (feeds vm/snapshot.md)"

@@ -16,7 +16,7 @@ Prerequisites are once per host — Yuruna baseline, three patches, guest ISO �
 collected in [`demo/runbook.md` §2](demo/runbook.md). Then, from the repo root:
 
 ```bash
-demo/tools/kennel-demo.sh provision   # once per host, ~33 min — creates the kennel-vm guest
+demo/tools/kennel-demo.sh provision   # once per host, ~35 min — creates the kennel-vm guest
 demo/tools/kennel-demo.sh all         # the demo, ~6 min — ends with the Meshcat URL
 ```
 
@@ -25,11 +25,15 @@ Open the printed Meshcat URL, watch the robot trot, then:
 ```bash
 demo/tools/kennel-demo.sh walk stop   # return the gait to STAND
 demo/tools/kennel-demo.sh down        # stop the stack (container stays up)
+demo/tools/kennel-demo.sh reset       # or: back to a clean guest in ~90 s
 ```
 
 Once a guest exists, `provision` never needs to run again — `all` is
-repeatable on its own. Each phase, what it wraps, and what success looks like:
-[`demo/runbook.md`](demo/runbook.md).
+repeatable on its own. `provision` ends by freezing the guest as a **baseline
+snapshot**, so no mistake ever costs 35 minutes again: `reset` returns to it in
+about ninety seconds and proves the guest came back intact
+([`vm/snapshot.md`](vm/snapshot.md)). Each phase, what it wraps, and what
+success looks like: [`demo/runbook.md`](demo/runbook.md).
 
 ## Documentation
 
@@ -40,7 +44,7 @@ The in-depth documentation is indexed in [`docs/`](docs/README.md):
 - [Demo](docs/README.md#demo--running-it-end-to-end) — the runbook, the
   recorded dry run, and its evidence.
 - [VM](docs/README.md#vm--host-baseline-and-the-kennel-vm-appliance) — host
-  baseline, guest sizing, provisioning, Meshcat exposure.
+  baseline, guest sizing, provisioning, the baseline snapshot, Meshcat exposure.
 - [Stack](docs/README.md#stack--running-the-pinned-dfki-quad) — launch,
   mapping, transfer, verify, and the composed run.
 - [Console](docs/README.md#console--the-kennel-console-prototype) — serving,
