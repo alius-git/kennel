@@ -33,10 +33,17 @@ off, applies the run, launches the stack, verifies it, and prints the Meshcat UR
 with the robot already trotting.
 
 ```bash
+demo/tools/kennel-demo.sh teleop      # drive it yourself: a joystick in the console
 demo/tools/kennel-demo.sh walk stop   # return the gait to STAND
 demo/tools/kennel-demo.sh reset       # or: back to a clean guest in ~90 s
 demo/tools/kennel-demo.sh all         # the same demo, composing the run for you (unattended)
 ```
+
+`teleop` turns the console's Interventions joystick into a real one: it starts
+the rosbridge that has been sitting unused in the pinned image, hands the
+browser its URL, and the stick then publishes `/quad_control_target` at 20 Hz —
+gait picker, STAND and E-STOP beside it
+([`stack/bridge.md`](stack/bridge.md), [`kennel_console/teleop.md`](kennel_console/teleop.md)).
 
 `provision` ends by freezing the guest as a **baseline snapshot**, so no mistake
 ever costs 35 minutes again: `reset` returns to it in about ninety seconds and

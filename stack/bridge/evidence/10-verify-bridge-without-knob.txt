@@ -1,0 +1,4 @@
+[FAIL] 1 node-graph           -- ros2 node list: measured /drake_simulator /joy_linux_node /joy_to_target /leg_driver /mit_controller_node /rosapi /rosapi_params /rosbridge_websocket /safe_start_launcher [missing: none][extra: /rosapi /rosapi_params /rosbridge_websocket ][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+[FAIL] 1 node-graph           -- ros2 node list: measured /drake_simulator /joy_linux_node /joy_to_target /leg_driver /mit_controller_node /rosapi /rosapi_params /rosbridge_websocket /safe_start_launcher [missing: none][extra: /rosapi /rosapi_params /rosbridge_websocket ][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+pass=9 fail=1
+VERDICT: FAIL

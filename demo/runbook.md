@@ -19,6 +19,7 @@ demo/tools/kennel-demo.sh setup       # once per host — checks/does the prereq
 demo/tools/kennel-demo.sh provision   # once per host, ~35 min — builds the guest, ends in a baseline snapshot
 demo/tools/kennel-demo.sh console     # serves the console and opens it; compose, click "generate run"
 demo/tools/kennel-demo.sh run         # the newest run → transfer → launch → verify → walk
+demo/tools/kennel-demo.sh teleop      # drive it yourself from the console's joystick
 demo/tools/kennel-demo.sh down        # stop the stack (container stays up)
 ```
 
@@ -158,6 +159,8 @@ those plus `compose`. Timings are the single measured sample from
 | `kennel-demo.sh halt` | `virsh shutdown` (ACPI, never `destroy`) + a bounded wait for the domain to stop | `shut off after <n>s` | ~20 s |
 | `kennel-demo.sh console` | `python3 -m http.server` on [`kennel_console/`](../kennel_console/), backgrounded behind a pidfile, then `xdg-open` | the URL, and the page in your browser | ~1 s |
 | `kennel-demo.sh run` | the newest run — folder in `~/kennel-runs` **or** `.zip` in `~/Downloads` — then `transfer` → `launch` → `verify` → `walk`, bringing the guest up first if it is off | the run it picked and why, then `pass=10 fail=0` and the Meshcat URL | ~5 min |
+| `kennel-demo.sh teleop` | [`kennel-bridge.sh`](../stack/bridge/kennel-bridge.sh) on the guest + [`verify-bridge-host.sh`](../vm/test/verify-bridge-host.sh), then the console: stops any held trot, starts rosbridge, hands the URL to the page ([`stack/bridge.md`](../stack/bridge.md)) | the `ws://` and Meshcat URLs, then *Dashboard → Interventions → connect bridge* | ~10 s |
+| `kennel-demo.sh teleop stop` | zero the target and return to STAND, **then** stop the bridge — in that order | `gait returned to STAND`, `bridge stopped` | ~10 s |
 | `kennel-demo.sh reset` | the same sequence, warm path — revert the disk snapshot and re-assert the appliance ([`vm/snapshot.md` §3](../vm/snapshot.md)) | **12/12 PASS**, then the baseline record printed | ~90 s |
 | `kennel-demo.sh snapshot` | [the baseline prep script](../vm/guest/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh) on the guest, then Yuruna's `Save-VMDiskSnapshot` | `this guest is a clean baseline`, then the new snapshot listed | ~35 s |
 | `kennel-demo.sh compose` | [`p22-console-demo.sh`](tools/p22-console-demo.sh) — serves the console if nothing else is, makes both choices in the UI, clicks Generate run, unpacks the download | `run folder  ~/kennel-runs/run-<stamp>` | ~1 min |
@@ -312,6 +315,12 @@ Symptoms the dry run already met, plus the driver's own failure modes:
 | `walk` says Meshcat is not reachable | The simulator is not running (`launch` first); exit codes decoded in [`meshcat-exposure.md` §7](../vm/meshcat-exposure.md) |
 | Trot tool: `timeout: failed to run command 'ros2'` | The stack was launched without the launcher, so `/tmp/p21-env.sh` is missing — recipe in [`composed-run.md` §2](../stack/composed-run.md) (F9) |
 | `verify` exits 1 vs 2 | 1 = stack up but not healthy/walking (collect logs); 2 = could not even look ([`verify.md` §1](../stack/verify.md)) |
+| The robot jitters between two speeds while you drive it | Two publishers on `/quad_control_target`: the controller takes whichever arrived last. Almost always a trot `run` left held. `kennel-demo.sh teleop` stops it for you — run the verb rather than connecting by hand ([`stack/bridge.md` §7](../stack/bridge.md)) |
+| The console says `another publisher is holding /quad_control_target` | The same thing, caught before it started: the page listens for a second before it advertises, and refuses rather than joining the fight. `kennel-demo.sh teleop`, then reconnect |
+| `connect bridge` fails, or there is no bridge field at all | No field = the console is not served by `serve.py` (use `kennel-demo.sh console`). Field but no connection = the bridge is down: `kennel-demo.sh status` says so, `kennel-demo.sh teleop` starts it. It needs a **launched** stack — the script exits 2 and says so |
+| `verify` check 1 says `extra: /rosapi /rosapi_params /rosbridge_websocket` | A bridge is running. That is the intended signal, not a defect. `kennel-demo.sh verify` sets `KENNEL_EXPECT_BRIDGE=1` for you when it can reach one; running `kennel-verify.sh` directly on the guest does not ([`stack/bridge.md` §6](../stack/bridge.md)). The entries also linger 10–20 s after a stop |
+| You closed the browser tab and the robot kept walking | Expected, and the honest limit of the dead man's switch: a killed renderer sends nothing, and the controller keeps its last target forever. `kennel-demo.sh teleop stop` ([`teleop.md` §5](../kennel_console/teleop.md)) |
+| The Dashboard shows FALL DETECTED while the robot is fine | `MockDataSource`'s scripted demo, still driving every panel — this issue does not touch the `DataSource` seam. Only the bridge status item and the teleop message line are live ([`teleop.md` §6](../kennel_console/teleop.md)) |
 | `verify` check 1 says `missing: /joy_to_target`, especially right after a `reset` | Known race, [#52](https://github.com/alius-git/kennel/issues/52) — `launch` returns before that node joins the graph, and a cold container widens the window. Run `kennel-demo.sh verify` again without relaunching; if it passes, the stack was always fine |
 
 ## 6. Relation to the dry run

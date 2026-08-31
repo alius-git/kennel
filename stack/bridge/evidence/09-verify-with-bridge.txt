@@ -1,0 +1,7 @@
+[kennel-demo] bridge is up     check 1 will tolerate the three rosbridge nodes
+[kennel-demo] WARNING: checks 6-9 command their own trot: DISCONNECT the console first, or the
+[kennel-demo] WARNING: two publishers fight and the walking checks measure the argument.
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required the six healthy-session nodes plus the three rosbridge nodes (KENNEL_EXPECT_BRIDGE=1), no duplicates
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required the six healthy-session nodes plus the three rosbridge nodes (KENNEL_EXPECT_BRIDGE=1), no duplicates
+pass=10 fail=0
+VERDICT: PASS -- healthy and walking

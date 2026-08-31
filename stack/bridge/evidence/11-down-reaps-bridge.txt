@@ -1,0 +1,15 @@
+The bridge is up. Running `down` ONLY -- no `teleop stop` -- to prove
+k13-stop.sh reaps it, which is the claim that makes teardown free.
+
+before: port 9090 0.0.0.0:9090
+before: port 9090 [::]:9090
+$ kennel-demo.sh down
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] stack stopped in container 'dfki_quad'. The container itself is left running.
+
+--- rosbridge/rosapi processes ---
+(none -- reaped by the path patterns k13-stop.sh now carries)
+--- port 9090 ---
+closed
+--- pidfile ---
+(removed)

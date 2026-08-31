@@ -1,0 +1,19 @@
+The stick was released ~2 s into this window. Nothing else was commanded.
+
+t_sim   vx       x
+  0.0    0.459     54.541
+  1.0    0.047     54.825
+  2.0   -0.004     54.824
+  3.0   -0.003     54.822
+  4.0   -0.007     54.822
+  5.0   -0.003     54.822
+  6.0   -0.006     54.822
+  7.0   -0.015     54.821
+  8.0   -0.012     54.822
+  9.0   -0.005     54.822
+ 10.0   -0.008     54.822
+ 11.0   -0.007     54.820
+ 12.0   -0.009     54.822
+
+first 0.459 m/s -> last -0.009 m/s
+the robot stops where it was; the gait keeps trotting in place (STAND was not commanded)

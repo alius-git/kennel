@@ -348,6 +348,33 @@ select{appearance:none}
             <div onClick="{{ onStep10 }}" style="padding:5px 11px;border:1px solid #232b36;border-radius:4px;font:500 10px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757">step 1 s</div>
             <div onClick="{{ onReset }}" style="padding:5px 11px;border:1px solid #232b36;border-radius:4px;font:500 10px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757">reset sim</div>
           </div>
+          <sc-if value="{{ teleopReady }}" hint-placeholder-val="{{ true }}">
+            <div style="width:1px;height:34px;background:#1b222c"></div>
+            <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">rosbridge</div>
+                <input type="text" value="{{ bridgeUrl }}" onChange="{{ onBridgeUrl }}" placeholder="{{ bridgePlaceholder }}" style="width:210px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:3px 6px;border-radius:3px">
+              </div>
+              <div onClick="{{ onToggleBridge }}" style="padding:5px 11px;border:1px solid {{ bridgeBtnBd }};background:{{ bridgeBtnBg }};border-radius:4px;font:600 10px 'IBM Plex Mono';color:{{ bridgeBtnFg }};cursor:pointer">{{ bridgeBtn }}</div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">gait</div>
+                <select value="{{ gaitSel }}" onChange="{{ onGait }}" style="width:150px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:3px 6px;border-radius:3px">
+                  <sc-for list="{{ gaits }}" as="g" hint-placeholder-count="3"><option value="{{ g.v }}">{{ g.label }}</option></sc-for>
+                </select>
+              </div>
+              <sc-for list="{{ teleopFields }}" as="v" hint-placeholder-count="2">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">{{ v.label }}</div>
+                  <input type="number" step="{{ v.step }}" value="{{ v.value }}" onChange="{{ v.onChange }}" style="width:74px;text-align:right;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:3px 6px;border-radius:3px">
+                </div>
+              </sc-for>
+              <div onClick="{{ onStand }}" style="padding:5px 11px;border:1px solid #232b36;border-radius:4px;font:500 10px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757">STAND</div>
+              <div onClick="{{ onEstop }}" style="padding:5px 11px;border:1px solid #612722;background:#2a1010;border-radius:4px;font:600 10px 'IBM Plex Mono';color:#f0a19b;cursor:pointer">E-STOP</div>
+            </div>
+            <sc-if value="{{ teleopMsg }}" hint-placeholder-val="{{ true }}">
+              <div style="font:500 9px 'IBM Plex Mono';color:{{ teleopFg }};width:100%">{{ teleopMsg }}</div>
+            </sc-if>
+          </sc-if>
         </div>
 
         <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:10px;display:grid;grid-template-columns:{{ gridCols }};grid-template-rows:{{ gridRows }};gap:0">
@@ -1330,6 +1357,226 @@ function flatten(cfg) {
   return out;
 }
 
+// ---- Teleop over rosbridge (#58) --------------------------------------------
+// NOT the design's RosbridgeDataSource. That one subscribes every panel to the
+// live stack and is build step 3 of design.md §7; this publishes ONE topic and
+// calls TWO services -- the Interventions toolbar's half of the seam, which
+// prompts.txt:180 and design/03-console.md:27 both place inside "configure +
+// monitor": a topic publish against an already-running sim is not process
+// control. The Dashboard's panels stay on MockDataSource, untouched.
+//
+// rosbridge v2's JSON protocol over a native WebSocket, so nothing new is
+// vendored and verify-serve.sh's asset list is unchanged.
+const TELEOP_TOPIC = '/quad_control_target';
+const TELEOP_TYPE = 'interfaces/msg/QuadControlTarget';
+const CTRL_PARAM_SRV = '/mit_controller_node/set_parameters';
+const CTRL_PARAM_TYPE = 'rcl_interfaces/srv/SetParameters';
+const ESTOP_SRV = '/set_emergency_damping_mode';
+const ESTOP_TYPE = 'std_srvs/srv/Trigger';
+const GAIT_PARAM = 'simple_gait_sequencer.gait';
+// The NODE's list (MITController::GetGaitSequencerFromParams, launch.md §4.1),
+// which is strictly longer than the upstream gamepad's: TROT and FLYING_TROT
+// are commented out in joy_to_target.py at the pin, so a parameter-driven
+// picker reaches gaits a joystick cannot.
+const GAITS = ['STAND', 'STATIC_WALK', 'WALKING_TROT', 'TROT', 'FLYING_TROT',
+               'PACE', 'BOUND', 'ROTARY_GALLOP', 'TRAVERSE_GALLOP', 'PRONK'];
+const TELEOP_HZ = 20;         // joy_to_target's update_freq (launch.md §4.2)
+const TELEOP_MAX_ACC = 0.5;   // joy_to_target.max_acceleration, mit_controller_sim_go2.yaml:95
+const TELEOP_YAW = 1.0;       // joy_to_target scaling.yaw
+const TELEOP_Z = 0.30;        // init_robot_height -- and see world_z below
+const TELEOP_VMAX = 0.5;      // joy_to_target scaling.x
+const PROBE_MS = 1000;        // how long to listen before advertising
+
+function r3(x) { return Math.round(x * 1000) / 1000; }
+
+class RosbridgeTarget {
+  constructor(url, sink) {
+    this.url = url; this.sink = sink;
+    this.ws = null; this.timer = null; this.probeT = null;
+    // idle | connecting | probing | driving | refused | error
+    this.state = 'idle'; this.msg = ''; this.err = false;
+    this.cmd = {vx: 0, vy: 0, wz: 0};   // what the operator asks for
+    this.v = {x: 0, y: 0};              // what is actually sent, after the ramp
+    this.z = TELEOP_Z; this.maxv = TELEOP_VMAX;
+    this.sent = 0; this.foreign = 0; this.callSeq = 0; this.pending = {};
+  }
+  driving() { return this.state === 'driving'; }
+  open() { return !!this.ws && this.ws.readyState === 1; }
+  say(msg, err) { this.msg = msg; this.err = !!err; this.sink(); }
+
+  connect() {
+    if (this.ws) return;
+    this.say('connecting to ' + this.url + ' …', false);
+    this.state = 'connecting';
+    let ws;
+    try { ws = new WebSocket(this.url); }
+    catch (e) { this.state = 'error'; this.say('not a usable WebSocket URL: ' + e, true); return; }
+    this.ws = ws;
+    ws.onopen = () => this.probe();
+    ws.onmessage = e => this.onMessage(e);
+    // onerror carries no detail by design (browsers hide it), so the message
+    // names the two things that are actually wrong when it fires.
+    ws.onerror = () => {
+      if (this.state === 'refused') return;
+      this.state = 'error';
+      this.say('could not reach ' + this.url + ' — is the bridge up?  kennel-demo.sh teleop', true);
+    };
+    ws.onclose = () => {
+      this.stopTimer();
+      this.ws = null;
+      if (this.state === 'refused' || this.state === 'error') return;
+      this.state = 'idle';
+      this.say('the bridge closed the connection — the stack keeps its last target', true);
+    };
+  }
+
+  // Listen before speaking. The controller consumes the LATEST message on this
+  // topic every cycle, so a second publisher does not merge with ours -- the
+  // two alternate and the robot jitters between two speeds. `kennel-demo.sh
+  // teleop` stops the known one (p21-trot-hold.sh); this catches the rest,
+  // including a kennel-verify.sh walk phase running right now.
+  probe() {
+    this.state = 'probing'; this.foreign = 0;
+    this.say('listening on ' + TELEOP_TOPIC + ' for another publisher …', false);
+    this.send({op: 'subscribe', topic: TELEOP_TOPIC, type: TELEOP_TYPE,
+               throttle_rate: 100, queue_length: 1, id: 'kennel-probe'});
+    this.probeT = setTimeout(() => {
+      this.probeT = null;
+      this.send({op: 'unsubscribe', topic: TELEOP_TOPIC, id: 'kennel-probe'});
+      if (this.foreign > 0) {
+        this.state = 'refused';
+        this.say('another publisher is holding ' + TELEOP_TOPIC + ' (' + this.foreign
+                 + ' msgs in ' + (PROBE_MS / 1000) + ' s) — a walk or a verify is still running.'
+                 + '  Stop it:  kennel-demo.sh teleop', true);
+        this.close();
+        return;
+      }
+      this.drive();
+    }, PROBE_MS);
+  }
+
+  drive() {
+    this.send({op: 'advertise', topic: TELEOP_TOPIC, type: TELEOP_TYPE, id: 'kennel-teleop'});
+    this.state = 'driving';
+    this.say('driving — ' + TELEOP_HZ + ' Hz to ' + TELEOP_TOPIC, false);
+    this.timer = setInterval(() => this.tick(), 1000 / TELEOP_HZ);
+  }
+
+  // Publishing is CONTINUOUS while connected, zeros included: the controller
+  // consumes the latest target every cycle and silence is not a stop
+  // (launch.md §4.2).
+  tick() {
+    if (!this.driving() || !this.open()) return;
+    const dt = 1 / TELEOP_HZ;
+    const cap = v => Math.max(-this.maxv, Math.min(this.maxv, v));
+    const wantX = cap(this.cmd.vx), wantY = cap(this.cmd.vy);
+    // joy_to_target.clip_velocity, field for field: cap the CHANGE per tick,
+    // along the direction of the change, not each axis independently.
+    const dx = wantX - this.v.x, dy = wantY - this.v.y;
+    const dn = Math.sqrt(dx * dx + dy * dy);
+    const acc = dn / dt;
+    if (TELEOP_MAX_ACC > 0 && acc > TELEOP_MAX_ACC) {
+      const k = TELEOP_MAX_ACC / acc;
+      this.v = {x: this.v.x + dx * k, y: this.v.y + dy * k};
+    } else {
+      this.v = {x: wantX, y: wantY};
+    }
+    this.publish();
+  }
+
+  // ALL SIX FIELDS, EVERY TIME, and world_z always set. The first message
+  // overwrites the controller's whole target, and a message that omits world_z
+  // defaults it to 0.0 -- which commands the body to the ground. The trap is
+  // silent and it is why this is one function (launch.md §4.2).
+  publish() {
+    this.send({op: 'publish', topic: TELEOP_TOPIC, msg: {
+      body_x_dot: r3(this.v.x),
+      body_y_dot: r3(this.v.y),
+      world_z: r3(this.z),
+      hybrid_theta_dot: r3(this.cmd.wz),
+      pitch: 0.0,
+      roll: 0.0
+    }});
+    this.sent++;
+  }
+
+  // The stick was released: ask for zero and let the ramp take it there, which
+  // is what a gamepad release does. The command is zero immediately; the value
+  // on the wire reaches zero within maxv / 0.5 m/s² (≈1 s from full scale).
+  release() { this.cmd = {vx: 0, vy: 0, wz: 0}; }
+
+  // The page is going away. Zero first (that is the safety-critical half), then
+  // hand the advertisement back, then close. No setState anywhere: this runs
+  // during unload, where a render is neither wanted nor guaranteed.
+  leave() {
+    this.panic();
+    if (this.open()) this.send({op: 'unadvertise', topic: TELEOP_TOPIC, id: 'kennel-teleop'});
+    this.stopTimer();
+    if (this.ws) { try { this.ws.close(); } catch (e) {} this.ws = null; }
+  }
+
+  // The operator is gone, or asked for a stop: zero the ramp state too and put
+  // one zero on the wire NOW, without waiting for the next tick.
+  panic() {
+    this.cmd = {vx: 0, vy: 0, wz: 0};
+    this.v = {x: 0, y: 0};
+    if (this.open() && this.state === 'driving') this.publish();
+  }
+
+  call(service, type, args, okMsg) {
+    if (!this.open()) { this.say('not connected — nothing was sent', true); return; }
+    const id = 'kennel-call-' + (++this.callSeq);
+    this.pending[id] = okMsg;
+    this.send({op: 'call_service', service: service, type: type, args: args, id: id});
+  }
+
+  // `ros2 param set` reports success for a gait the node then rejects
+  // (verify.md §4.4), so this says "sent" and never "active". /gait_state is
+  // the observable that could say active, and reading it is not this issue.
+  setGait(name) {
+    this.call(CTRL_PARAM_SRV, CTRL_PARAM_TYPE,
+              {parameters: [{name: GAIT_PARAM, value: {type: 4, string_value: name}}]},
+              'gait ' + name + ' sent (the node reports success even for a gait it rejects)');
+  }
+  estop() {
+    this.panic();
+    this.call(ESTOP_SRV, ESTOP_TYPE, {}, 'emergency damping requested — target zeroed');
+  }
+
+  onMessage(e) {
+    let m;
+    try { m = JSON.parse(e.data); } catch (err) { return; }
+    if (m.op === 'publish' && m.topic === TELEOP_TOPIC) { this.foreign++; return; }
+    if (m.op === 'service_response') {
+      const okMsg = this.pending[m.id];
+      delete this.pending[m.id];
+      if (m.result === false) this.say('the stack refused the call: ' + JSON.stringify(m.values || ''), true);
+      else if (okMsg) this.say(okMsg, false);
+      return;
+    }
+    if (m.op === 'status' && (m.level === 'error' || m.level === 'warning')) {
+      this.say('bridge: ' + m.msg, m.level === 'error');
+    }
+  }
+
+  send(obj) { if (this.open()) { try { this.ws.send(JSON.stringify(obj)); } catch (e) {} } }
+  stopTimer() {
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    if (this.probeT) { clearTimeout(this.probeT); this.probeT = null; }
+  }
+  close() {
+    this.stopTimer();
+    if (this.ws) { try { this.ws.close(); } catch (e) {} this.ws = null; }
+  }
+  disconnect() {
+    this.panic();
+    if (this.open()) this.send({op: 'unadvertise', topic: TELEOP_TOPIC, id: 'kennel-teleop'});
+    this.state = 'idle';
+    this.close();
+    this.say('disconnected — the target was zeroed on the way out', false);
+  }
+}
+
 class MockDataSource {
   constructor(sink) {
     this.sink = sink; this.timer = null;
@@ -1469,6 +1716,11 @@ class Component extends DCLogic {
       // state: served by plain http.server there is no such endpoint, and the
       // console must then be exactly what it was before serve.py existed.
       kennel: null, sendMsg: '', sendErr: false,
+      // Teleop (#58). bridgeUrl is prefilled from /api/health when the driver
+      // has written one, and stays editable -- a lab that knows its own URL
+      // should not have to run a verb to type it.
+      bridgeUrl: '', teleopHint: '', gaitSel: 'WALKING_TROT',
+      teleopZ: TELEOP_Z, teleopV: TELEOP_VMAX,
       colW: 60, rowA: 1.1, rowB: 0.95, rowC: 0.95,
       dist: {fx: 120, fy: 0, fz: 0, duration: 0.30},
       runSeq: 1
@@ -1489,6 +1741,17 @@ class Component extends DCLogic {
       if (raw) this.setState({presets: JSON.parse(raw)});
     } catch (e) {}
     this.probeKennel();
+    // Dead man's switch, best effort and stated as such (teleop.md §4). The
+    // controller keeps the last target it received forever, so a page that goes
+    // away mid-stride must put a zero on the wire before it does. None of these
+    // events is guaranteed to fire -- a killed renderer fires nothing, and that
+    // case is `kennel-demo.sh teleop stop`, not JavaScript.
+    this.onHide = () => { if (this.tp) this.tp.panic(); };
+    this.onGone = () => { if (this.tp) this.tp.leave(); };
+    this.onVis = () => { if (document.hidden) this.onHide(); };
+    window.addEventListener('pagehide', this.onGone);
+    window.addEventListener('beforeunload', this.onGone);
+    document.addEventListener('visibilitychange', this.onVis);
     this.draw();
   }
 
@@ -1504,11 +1767,23 @@ class Component extends DCLogic {
     try {
       fetch('/api/health', {cache: 'no-store'})
         .then(r => (r.ok ? r.json() : null))
-        .then(h => { if (h && h.kennel) this.setState({kennel: h}); })
+        .then(h => {
+          if (!h || !h.kennel) return;
+          // The bridge URL is a hint from the driver, never a reason to open a
+          // socket: connecting stays a click. With no teleop verb run, bridge is
+          // null and the field is empty with its placeholder saying so.
+          this.setState(s2 => ({kennel: h, bridgeUrl: s2.bridgeUrl || h.bridge || ''}));
+        })
         .catch(() => {});
     } catch (e) {}
   }
-  componentWillUnmount() { if (this.ds) this.ds.stop(); }
+  componentWillUnmount() {
+    if (this.ds) this.ds.stop();
+    if (this.tp) { this.tp.leave(); this.tp = null; }
+    window.removeEventListener('pagehide', this.onGone);
+    window.removeEventListener('beforeunload', this.onGone);
+    document.removeEventListener('visibilitychange', this.onVis);
+  }
   componentDidUpdate() {
     this.draw();
     if (this._feed && !this.state.pinFall) this._feed.scrollTop = this._feed.scrollHeight;
@@ -1771,6 +2046,13 @@ class Component extends DCLogic {
   renderVals() {
     const st = this.state, cfg = st.cfg;
     const ds = this.ds;
+    // The teleop target, when one exists. `tpBusy` is "the operator has asked
+    // for a connection" (any state that owns a socket), which is what the
+    // connect/disconnect button toggles on. `cmdOwner` is whichever of the two
+    // the velocity fields should be editing right now.
+    const tp = this.tp;
+    const tpBusy = !!tp && (tp.state === 'driving' || tp.state === 'probing' || tp.state === 'connecting');
+    const cmdOwner = (tp && tp.driving()) ? tp : ds;
     const buf = ds ? ds.buf : [];
     const last = buf.length ? buf[buf.length - 1] : null;
     const live = st.conn === 'connected';
@@ -2057,10 +2339,13 @@ class Component extends DCLogic {
         {label:'topic age', value: last ? last.hb.toFixed(3) + ' s' : '—', color:'#9aa5b1'}
       ] : [],
 
+      // The three velocity fields address whichever target is live: the bridge
+      // when it is driving, the mock otherwise. Same fields, same labels --
+      // only the thing on the other end changes (the seam's whole point).
       velFields: [
         {label:'vx [m/s]', key:'vx'}, {label:'vy [m/s]', key:'vy'}, {label:'ωz [rad/s]', key:'wz'}
-      ].map(v => ({label:v.label, value: ds ? ds.cmd[v.key] : 0,
-        onChange: e => { const n = parseFloat(e.target.value); if (ds) ds.cmd[v.key] = isNaN(n) ? 0 : n; this.setState(s => ({tick:s.tick + 1})); }})),
+      ].map(v => ({label:v.label, value: cmdOwner ? cmdOwner.cmd[v.key] : 0,
+        onChange: e => { const n = parseFloat(e.target.value); if (cmdOwner) cmdOwner.cmd[v.key] = isNaN(n) ? 0 : n; this.setState(s => ({tick:s.tick + 1})); }})),
       distFields: [
         {label:'Fx [N]', key:'fx', step:10}, {label:'Fy [N]', key:'fy', step:10},
         {label:'Fz [N]', key:'fz', step:10}, {label:'dur [s]', key:'duration', step:0.05}
@@ -2070,14 +2355,54 @@ class Component extends DCLogic {
       onStep: () => { if (ds) { ds.advance(); this.setState(s => ({tick:s.tick + 1})); } },
       onStep10: () => { if (ds) { for (let i = 0; i < 10; i++) ds.advance(); this.setState(s => ({tick:s.tick + 1})); } },
       onReset: () => { if (ds) { const wasRunning = !!ds.timer; ds.stop(); ds.reset(); if (wasRunning) ds.start(); } this.setState({pinFall:false, detail:null, tick:0}); },
-      joyLeft: (50 + (ds ? ds.cmd.wz : 0) * 40) + '%',
-      joyTop: (50 - (ds ? ds.cmd.vx : 0) * 40) + '%',
+      // Normalised by whatever the live target's full scale is, so the knob
+      // stays inside the pad on both (the mock's ±1.2 / ±1.5 predate this).
+      joyLeft: (50 + (tp ? tp.cmd.wz / TELEOP_YAW : (ds ? ds.cmd.wz : 0)) * 40) + '%',
+      joyTop: (50 - (tp ? tp.cmd.vx / (tp.maxv || 1) : (ds ? ds.cmd.vx : 0)) * 40) + '%',
       joyDown: e => { this._joy = true; e.currentTarget.setPointerCapture(e.pointerId); this.joySet(e); },
       joyMove: e => { if (this._joy) this.joySet(e); },
-      joyUp: () => { this._joy = false; },
+      // Releasing the stick asks for zero immediately; the ramp puts it on the
+      // wire over ~1 s, which is what releasing a gamepad does. A hard stop is
+      // STAND or E-STOP, and both are one click away.
+      joyUp: () => { this._joy = false; if (tp && tp.driving()) { tp.release(); this.setState(s => ({tick:s.tick + 1})); } },
+
+      // ---- teleop controls (#58). Present whenever serve.py is the server,
+      // exactly like the send button: feature detection is the mechanism, so a
+      // console served by plain http.server is unchanged.
+      teleopReady: !!st.kennel,
+      bridgeUrl: st.bridgeUrl,
+      bridgePlaceholder: 'ws://<guest>:9090/  —  kennel-demo.sh teleop',
+      onBridgeUrl: e => this.setState({bridgeUrl: e.target.value}),
+      bridgeBtn: tpBusy ? 'disconnect bridge' : 'connect bridge',
+      bridgeBtnFg: tpBusy ? '#e0a63c' : '#8fc9ea',
+      bridgeBtnBd: tpBusy ? '#4a3a1c' : '#2f5d78',
+      bridgeBtnBg: tpBusy ? '#231b0e' : '#14283a',
+      onToggleBridge: () => this.teleopToggle(),
+      gaits: GAITS.map(g => ({v: g, label: g})),
+      gaitSel: st.gaitSel,
+      onGait: e => { const g = e.target.value; this.setState({gaitSel: g}); if (tp) tp.setGait(g); },
+      onStand: () => { if (tp) { tp.panic(); tp.setGait('STAND'); } this.setState({gaitSel: 'STAND'}); },
+      onEstop: () => { if (tp) tp.estop(); },
+      teleopFields: [
+        {label:'z [m]', key:'teleopZ', step:0.01, apply: (t, n) => t.z = n},
+        {label:'max v [m/s]', key:'teleopV', step:0.05, apply: (t, n) => t.maxv = n}
+      ].map(f => ({label:f.label, step:f.step, value: st[f.key],
+        onChange: e => { const n = parseFloat(e.target.value);
+                         const val = isNaN(n) ? 0 : n;
+                         if (tp) f.apply(tp, val);
+                         this.setState({[f.key]: val}); }})),
+      teleopMsg: tp ? tp.msg : st.teleopHint,
+      teleopFg: (tp && tp.err) || (!tp && st.teleopHint) ? '#d98a84' : '#8fc9ea',
 
       status: [
         {label:'conn', value: live ? 'MockDataSource · connected' : 'disconnected', color: live ? '#3fbf7f' : '#e2564d'},
+        // Only when a kennel server is answering: under plain http.server the
+        // status bar must be exactly the row it has always been.
+        ...(st.kennel ? [{label:'bridge',
+          value: tp && tp.driving() ? 'driving · ' + TELEOP_HZ + ' Hz · ' + tp.sent + ' msgs'
+                                    : (tp && tpBusy ? tp.state : 'off'),
+          color: tp && tp.driving() ? '#3fbf7f' : (tp && tp.err ? '#e2564d' : '#5d6875')}] : []),
+
         {label:'rtf', value: live && last ? last.rtf.toFixed(2) + '×' : '—', color: live && last && last.rtf < 0.9 ? '#e0a63c' : '#9aa5b1'},
         {label:'heartbeat', value: live && last ? (last.hb * 1000).toFixed(0) + ' ms' : '—', color: live && last && last.hb > 0.2 ? '#e0a63c' : '#9aa5b1'},
         {label:'sim t', value: live ? now.toFixed(1) + ' s' + (ds && ds.halted ? ' · frozen at fall' : '') : '—',
@@ -2097,11 +2422,42 @@ class Component extends DCLogic {
       diffHint: st.sel.length === 2 ? 'comparing 2 runs' : 'select two runs to diff (' + st.sel.length + '/2)'
     };
   }
+  // One instance, created on the first connect and reused: the pointer
+  // handlers and the fields all write into it, so it has to outlive a render.
+  teleopToggle() {
+    // Every path below ends in a render: connect() and disconnect() both report
+    // through the sink, which is a setState. Only the early return needs one of
+    // its own, and it needs one because silence is the worst answer to a click.
+    if (this.tp && (this.tp.state === 'driving' || this.tp.state === 'probing'
+                    || this.tp.state === 'connecting')) {
+      this.tp.disconnect();
+      return;
+    }
+    const url = (this.state.bridgeUrl || '').trim();
+    if (!url) {
+      this.setState({teleopHint: 'no bridge URL — start one with  kennel-demo.sh teleop,'
+                                 + ' or type it here if you know it'});
+      return;
+    }
+    if (this.tp) this.tp.close();
+    this.setState({teleopHint: ''});
+    this.tp = new RosbridgeTarget(url, () => this.setState(s => ({tick: s.tick + 1})));
+    this.tp.z = Number(this.state.teleopZ) || TELEOP_Z;
+    this.tp.maxv = Number(this.state.teleopV) || TELEOP_VMAX;
+    this.tp.connect();
+  }
   joySet(e) {
     const r = e.currentTarget.getBoundingClientRect();
     const nx = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / (r.width / 2)));
     const ny = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / (r.height / 2)));
-    if (this.ds) { this.ds.cmd.vx = Math.round(-ny * 1.2 * 100) / 100; this.ds.cmd.wz = Math.round(nx * 1.5 * 100) / 100; }
+    // While the bridge is driving, the stick commands the REAL stack and the
+    // mock's own cmd is left alone -- every other panel keeps running off it.
+    if (this.tp && this.tp.driving()) {
+      this.tp.cmd.vx = Math.round(-ny * this.tp.maxv * 100) / 100;
+      this.tp.cmd.wz = Math.round(nx * TELEOP_YAW * 100) / 100;
+    } else if (this.ds) {
+      this.ds.cmd.vx = Math.round(-ny * 1.2 * 100) / 100; this.ds.cmd.wz = Math.round(nx * 1.5 * 100) / 100;
+    }
     this.setState(s => ({tick: s.tick + 1}));
   }
 }

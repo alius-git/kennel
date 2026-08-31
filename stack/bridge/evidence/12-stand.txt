@@ -1,0 +1,22 @@
+$ (browser) connect, WALKING_TROT, stick forward, then STAND
+after connect: disconnect bridge
+status: ['driving — 20 Hz to /quad_control_target', 'driving · 20 Hz · 0 msgs']
+gait sent
+stick pushed full forward
+--- trotting forward, /gait_state period + robot state ---
+period: 0.5
+duty_factor:
+- 0.6
+- 0.6
+STAND clicked
+--- after STAND: gait signature and body state ---
+period: 0.5
+duty_factor:
+- 1.0
+- 1.0
+String value is: STAND
+t_sim,x,y,z,vx,vy,vz,quat_w,foot_contact,belly,n_state,n_gait,n_hb
+0.0,0.2103,3.9818,0.3132,-0.0,-0.0,-0.0,0.83044,1111,0,1013,5,0
+1.0,0.2103,3.9818,0.3132,-0.0,-0.0,-0.0,0.83044,1111,0,2013,105,2
+2.0,0.2103,3.9818,0.3132,-0.0,-0.0,-0.0,0.83044,1111,0,3013,205,4
+3.0,0.2103,3.9818,0.3132,-0.0,-0.0,-0.0,0.83044,1111,0,4013,305,6

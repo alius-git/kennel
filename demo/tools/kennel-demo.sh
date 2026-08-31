@@ -28,6 +28,8 @@
 #   launch     stack/composed-run/tools/p21-launch-from-commands.sh  (on guest)
 #   verify     stack/verify/kennel-verify.sh                         (on guest)
 #   walk       vm/test/verify-meshcat-host.sh + p21-trot-hold.sh
+#   teleop     stack/bridge/kennel-bridge.sh (on guest) + verify-bridge-host.sh,
+#              then the console: drive the robot from the browser joystick
 #   down       stack/known-good/tools/k13-stop.sh   (in the container)
 #
 # Usage:
@@ -39,6 +41,8 @@
 #     kennel-demo.sh up                # start the guest and make it reachable
 #     kennel-demo.sh console [--no-open|stop]   # serve the console and open it
 #     kennel-demo.sh run [run-folder|zip]       # transfer -> launch -> verify -> walk
+#     kennel-demo.sh teleop            # drive it from the console's joystick
+#     kennel-demo.sh teleop stop       # stop driving: zero, STAND, bridge down
 #     kennel-demo.sh walk stop         # return the gait to STAND
 #     kennel-demo.sh down              # stop the stack in the container
 #     kennel-demo.sh reset             # revert to the baseline snapshot (~1-3 min)
@@ -88,6 +92,12 @@ YURUNA_DIR="${YURUNA_DIR:-$HOME/git/yuruna}"
 YURUNA_TAG="${YURUNA_TAG:-2026.08.04}"
 IMAGE_DIR="${YURUNA_IMAGE_DIR:-$HOME/yuruna/image/ubuntu.env}"
 OUT="${KENNEL_DEMO_OUT:-$HOME/kennel-runs}"
+# Where `teleop` leaves the URLs it discovered, for serve.py to hand to the page
+# through /api/health. Files rather than flags because the console is usually
+# ALREADY RUNNING when teleop is used -- serve.py re-reads them per request, so
+# nothing has to be restarted (send.md's feature detection, one level down).
+BRIDGE_FILE="$OUT/.kennel-bridge"
+MESHCAT_FILE="$OUT/.kennel-meshcat"
 # Where the browser saves the console's archive. `transfer` and `run` look here
 # as well as in OUT, so composing by hand needs no unzip and no path typed
 # (issue #54); it is a knob because "Downloads" is a desktop convention, not a
@@ -103,6 +113,9 @@ GUEST_USER="${KENNEL_GUEST_USER:-yuuser24}"
 SSH_KEY="${KENNEL_SSH_KEY:-$HOME/git/yuruna/test/status/ssh/yuruna_ed25519}"
 GUEST_IP="${KENNEL_GUEST_IP:-}"
 CONTAINER="${KENNEL_CONTAINER:-dfki_quad}"
+BRIDGE_PORT="${KENNEL_BRIDGE_PORT:-9090}"
+# The one topic two publishers can fight over (stack/launch.md §4.2).
+TARGET_TOPIC=/quad_control_target
 
 # The snapshot id is ALSO the persisted domain name -- Yuruna's saveDiskSnapshot
 # renames the domain to it so the next cycle's `test-` sweep leaves it alone, and
@@ -1177,9 +1190,19 @@ do_verify() {
         fi
     fi
     say "expect solver    $expect  (from $src)"
+    # Check 1 asserts EXACTLY the six healthy-session nodes. A running bridge
+    # adds three more, so with one up the check is told to tolerate them --
+    # otherwise a correct stack reports `extra:` (verify.md check 1).
+    local expect_bridge=0
+    if bridge_up; then
+        expect_bridge=1
+        say "bridge is up     check 1 will tolerate the three rosbridge nodes"
+        warn "checks 6-9 command their own trot: DISCONNECT the console first, or the"
+        warn "two publishers fight and the walking checks measure the argument."
+    fi
     guest_stage stack/verify/kennel-verify.sh
     ssh "${SSH_OPTS[@]}" "$TARGET" \
-        "/tmp/kennel-verify.sh --expect-solver '$expect' --controller-log /tmp/p21-ctrl.log"
+        "KENNEL_EXPECT_BRIDGE=$expect_bridge /tmp/kennel-verify.sh --expect-solver '$expect' --controller-log /tmp/p21-ctrl.log"
 }
 
 do_walk() {
@@ -1188,6 +1211,16 @@ do_walk() {
     if [ "${1:-start}" = "stop" ]; then
         ssh "${SSH_OPTS[@]}" "$TARGET" "/tmp/p21-trot-hold.sh stop"
         return $?
+    fi
+    # Only on the way IN. Two publishers on /quad_control_target do not merge:
+    # the controller reads the latest every cycle, so a held trot and a connected
+    # browser alternate and the robot jitters between two speeds. Proceeding is
+    # the operator's call -- they may have closed the page -- but it must not be
+    # a surprise. (`walk stop` above needs no such warning: it is the fix.)
+    if bridge_up; then
+        warn "the rosbridge is running: if a console is connected and driving, it is"
+        warn "publishing $TARGET_TOPIC too and the two will fight."
+        warn "Disconnect it in the browser, or:  $0 teleop stop"
     fi
     local url
     url="$("$REPO_ROOT/vm/test/verify-meshcat-host.sh" --quiet)" || {
@@ -1201,6 +1234,79 @@ do_walk() {
     say "the robot is trotting. Watch it here:"
     say "    $url"
     say "return it to STAND with:  $0 walk stop"
+    say "or drive it yourself:      $0 teleop"
+}
+
+do_teleop() {
+    if [ "${1:-start}" = "stop" ]; then
+        need_guest
+        # ORDER MATTERS. Zero the target and return to STAND first, while the
+        # bridge is still up and the browser can still be publishing; only then
+        # take the bridge away. The other order leaves the controller holding
+        # the last target it got with nothing left to change it -- the robot
+        # walks away and only `walk stop` or a relaunch stops it.
+        guest_stage stack/composed-run/tools/p21-trot-hold.sh
+        ssh "${SSH_OPTS[@]}" "$TARGET" "/tmp/p21-trot-hold.sh stop"
+        guest_stage stack/bridge/kennel-bridge.sh
+        ssh "${SSH_OPTS[@]}" "$TARGET" "KENNEL_BRIDGE_PORT=$BRIDGE_PORT /tmp/kennel-bridge.sh stop"
+        local rc=$?
+        rm -f "$BRIDGE_FILE" "$MESHCAT_FILE"
+        say "teleop stopped. The console will report the bridge as unreachable."
+        return $rc
+    fi
+    [ "${1:-start}" = "start" ] || { fail "teleop takes no argument, or stop."; exit 2; }
+
+    need_guest
+    # A held trot is the one publisher this driver knows it started, and it
+    # fights the browser for /quad_control_target: the controller takes whichever
+    # message arrived last, so the robot alternates between two speeds. `run`
+    # ends with one held, which is exactly the state an operator reaches this
+    # verb from. Stopping it also puts the gait back to STAND, so the first gait
+    # the operator picks in the console is a deliberate one.
+    guest_stage stack/composed-run/tools/p21-trot-hold.sh
+    ssh "${SSH_OPTS[@]}" "$TARGET" "/tmp/p21-trot-hold.sh stop" >/dev/null 2>&1 \
+        && say "stopped the held trot (the console is the publisher now)"
+
+    guest_stage stack/bridge/kennel-bridge.sh
+    ssh "${SSH_OPTS[@]}" "$TARGET" "KENNEL_BRIDGE_PORT=$BRIDGE_PORT /tmp/kennel-bridge.sh start" || {
+        local rc=$?
+        fail "the bridge did not start on the guest (exit $rc)."
+        [ "$rc" = 2 ] && say "The stack has to be running first:  $0 launch"
+        return $rc
+    }
+
+    local ws
+    ws="$("$REPO_ROOT/vm/test/verify-bridge-host.sh" --quiet)" || {
+        local rc=$?
+        "$REPO_ROOT/vm/test/verify-bridge-host.sh"    # re-run loud for the diagnosis
+        fail "the bridge is up in the guest but not reachable from this host (exit $rc)."
+        return $rc
+    }
+    mkdir -p "$OUT"
+    printf '%s\n' "$ws" > "$BRIDGE_FILE"
+
+    # Best effort: the 3D pane is the other half of driving, and the console can
+    # only offer it if something tells it the URL. Never fatal -- teleop works
+    # with the Meshcat tab the operator already has open.
+    local mc
+    if mc="$("$REPO_ROOT/vm/test/verify-meshcat-host.sh" --quiet 2>/dev/null)"; then
+        printf '%s\n' "$mc" > "$MESHCAT_FILE"
+    else
+        rm -f "$MESHCAT_FILE"
+        mc=""
+    fi
+
+    console_alive || do_console --no-open >/dev/null
+
+    echo
+    say "bridge           $ws"
+    [ -n "$mc" ] && say "meshcat          $mc"
+    say "console          $CONSOLE_URL"
+    echo
+    say "In the console: Dashboard -> Interventions -> connect, pick a gait, push the stick."
+    say "The velocity target is published while the page is connected; releasing the"
+    say "stick ramps it back to zero. STAND and E-STOP are beside the gait picker."
+    say "When you are done:  $0 teleop stop"
 }
 
 do_down() {
@@ -1211,8 +1317,17 @@ do_down() {
     ssh "${SSH_OPTS[@]}" "$TARGET" \
         "sudo docker cp /tmp/k13-stop.sh $CONTAINER:/root/k13-stop.sh && \
          sudo docker exec $CONTAINER bash /root/k13-stop.sh"
+    # k13-stop.sh reaps the bridge too (its pidfile is /tmp/k13-bridge.pid and
+    # its two children are in the sweep), so all that is left here is the URL
+    # the console would otherwise still be offered.
+    rm -f "$BRIDGE_FILE" "$MESHCAT_FILE"
     say "stack stopped in container '$CONTAINER'. The container itself is left running."
 }
+
+# Cheap and host-side: the pidfile lives in the container, but the socket is the
+# guest's (--network host), so a listener check answers the question without an
+# SSH round trip per caller.
+bridge_up() { "$REPO_ROOT/vm/test/verify-bridge-host.sh" --quiet >/dev/null 2>&1; }
 
 do_status() {
     "$REPO_ROOT/stack/transfer/kennel-transfer.sh" status
@@ -1240,6 +1355,12 @@ do_status() {
         say "Meshcat reachable:  $url"
     else
         say "Meshcat not reachable (simulator not running, or guest down)."
+    fi
+    local ws
+    if ws="$("$REPO_ROOT/vm/test/verify-bridge-host.sh" --quiet 2>/dev/null)"; then
+        say "bridge reachable:   $ws"
+    else
+        say "bridge not up (start it with:  $0 teleop)"
     fi
 }
 
@@ -1298,10 +1419,11 @@ case "${1:-}" in
     launch)    shift; do_launch ;;
     verify)    shift; do_verify ;;
     walk)      shift; do_walk "$@" ;;
+    teleop)    shift; do_teleop "$@" ;;
     down)      shift; do_down ;;
     status)    shift; do_status ;;
     all)       shift; do_all ;;
     -h|--help|help) usage ;;
-    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | down | status"
+    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status"
        usage >&2; exit 2 ;;
 esac

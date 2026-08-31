@@ -1,0 +1,14 @@
+$ demo/tools/kennel-demo.sh teleop
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] stopped the held trot (the console is the publisher now)
+[kennel-bridge] already up: pid 8743 on port 9090 (0.0.0.0:9090)
+
+[kennel-demo] bridge           ws://192.168.122.32:9090/
+[kennel-demo] meshcat          http://192.168.122.32:7000/
+[kennel-demo] console          http://localhost:8000/Kennel%20Console.dc.html
+
+[kennel-demo] In the console: Dashboard -> Interventions -> connect, pick a gait, push the stick.
+[kennel-demo] The velocity target is published while the page is connected; releasing the
+[kennel-demo] stick ramps it back to zero. STAND and E-STOP are beside the gait picker.
+[kennel-demo] When you are done:  ./demo/tools/kennel-demo.sh teleop stop
+rc=0

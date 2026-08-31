@@ -68,6 +68,8 @@ The in-depth documentation lives next to what it describes — the plan corpus i
   recipe.
 - [`stack/composed-run.md`](../stack/composed-run.md) — the PoC moment: a
   composed config runs the stack and the values take effect.
+- [`stack/bridge.md`](../stack/bridge.md) — the rosbridge beside the stack:
+  starting it, reaching it from the host, and tearing it down without leaks.
 
 ## Console — the Kennel Console prototype
 
@@ -81,6 +83,8 @@ The in-depth documentation lives next to what it describes — the plan corpus i
   generated artifacts out of the browser.
 - [`kennel_console/send.md`](../kennel_console/send.md) — the console writing
   the run folder where the driver reads, through `serve.py`.
+- [`kennel_console/teleop.md`](../kennel_console/teleop.md) — driving the robot
+  from the console's Interventions joystick, over rosbridge.
 
 ## Upstream
 
