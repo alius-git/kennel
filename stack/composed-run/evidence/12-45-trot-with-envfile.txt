@@ -1,0 +1,23 @@
+=== #45 row 3 -- the normal path is unchanged: env file restored, driven from the host ===
+2026-09-06T21:25:06Z
+
+env file present=0 (0 = present)
+
+$ demo/tools/kennel-demo.sh walk
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-trot] env              /tmp/p21-env.sh (written by p21-launch-from-commands.sh)
+[p21-trot] commanding WALKING_TROT at body_x_dot=0.3 world_z=0.30
+Set parameter successful
+[p21-trot] holding -- the robot is trotting (publisher pid 4221). Stop it with: /tmp/p21-trot-hold.sh stop
+
+[kennel-demo] the robot is trotting. Watch it here:
+[kennel-demo]     http://192.168.122.32:7000/
+[kennel-demo] return it to STAND with:  demo/tools/kennel-demo.sh walk stop
+[kennel-demo] or drive it yourself:      demo/tools/kennel-demo.sh teleop
+EXIT=0
+
+$ demo/tools/kennel-demo.sh walk stop
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-trot] stopping the velocity target
+[p21-trot] gait returned to STAND, target zeroed
+EXIT=0

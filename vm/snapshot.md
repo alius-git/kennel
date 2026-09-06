@@ -496,6 +496,12 @@ already asks for. That file is the stack's, with its own record in
 and Plan C build on it; changing it from inside a VM-and-driver issue would be
 the wrong seam.
 
+> **Fixed in [#52](https://github.com/alius-git/kennel/issues/52)** —
+> [`stack/composed-run.md` §9.1](../stack/composed-run.md). The launcher's last
+> gate is now the node graph itself, so the acceptance row this finding qualified
+> ("dirty the guest, `reset`, then `all` is green") holds without the re-run:
+> measured green on 4 of 4 cold containers after the change.
+
 ## 7. Limits
 
 - **The baseline is host-local.** It is a libvirt snapshot on one machine, not a

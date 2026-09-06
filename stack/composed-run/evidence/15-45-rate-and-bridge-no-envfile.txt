@@ -1,0 +1,54 @@
+=== #45 row 7 -- rate tool and bridge with NO /tmp/p21-env.sh ===
+2026-09-06T21:42:16Z
+
+TWO DEFECTS IN THE FIX ITSELF were found here on the first pass:
+  * kennel-bridge.sh's preflights were converted to the fallback but its
+    DETACHED LAUNCH was not -- it still did
+        docker exec -d ... bash -c "source /tmp/p21-env.sh ...; ros2 launch ..."
+    so every check passed and the bridge died with
+        bash: line 2: ros2: command not found
+  * p21-prove-realtime-rate.sh could not be exercised at all, because the
+    reset before this row wiped the guest's /tmp and it was never staged.
+Both fixed; every in-container ROS entry point now goes through ENV_PRELUDE.
+
+env file present=1 (1 = absent)
+
+--- p21-prove-realtime-rate.sh, whose old fallback was a PARTIAL chain ---
+[p21-rate] env              built-in chain (no /tmp/p21-env.sh -- the stack was launched some other way)
+[p21-rate] t0  sim 244.557s  monotonic 515.250s
+[p21-rate] observing 30 s ...
+[p21-rate] t1  sim 268.097s  monotonic 546.640s
+
+[PASS] realtime-rate -- /clock vs guest monotonic: measured 0.750 (23.540 sim-s in 31.390 s), required 0.75 +/- 0.1 i.e. [0.650, 0.850]
+EXIT=0
+
+--- the bridge: must start, be reachable from the host, and tear down ---
+$ demo/tools/kennel-demo.sh teleop
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] stopped the held trot (the console is the publisher now)
+[kennel-bridge] env              built-in chain (no /tmp/p21-env.sh -- the stack was launched some other way)
+[kennel-bridge] starting rosbridge on port 9090
+[kennel-bridge]   /rosbridge_websocket in the graph
+[kennel-bridge]   port 9090 bound (0.0.0.0:9090)
+[kennel-bridge] bridge up on port 9090 (pid 3386)
+[kennel-bridge] the URL is the host's to compose -- vm/test/verify-bridge-host.sh prints it
+
+[kennel-demo] bridge           ws://192.168.122.32:9090/
+[kennel-demo] meshcat          http://192.168.122.32:7000/
+[kennel-demo] console          http://localhost:8000/Kennel%20Console.dc.html
+
+[kennel-demo] In the console: Dashboard -> Interventions -> connect, pick a gait, push the stick.
+[kennel-demo] The velocity target is published while the page is connected; releasing the
+[kennel-demo] stick ramps it back to zero. STAND and E-STOP are beside the gait picker.
+[kennel-demo] When you are done:  demo/tools/kennel-demo.sh teleop stop
+EXIT=0
+
+$ demo/tools/kennel-demo.sh teleop stop
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-trot] stopping the velocity target
+[p21-trot] gait returned to STAND, target zeroed
+[kennel-bridge] bridge stopped
+[kennel-demo] teleop stopped. The console will report the bridge as unreachable.
+EXIT=0
+
+env file restored

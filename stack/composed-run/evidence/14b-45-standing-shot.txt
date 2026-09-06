@@ -1,0 +1,30 @@
+=== #45 row 6b -- the scene-liveness check, on a robot that is NOT trotting ===
+2026-09-06T21:41:49Z
+
+This started life as a 'is it walking?' test and could not be one. Measured
+here on THIS stack, base_link on a robot standing at STAND still moves:
+
+    t= 2.0s  x=5.199 y=0.314 z=0.419   moved 16.2 cm
+    t= 3.1s  x=5.192 y=0.299 z=0.268   moved 15.1 cm
+    t= 4.1s  x=5.176 y=0.302 z=0.485   moved 21.8 cm
+    t= 5.1s  x=5.195 y=0.326 z=0.351   moved 13.8 cm
+    t= 6.1s  x=5.190 y=0.306 z=0.295   moved  6.0 cm
+    t= 9.2s  x=5.183 y=0.317 z=0.346   moved  4.7 cm
+
+One object, one uuid -- not a duplicate-match artifact. Decoding the frame:
+world.y is the body height (0.30-0.33 m, steady) and world.z is Drake's
+lateral axis, so a standing quadruped under the MPC shuffles 5-22 cm/s
+sideways. No threshold separates that from a trot without also depending on
+the composed simulator_realtime_rate. So the check now asks the question it
+CAN answer: is the scene advancing at all?
+
+$ stack/composed-run/tools/p21-meshcat-shot.sh /tmp/standing.png
+[p21-shot] meshcat          http://192.168.122.32:7000/
+[p21-shot] scene ready     base_link is in the scene
+[p21-shot] scene motion    3.4 cm in 2 s
+[p21-shot] base_link at    {"x":5.151,"y":0.3,"z":0.521}
+[p21-shot] wrote            /tmp/standing.png (172217 bytes)
+EXIT=0
+-rw-rw-r-- 1 thales thales 172217 Sep  6 18:41 /tmp/standing.png
+
+Expected: a scene-motion line, NO frozen warning (the sim is live), exit 0.

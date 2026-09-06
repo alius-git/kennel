@@ -193,6 +193,16 @@ heartbeat rate went to zero immediately and caught it. That is why the liveness
 gate is checks 2–4, message rates, and check 1 is a completeness check that
 reports staleness rather than gating on it.
 
+The mirror image of that trap is [#52](https://github.com/alius-git/kennel/issues/52),
+and it is not this recipe's to fix: check 1 samples the graph **once**, so a node
+that has not *yet* arrived reads exactly like one that is missing. On a cold
+container `/joy_to_target` could still be registering when `launch` returned, and
+this check failed a stack that was entirely healthy — `verify` re-run alone
+against it gave 10/10. Sampling twice here would have hidden a real defect behind
+a retry; instead the launcher now does not return until the graph is complete
+([`composed-run.md` §9.1](composed-run.md)), so by the time this check looks, the
+six nodes are there or something is genuinely wrong.
+
 ### 4.2 Body height needs a median, not a per-sample bound
 
 The first draft asserted z within `[0.25, 0.40]` in **every** sample, from the

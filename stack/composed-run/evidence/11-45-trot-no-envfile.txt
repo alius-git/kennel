@@ -1,0 +1,28 @@
+=== #45 row 2 -- AFTER: the new trot tool, still with NO /tmp/p21-env.sh ===
+2026-09-06T21:24:46Z
+
+env file present=1 (1 = absent)
+
+$ /tmp/p21-trot-hold.sh start
+[p21-trot] env              built-in chain (no /tmp/p21-env.sh -- the stack was launched some other way)
+[p21-trot] commanding WALKING_TROT at body_x_dot=0.3 world_z=0.30
+Set parameter successful
+[p21-trot] holding -- the robot is trotting (publisher pid 3560). Stop it with: /tmp/p21-trot-hold.sh stop
+EXIT=0
+
+--- is the target really being published? ---
+average rate: 9.999
+	min: 0.100s max: 0.100s std dev: 0.00008s window: 12
+average rate: 9.999
+	min: 0.099s max: 0.101s std dev: 0.00025s window: 23
+
+--- and did the gait take? ---
+String value is: WALKING_TROT
+
+$ /tmp/p21-trot-hold.sh stop
+[p21-trot] stopping the velocity target
+[p21-trot] gait returned to STAND, target zeroed
+EXIT=0
+
+--- gait after stop (want STAND) ---
+String value is: STAND

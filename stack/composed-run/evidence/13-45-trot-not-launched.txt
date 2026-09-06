@@ -1,0 +1,84 @@
+=== #45 rows 4 and 5 -- nothing launched, and no container ===
+2026-09-06T21:47:02Z
+
+THIS ROW FOUND TWO DEFECTS IN THE FIX ITSELF. Both are recorded here because
+neither is visible in a diff -- only in running it.
+
+  D1  `start` gated on /mit_controller_node being in `ros2 node list`. A
+      killed node's DDS participant lingers 10-20 s (stack/verify.md 4.1),
+      so straight after `down` the check PASSED and the tool went on to
+      `ros2 param set`:   Wait for service timed out    EXIT=1
+      -- the same class of unhelpful message #45 is about, one layer in.
+      Now gated on /controller_heartbeat: the live signal, 2 Hz, the one
+      kennel-verify.sh check 4 uses.
+
+  D2  that heartbeat check then tested for ANY output from
+      `ros2 topic echo --once`. With no publisher that command does not stay
+      silent -- it prints, ON STDOUT:
+          WARNING: topic [/x] does not appear to be published yet
+      (72 bytes, measured), so a DEAD controller still read as alive and the
+      row below failed as 'Node not found'. The check now strips WARNING
+      lines before testing for content.
+
+$ demo/tools/kennel-demo.sh down
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] stack stopped in container 'dfki_quad'. The container itself is left running.
+EXIT=0
+
+--- row 4a, IMMEDIATELY after down: the node still lingers in the graph ---
+--- want exit 2 with the 'just stopped' diagnosis, not a service timeout ---
+[p21-trot] env              /tmp/p21-env.sh (written by p21-launch-from-commands.sh)
+NONZERO SCRIPT EXIT: /mit_controller_node is in the ROS graph but is not publishing /controller_heartbeat.
+  That is what a stack that has just been STOPPED looks like: the node is
+  gone but its DDS participant lingers 10-20 s (stack/verify.md 4.1).
+  Relaunch it:  demo/tools/kennel-demo.sh launch
+EXIT=2
+
+--- row 4b: stop at the same moment (want exit 0, a quiet no-op) ---
+[p21-trot] no live controller (/mit_controller_node is not publishing /controller_heartbeat) --
+[p21-trot] publisher cleared, nothing else to stop
+EXIT=0
+
+--- row 4c: once the DDS participant times out, the OTHER diagnosis ---
+graph entry gone after ~2s
+[p21-trot] env              /tmp/p21-env.sh (written by p21-launch-from-commands.sh)
+NONZERO SCRIPT EXIT: no /mit_controller_node in the ROS graph -- the stack is not launched.
+  There is nothing to command a gait on yet.
+  Launch it:  demo/tools/kennel-demo.sh launch
+EXIT=2
+
+--- row 5: with the container itself stopped (want exit 2 naming the state) ---
+container stopped
+NONZERO SCRIPT EXIT: container 'dfki_quad' is 'exited', not running.
+  Start the stack:  demo/tools/kennel-demo.sh launch
+start EXIT=2
+[p21-trot] container is 'exited' -- nothing to stop
+stop  EXIT=0  (still a no-op, still 0)
+container restarted
+
+--- closing check: relaunch and verify, so the guest is left green ---
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-launch] commands.txt     /home/yuuser24/kennel-staging/runs/run-20260906T212107Z/commands.txt
+[p21-launch] split            3 shells, 30 payload lines, reconstructs the file exactly
+[p21-launch] launches         the canonical three, in order (stack/launch.md 1.1)
+[p21-launch] stopping anything already running
+[p21-launch] shell 1 -> /tmp/p21-sim.log  (ros2 launch simulator simulator.launch.py sim:=go2)
+[p21-launch]   /quad_state up
+[p21-launch]   settling 10 sim-s (sim clock at 2s)
+[p21-launch]   settled at sim 13s
+[p21-launch] shell 2 -> /tmp/p21-legdrv.log  (ros2 launch drivers leg_driver_launch.py sim:=go2)
+[p21-launch]   leg driver up (2s): /leg_driver in the graph, publishing /joint_cmd
+[p21-launch] shell 3 -> /tmp/p21-ctrl.log  (ros2 launch controllers mit_controller.launch.py sim:=go2)
+[p21-launch]   controller started
+[p21-launch]   node graph complete (1s after 'Starting controller'): the six healthy-session nodes, no duplicates
+[p21-launch] stack is up, launched from the console's generated commands.txt
+[p21-launch] logs: /tmp/p21-sim.log /tmp/p21-legdrv.log /tmp/p21-ctrl.log (in the container)
+launch EXIT=0
+[INFO]   height-tracking      -- /quad_state z against commanded world_z: measured median 0.2984 m, peak-to-peak 0.0156 m, commanded 0.30 m, required informative, gait bob is config-dependent
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp linear system solver to qdldl), required PARTIAL_CONDENSING_OSQP
+
+pass=10 fail=0
+VERDICT: PASS -- healthy and walking
+kennel-verify: report in /tmp/kennel-verify (exit 0)
+verify EXIT=0
+2026-09-06T21:49:01Z
