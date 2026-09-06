@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version: 2026.08.06
+# Version: 2026.09.06
 # Kennel -- issue #21: launch the stack from the console's GENERATED command
 # block, rather than from a hand-written launch recipe.
 #
@@ -17,6 +17,14 @@
 # three ros2 launches block forever, so each is started with `docker exec -d` and
 # waited for by OBSERVING THE STACK, never by sleeping and hoping.
 #
+# WHAT "UP" MEANS, and why it changed (#52). This script used to return as soon
+# as the controller logged "Starting controller". But that shell also starts
+# joy_to_target.py -- a separate python3 process -- which joins the ROS graph on
+# its own schedule, and nothing waited for it. On a cold container the `verify`
+# that follows could therefore sample `ros2 node list` too early and fail its
+# node-graph check on a stack that was entirely healthy. The last gate is now the
+# GRAPH itself: all six healthy-session nodes present, none of them twice.
+#
 # The waits are deliberately NOT in commands.txt: launch ORDER is a property of
 # the stack (stack/launch.md 1.2) and belongs to whoever runs the commands, while
 # the file is a faithful record of what the console composed. See composed-run.md.
@@ -26,9 +34,19 @@
 # Default path is the run the transfer script last applied:
 #   ~/kennel-staging/runs/$(cat ~/kennel-staging/current-run)/commands.txt
 #
+# Knobs (environment variables, all optional):
+#   KENNEL_CONTAINER            dfki_quad   the container to launch in
+#   KENNEL_STAGING              ~/kennel-staging
+#   KENNEL_SETTLE_SIM_SECONDS   10   settle before the controller, in SIM seconds
+#   KENNEL_TOPIC_TIMEOUT        180  iterations of the /quad_state and controller polls
+#   KENNEL_LEGDRV_TIMEOUT       120  wall-second bound on the leg-driver wait
+#   KENNEL_GRAPH_TIMEOUT        120  wall-second bound on the node-graph wait
+#
 # Exit codes:
-#   0  all three are up; the controller reached "Starting controller"
-#   1  a stage did not come up (its log is named in the message)
+#   0  all three are up, the controller reached "Starting controller", and the
+#      six-node graph is complete with no duplicates
+#   1  a stage did not come up, or the graph never completed -- the message names
+#      the missing node and the log to read
 #   2  infrastructure or parse error (no container, unreadable or unexpected file)
 #
 # `set -u` is safe here: this script sources no ROS setup file itself -- the
@@ -43,6 +61,12 @@ STAGING="${KENNEL_STAGING:-$HOME/kennel-staging}"
 # simulator_realtime_rate -- #21 composes 0.5, which doubles the wall time.
 SETTLE_SIM_SECONDS="${KENNEL_SETTLE_SIM_SECONDS:-10}"
 TOPIC_TIMEOUT="${KENNEL_TOPIC_TIMEOUT:-180}"
+# Bounds on the two readiness waits that replaced blind sleeps (#52). In WALL
+# seconds, unlike SETTLE_SIM_SECONDS above: both are process startup, which the
+# simulator's realtime rate does not scale. Each loop below runs TIMEOUT/2
+# iterations of a 2 s poll, so the number is the bound in seconds.
+LEGDRV_TIMEOUT="${KENNEL_LEGDRV_TIMEOUT:-120}"
+GRAPH_TIMEOUT="${KENNEL_GRAPH_TIMEOUT:-120}"
 
 say()  { echo "[p21-launch] $*"; }
 fail() { echo "NONZERO SCRIPT EXIT: $1" >&2; shift; for l in "$@"; do echo "  $l" >&2; done; }
@@ -130,6 +154,28 @@ in_ctr() { sudo docker exec "$CONTAINER" bash -c "source /tmp/p21-env.sh >/dev/n
 # Sim time in whole seconds, or empty if /clock is not being published yet.
 sim_now() { in_ctr "timeout 10 ros2 topic echo /clock --once 2>/dev/null | awk '/sec:/{print \$2; exit}'"; }
 
+# The six nodes of a healthy sim session -- the same list stack/verify/kennel-verify.sh
+# check 1 asserts, recorded in launch.md 6 and known-good/06-healthy-graph.txt.
+# Change them together. /joy_to_target is the one that arrives last: it is a
+# separate python3 process started by shell 3, and it joins the graph AFTER the
+# controller has logged "Starting controller" (#52).
+EXPECTED_NODES="/drake_simulator /joy_linux_node /joy_to_target /leg_driver /mit_controller_node /safe_start_launcher"
+
+# What is still wrong with the node graph: the expected names not present, then
+# DUP:<name> for any name listed twice. Empty output means the graph is complete.
+# Leaves the sorted reading in $WORK/nodes for the caller.
+#
+# `ros2 node list` goes through the ros2 daemon, which is exactly the view
+# kennel-verify.sh reads a moment later -- so this wait observes what the assert
+# will observe, rather than a second opinion (--no-daemon would be one).
+graph_missing() {
+    in_ctr "timeout 15 ros2 node list 2>/dev/null" | grep '^/' | sort > "$WORK/nodes"
+    for n in $EXPECTED_NODES; do
+        grep -qx "$n" "$WORK/nodes" || printf '%s ' "$n"
+    done
+    uniq -d "$WORK/nodes" | sed 's/^/DUP:/' | tr '\n' ' '
+}
+
 start_block() {   # $1 = block number, $2 = log name
     say "shell $1 -> /tmp/p21-$2.log  ($(tail -1 "$WORK/block$1.sh"))"
     sudo docker exec -d "$CONTAINER" bash -c "bash /tmp/p21-block$1.sh > /tmp/p21-$2.log 2>&1"
@@ -170,8 +216,31 @@ else
 fi
 
 start_block 2 legdrv
-sleep 15
-say "  leg driver started"
+# The leg driver is ready on TWO signals and either can be last: its node has to
+# join the graph, and it has to become the publisher on /joint_cmd -- the topic
+# the simulator consumes and the controller never touches. launch.md 1.1 measures
+# /joint_cmd at "Publisher count: 0" with only the simulator up, which is exactly
+# what makes the transition observable.
+#
+# This replaced a `sleep 15`: the same defect as #52 one stage earlier, a wait
+# that does not observe (dry-run.md F8). Being slightly early was never fatal --
+# the controller blocks on the leg driver's service and proceeds when it appears
+# (launch.md 1.1) -- but a fixed 15 s is a guess in both directions.
+t0=$(date +%s); legdrv_ready=0
+for i in $(seq 1 $((LEGDRV_TIMEOUT / 2))); do
+    pubs="$(in_ctr "timeout 10 ros2 topic info /joint_cmd 2>/dev/null" | awk '/Publisher count/{print $3}')"
+    case "$pubs" in ''|*[!0-9]*) pubs=0 ;; esac
+    node="$(in_ctr "timeout 10 ros2 node list 2>/dev/null | grep -c '^/leg_driver\$'")"
+    if [ "$pubs" -ge 1 ] && [ "$node" = 1 ]; then legdrv_ready=1; break; fi
+    sleep 2
+done
+if [ "$legdrv_ready" != 1 ]; then
+    fail "the leg driver did not come up within ${LEGDRV_TIMEOUT}s." \
+         "Without it the controller blocks on its service and never starts (launch.md 1.1)." \
+         "Log: sudo docker exec $CONTAINER tail -40 /tmp/p21-legdrv.log"
+    exit 1
+fi
+say "  leg driver up ($(( $(date +%s) - t0 ))s): /leg_driver in the graph, publishing /joint_cmd"
 
 start_block 3 ctrl
 for i in $(seq 1 "$TOPIC_TIMEOUT"); do
@@ -185,6 +254,51 @@ if ! sudo docker exec "$CONTAINER" grep -q "Starting controller" /tmp/p21-ctrl.l
     exit 1
 fi
 say "  controller started"
+
+# --- REGION: the last thing to become true is the GRAPH, not a log line (#52)
+# "Starting controller" is the controller's own milestone. joy_to_target.py and
+# safe_start_launcher are separate processes of the SAME shell and register with
+# the ROS graph on their own schedule, so this script used to return 0 while
+# /joy_to_target was still arriving. The `verify` that follows samples
+# `ros2 node list` once, and failed check 1 on a stack that was perfectly healthy
+# -- re-running verify alone against the same untouched stack gave 10/10.
+#
+# Cold containers are what lose the race: there is no --restart policy by design
+# (vm/provisioning.md 3.2), so `reset` and a fresh `provision` both `docker start`
+# seconds before the launch. Reproduced on both -- vm/snapshot/evidence/10- and
+# 16-, with 11- and 17- as the re-runs -- and measured at green 2 of 4
+# (vm/snapshot.md 6 F5).
+#
+# Duplicates are part of the criterion, not a separate check. A killed node's DDS
+# participant lingers 10-20 s in `ros2 node list` (bridge.md 4.1), so right after
+# the pre-launch stop the graph can hold all six names AND a stale twin. Waiting
+# for "all six, none twice" converges on its own; "six present" would not.
+t0=$(date +%s)
+missing="$(graph_missing)"
+for i in $(seq 1 $((GRAPH_TIMEOUT / 2))); do
+    [ -z "$missing" ] && break
+    sleep 2
+    missing="$(graph_missing)"
+done
+if [ -n "$missing" ]; then
+    fail "the node graph never completed within ${GRAPH_TIMEOUT}s -- still wrong: $missing" \
+         "/joy_to_target and /safe_start_launcher belong to shell 3:" \
+         "  sudo docker exec $CONTAINER tail -40 /tmp/p21-ctrl.log" \
+         "A DUP: entry is a stale copy from a bad teardown (launch.md 7 trap 6):" \
+         "  sudo docker exec $CONTAINER /root/k13-stop.sh   and launch again."
+    exit 1
+fi
+say "  node graph complete ($(( $(date +%s) - t0 ))s after 'Starting controller'): the six healthy-session nodes, no duplicates"
+
+# Anything BEYOND the six is reported and never fatal: a rosbridge left running
+# adds three (bridge.md 4), and it is `verify` that owns that verdict through
+# KENNEL_EXPECT_BRIDGE. Saying it here makes the next report's `extra:` line
+# unsurprising rather than alarming.
+extra="$(comm -13 <(printf '%s\n' $EXPECTED_NODES | sort) <(sort -u "$WORK/nodes") | tr '\n' ' ')"
+if [ -n "$extra" ]; then
+    say "  NB the graph also carries: $extra"
+    say "     (verify tolerates a running bridge with KENNEL_EXPECT_BRIDGE=1)"
+fi
 
 say "stack is up, launched from the console's generated commands.txt"
 say "logs: /tmp/p21-sim.log /tmp/p21-legdrv.log /tmp/p21-ctrl.log (in the container)"
