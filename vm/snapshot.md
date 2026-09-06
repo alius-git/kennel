@@ -240,7 +240,7 @@ Transcripts in [`vm/snapshot/evidence/`](snapshot/evidence/).
 | [`13-all-after-reset-2.txt`](snapshot/evidence/13-all-after-reset-2.txt) | `all` after a reset: `pass=10 fail=0`, **1m38s** |
 | [`14-provision-sweep-defect.txt`](snapshot/evidence/14-provision-sweep-defect.txt) | **The F3 defect caught in the act** — the sweep matched nothing and `provision` silently became a `reset` |
 | [`14-provision-cold.txt`](snapshot/evidence/14-provision-cold.txt) | `provision` from clean after the fix: the cold chain end to end, ending in the snapshot |
-| [`15-provision-persisted.txt`](snapshot/evidence/15-provision-persisted.txt) | A second `provision`, with the persisted VM and its snapshot present beforehand — proves the sweep |
+| [`15-provision-persisted.txt`](snapshot/evidence/15-provision-persisted.txt) | A second `provision`, with the persisted VM and its snapshot present beforehand — proves the sweep. Completed **45 steps, 38m44s**, ending in the snapshot; the shell errors in its tail are the driver being edited while bash was reading it, annotated in the file itself |
 | [`16-all-on-cold-provisioned.txt`](snapshot/evidence/16-all-on-cold-provisioned.txt) | `all` on the cold-provisioned guest — hit [#52](https://github.com/alius-git/kennel/issues/52) a second time |
 | [`17-verify-rerun-2.txt`](snapshot/evidence/17-verify-rerun-2.txt) | …and `verify` alone on that same stack: `pass=10 fail=0` |
 

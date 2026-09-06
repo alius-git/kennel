@@ -1,0 +1,14 @@
+{
+  "name": "kennel-slides",
+  "private": true,
+  "description": "Kennel — presentation of the final system (Slidev)",
+  "scripts": {
+    "dev": "slidev slides.md --open",
+    "build": "slidev build slides.md",
+    "export": "slidev export slides.md"
+  },
+  "dependencies": {
+    "@slidev/cli": "^52.19.1",
+    "@slidev/theme-default": "^0.25.0"
+  }
+}

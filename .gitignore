@@ -57,3 +57,8 @@ dkms.conf
 dfki-quad
 # Python bytecode from the console verification scripts
 __pycache__/
+
+# Slidev presentation (slides/): dependencies and build output
+slides/node_modules/
+slides/dist/
+slides/.slidev/
