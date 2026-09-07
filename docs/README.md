@@ -69,7 +69,9 @@ The in-depth documentation lives next to what it describes — the plan corpus i
 - [`stack/composed-run.md`](../stack/composed-run.md) — the PoC moment: a
   composed config runs the stack and the values take effect.
 - [`stack/bridge.md`](../stack/bridge.md) — the rosbridge beside the stack:
-  starting it, reaching it from the host, and tearing it down without leaks.
+  starting it, reaching it from the host, tearing it down without leaks, the
+  live regression suite that drives a browser against the real robot, and the
+  guest-side watchdog that stops it when the browser dies.
 
 ## Console — the Kennel Console prototype
 
