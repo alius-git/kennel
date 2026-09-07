@@ -70,9 +70,9 @@ HTML
 echo "http://localhost:$MESHCAT_PORT/" > "$out/.kennel-meshcat"
 echo "ws://localhost:$BRIDGE_PORT/"    > "$out/.kennel-bridge"
 
-serve=""; plain=""; chrome=""; bridge=""; meshcat=""
+serve=""; plain=""; chrome=""; bridge=""; meshcat=""; fallbridge=""
 cleanup() {
-  for p in "$chrome" "$serve" "$plain" "$bridge" "$meshcat"; do
+  for p in "$chrome" "$serve" "$plain" "$bridge" "$meshcat" "$fallbridge"; do
     [[ -n "$p" ]] && kill "$p" 2>/dev/null
   done
   [[ -n "$chrome" ]] && wait "$chrome" 2>/dev/null
@@ -88,7 +88,10 @@ meshcat=$!
 
 FIXTURE="$DIR/fixtures/healthy.jsonl.gz"
 FALL_FIXTURE="$DIR/fixtures/fall.jsonl.gz"
+FALL_PORT="$((BRIDGE_PORT + 1))"
+fall_ops="$tmp/ops-fall.jsonl"
 if [[ -f "$FIXTURE" ]]; then
+  # Looped: the healthy groups need it to keep running for as long as they look.
   python3 "$DIR/fake-rosbridge.py" --port "$BRIDGE_PORT" --log "$ops" \
     --replay "$FIXTURE" --loop >"$tmp/bridge.log" 2>&1 &
   bridge=$!
@@ -96,6 +99,13 @@ else
   echo "  [SKIP] $FIXTURE is absent -- the live groups will skip."
   python3 "$DIR/fake-rosbridge.py" --port "$BRIDGE_PORT" --log "$ops" >"$tmp/bridge.log" 2>&1 &
   bridge=$!
+fi
+if [[ -f "$FALL_FIXTURE" ]]; then
+  # NOT looped: a fall is the end of that recording, and looping past it would
+  # replay the collapse as though the robot had got up again.
+  python3 "$DIR/fake-rosbridge.py" --port "$FALL_PORT" --log "$fall_ops" \
+    --replay "$FALL_FIXTURE" >"$tmp/bridge-fall.log" 2>&1 &
+  fallbridge=$!
 fi
 
 python3 "$DIR/serve.py" --port "$SERVE_PORT" --out "$out" >"$tmp/serve.log" 2>&1 &
@@ -144,7 +154,7 @@ sleep 3   # let the console boot and the mock DataSource settle
 
 python3 "$DIR/verify-dashboard.py" "$SERVE_PORT" "$PLAIN_PORT" "$CDP_PORT" \
   "$MESHCAT_PORT" "$tmp/meshcat-access.log" "$out" "$BRIDGE_PORT" "$ops" \
-  "$FIXTURE" "$FALL_FIXTURE"
+  "$FIXTURE" "$FALL_FIXTURE" "$FALL_PORT" "$fall_ops"
 rc=$?
 
 echo

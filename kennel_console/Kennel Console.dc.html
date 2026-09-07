@@ -446,6 +446,7 @@ select{appearance:none}
               <div style="padding:5px 11px;border-top:1px solid #1f2731;display:flex;gap:14px;font:400 9px 'IBM Plex Mono';color:#5d6875">
                 <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:7px;background:rgba(63,191,127,0.22);border:1px solid #24523c"></div>planned stance</div>
                 <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:5px;background:#3fbf7f"></div>actual contact</div>
+                <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:5px;background:rgba(63,191,127,0.45)"></div>normal force</div>
                 <div style="display:flex;align-items:center;gap:5px"><div style="width:2px;height:9px;background:#e0a63c"></div>touchdown mismatch &gt;25 ms</div>
               </div>
             </sc-if>
@@ -1762,6 +1763,12 @@ class MockDataSource {
     this.t = 0; this.seed = 20260724; this.buf = []; this.events = [];
     this.counters = {earlyContacts:0, mpcOvertime:0, wbcOvertime:0, mpcFail:0, wbcFail:0};
     this.lastInc = {}; this.cool = {}; this.fallen = false; this.fallText = ''; this.halted = false; this.fallAt = undefined;
+    // `collapsed` is the SCRIPT (the demo topples the robot at T_FALL);
+    // `fallen` is the RULE's verdict on the samples that follow. They are two
+    // different things and the demo is worth more for keeping them apart: what
+    // it demonstrates is the same fallRule() the live source runs, on data the
+    // script produced, rather than a banner the script raised by fiat (#63).
+    this.collapsed = false; this.fallWin = [];
     this.jit = [0,0,0,0]; this.prevActual = [false,false,false,false];
     this.dist = null; this.cmd = {vx:0.6, vy:0, wz:0.0};
   }
@@ -1777,12 +1784,8 @@ class MockDataSource {
   advance() {
     if (this.fallen && this.t > this.fallAt + 1.2) { this.stop(); this.halted = true; return; }
     const t = this.t, d = this.deg(t);
-    if (!this.fallen && t >= T_FALL) {
-      this.fallen = true; this.fallText = 'belly contact, pitch −38°, body height 0.09 m';
-      this.emit('fall', 'fatal', 'FALL: belly contact, pitch −38°, height 0.09 m — controller latched to damping mode', 0);
-      this.fallAt = t;
-    }
-    const fallen = this.fallen;
+    if (!this.collapsed && t >= T_FALL) this.collapsed = true;
+    const fallen = this.collapsed;
     let mpcMs = fallen ? 0.3 : 4.6 + 6.2 * d + this.rnd() * (1.4 + 5.5 * d);
     if (!fallen && d > 0.4 && this.rnd() > 0.35) mpcMs += 2.4 * d;
     mpcMs = Math.max(0.2, mpcMs);
@@ -1793,11 +1796,13 @@ class MockDataSource {
 
     if (!fallen && mpcMs > MPC_DEADLINE) {
       this.bump('mpcOvertime');
-      this.emit('mpcOver', 'warn', 'MPC exceeded 10 ms deadline (' + mpcMs.toFixed(1) + ' ms, ' + mpcIters + ' iters) — previous solution held', 1.2);
+      this.emit('mpcOver', 'warn', narrate('deadline',
+        {stage: 'MPC', deadline: MPC_DEADLINE, ms: mpcMs, iters: mpcIters}), 1.2);
     }
     if (!fallen && wbcMs > WBC_DEADLINE) {
       this.bump('wbcOvertime');
-      this.emit('wbcOver', 'warn', 'WBC exceeded 2 ms deadline (' + wbcMs.toFixed(2) + ' ms) — torque command late', 1.5);
+      this.emit('wbcOver', 'warn', narrate('deadline',
+        {stage: 'WBC', deadline: WBC_DEADLINE, ms: wbcMs}), 1.5);
     }
     if (solverFail) {
       this.bump('mpcFail');
@@ -1820,7 +1825,11 @@ class MockDataSource {
         const ms = this.jit[i] * 1000;
         if (Math.abs(ms) > 25) {
           miss[i] = true; this.bump('earlyContacts');
-          this.emit('td' + i, 'warn', (ms > 0 ? 'Early' : 'Late') + ' contact ' + LEGS[i] + ' ' + (ms > 0 ? '+' : '−') + Math.abs(ms).toFixed(0) + ' ms vs planned touchdown', 0.6);
+          // The mock's jitter is signed the other way round from a phase
+          // reading -- a positive jitter here means the foot came down EARLY --
+          // so it is negated on the way into the shared grammar rather than the
+          // grammar carrying two conventions.
+          this.emit('td' + i, 'warn', narrate('contact', {leg: LEGS[i], ms: -ms}), 0.6);
         }
       }
       this.prevActual[i] = a;
@@ -1837,9 +1846,28 @@ class MockDataSource {
     const rtf = fallen ? 1.0 : 1.0 - 0.11 * d + this.rnd() * 0.03;
     const hb = 0.101 + this.rnd() * 0.03;
 
-    this.buf.push({t, mpcMs, mpcIters, wbcMs, solverFail, planned, actual, miss, height, pitch, roll,
+    // Measured forces per foot, as /contact_state carries them: four scalars,
+    // not four vectors. Loaded while in stance, zero in swing.
+    const forces = [0, 0, 0, 0];
+    for (let i = 0; i < 4; i++) forces[i] = actual[i] ? 60 + 90 * Math.abs(this.rnd()) : 0;
+    this.buf.push({t, mpcMs, mpcIters, wbcMs, solverFail, planned, actual, miss, forces, height, pitch, roll,
       vx, vy, wz, cvx:this.cmd.vx, cvy:this.cmd.vy, cwz:this.cmd.wz, rtf, hb, c:Object.assign({}, this.counters)});
     if (this.buf.length > 900) this.buf.splice(0, 200);
+
+    // The SAME rule the live source runs (fallRule, stack/verify.md §4), on the
+    // samples the script just produced. roll/pitch are degrees here and the rule
+    // wants radians; belly_contact is false because at this pin it always is.
+    if (!this.fallen) {
+      this.fallWin.push({sim: t, z: height,
+                         tilt: Math.max(Math.abs(roll), Math.abs(pitch)) / DEG, belly: false});
+      while (this.fallWin.length && this.fallWin[0].sim < t - FALL_WINDOW_S) this.fallWin.shift();
+      const hit = fallRule(this.fallWin);
+      if (hit) {
+        this.fallen = true; this.fallAt = t;
+        this.fallText = hit.trigger + ' — ' + hit.values;
+        this.emit('fall', 'fatal', narrate('fall', hit), 0);
+      }
+    }
     this.t = Math.round((this.t + 0.1) * 10) / 10;
   }
   seedDemo(seconds) { const n = Math.round(seconds * 10); for (let i = 0; i < n; i++) this.advance(); }
@@ -2272,6 +2300,16 @@ class Component extends DCLogic {
   }
   componentDidUpdate() {
     this.draw();
+    // A fall PINS the feed to the five seconds before it (#63; s003.diagnose
+    // step 6). The banner has always said "event feed pinned to last 5 s before
+    // fall" and nothing ever pinned it -- the post-mortem scrolled away with
+    // everything else. Once per fall, keyed on its timestamp, so `unpin feed`
+    // stays unpinned and a second fall pins again.
+    const ds = this.ds;
+    if (ds && ds.fallen && ds.fallAt !== undefined && this._pinnedAt !== ds.fallAt) {
+      this._pinnedAt = ds.fallAt;
+      if (!this.state.pinFall) this.setState({pinFall: true});
+    }
     if (this._feed && !this.state.pinFall) this._feed.scrollTop = this._feed.scrollHeight;
   }
   fit(cv) {
@@ -2306,6 +2344,8 @@ class Component extends DCLogic {
     const barH = Math.max(2, Math.min(7, bandH * 0.4));
     const X = t => padL + (t - t0) / win * iw;
     const bw = Math.max(1.2, iw / win * 0.1 + 0.4);
+    let fmax = 0;
+    buf.forEach(s => { if (s.t >= t0 && s.forces) s.forces.forEach(f => { if (f > fmax) fmax = f; }); });
     ctx.font = Math.max(8, Math.min(10, rowH * 0.5)) + 'px "IBM Plex Mono", monospace';
     for (let i = 0; i < 4; i++) {
       const y = padT + i * rowH;
@@ -2314,6 +2354,14 @@ class Component extends DCLogic {
         const s = buf[j]; if (s.t < t0) continue;
         if (s.planned[i]) { ctx.fillStyle = 'rgba(63,191,127,0.22)'; ctx.fillRect(X(s.t), y, bw, bandH); }
         if (s.actual[i]) { ctx.fillStyle = '#3fbf7f'; ctx.fillRect(X(s.t), y + bandH - barH, bw, barH); }
+        // Measured normal force from /contact_state, drawn above the contact bar
+        // and scaled to the window's own peak -- the loads differ by an order of
+        // magnitude between a stand and a trot, so a fixed scale shows nothing.
+        if (s.forces && s.forces[i] > 0 && fmax > 0) {
+          const fh = Math.max(1, Math.min(bandH - barH, (s.forces[i] / fmax) * (bandH - barH)));
+          ctx.fillStyle = 'rgba(63,191,127,0.45)';
+          ctx.fillRect(X(s.t), y + bandH - barH - fh, bw, fh);
+        }
         if (s.miss[i]) { ctx.fillStyle = '#e0a63c'; ctx.fillRect(X(s.t) - 1, y, 2, bandH); }
       }
       ctx.fillStyle = '#78838f'; ctx.fillText(LEGS[i], 4, y + bandH / 2 + 3);
@@ -2640,9 +2688,24 @@ class Component extends DCLogic {
       : lvl === 'off' ? {dot:'#5d6875', bg:'#0d1219', border:'#232b36'}
       : {dot:'#3fbf7f', bg:'#0e1714', border:'#1f4534'};
     const mpcMs = last ? last.mpcMs : 0, wbcMs = last ? last.wbcMs : 0;
+    // The newest /gait_state, when a live source is the one holding it.
+    const gaitLive = (isLive && ds && ds.latest) ? ds.latest['/gait_state'] : null;
     const health = [
-      {id:'gait', sub:'/gait_state · ' + cfg.blocks.gait.impl, metric: (cfg.blocks.gait.impl) + ' @ ' + cfg.blocks.gait.params.step_frequency + ' Hz',
-       lvl: recent('earlyContacts') ? 'amber' : 'green', flash: recent('earlyContacts')},
+      // Live, the gait block reports what the SEQUENCER says it is doing, not
+      // what the composer asked for: period, duty factor and the sequencer id,
+      // which is exactly the signature kennel-verify.sh check 6 asserts against
+      // (verify.md §4.4 -- a gait parameter can be set and not followed).
+      {id:'gait',
+       sub: gaitLive
+         ? '/gait_state · period ' + gaitLive.period.toFixed(3) + ' s · duty '
+           + (gaitLive.duty_factor && gaitLive.duty_factor.length ? gaitLive.duty_factor[0].toFixed(2) : '—')
+         : '/gait_state · ' + cfg.blocks.gait.impl,
+       metric: gaitLive
+         ? 'seq ' + gaitLive.gait_sequencer + ' · offsets ' + (gaitLive.phase_offset || []).map(o => o.toFixed(1)).join('/')
+         : (cfg.blocks.gait.impl) + ' @ ' + cfg.blocks.gait.params.step_frequency + ' Hz',
+       lvl: (isLive && !ds.fresh('/gait_state', 1.0)) ? 'off'
+            : (recent('earlyContacts') ? 'amber' : 'green'),
+       flash: recent('earlyContacts')},
       {id:'mpc', sub:'/solve_time · ' + (last ? last.mpcIters : 0) + ' iters · deadline 10 ms',
        metric: mpcMs.toFixed(1) + ' / 10.0 ms', lvl: mpcMs >= 10 || recent('mpcFail') ? 'red' : mpcMs > 7 ? 'amber' : 'green',
        flash: recent('mpcOvertime') || recent('mpcFail')},

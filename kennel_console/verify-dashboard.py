@@ -53,12 +53,15 @@ BRIDGE_PORT = sys.argv[7]
 OPS = os.path.abspath(sys.argv[8])
 FIXTURE = os.path.abspath(sys.argv[9])
 FALL_FIXTURE = os.path.abspath(sys.argv[10])
+FALL_PORT = sys.argv[11] if len(sys.argv) > 11 else ""
+FALL_OPS = os.path.abspath(sys.argv[12]) if len(sys.argv) > 12 else ""
 
 ORIGIN = "http://localhost:%s" % SERVE_PORT
 PLAIN_ORIGIN = "http://localhost:%s" % PLAIN_PORT
 PAGE = "/Kennel%20Console.dc.html"
 MESHCAT_URL = "http://localhost:%s/" % MESHCAT_PORT
 BRIDGE_URL = "ws://localhost:%s/" % BRIDGE_PORT
+FALL_URL = "ws://localhost:%s/" % FALL_PORT if FALL_PORT else ""
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(HERE)
@@ -276,11 +279,31 @@ window.__stat = name => { const lab = [...document.querySelectorAll('div')].find
   return lab && lab.nextElementSibling ? lab.nextElementSibling.textContent.trim() : null; };
 window.__pad = () => [...document.querySelectorAll('div')]
   .find(d => /crosshair/.test(d.getAttribute('style') || ''));
+// The event feed, row by row: a timestamp cell and a text cell. What group 13
+// checks the grammar of.
+window.__feed = () => [...document.querySelectorAll('div')]
+  .filter(d => d.children.length === 2 && /^-?\d+(\.\d+)?s$/.test(d.children[0].textContent.trim()))
+  .map(d => [d.children[0].textContent.trim(), d.children[1].textContent.trim()]);
 window.__set = (el, val) => { const proto = el instanceof HTMLSelectElement
     ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, val);
   el.dispatchEvent(new Event('change', {bubbles: true})); };
 true"""
+
+
+def wait_live(timeout=30):
+    """Live AND producing. Between the click and the first sample the panels are
+    legitimately empty, and a check that reads the page in that gap is testing
+    the handover rather than the thing it means to test."""
+    return (wait_for(lambda: ws.js("__stat('mode')") == "live", timeout=timeout)
+            and wait_for(lambda: ws.js("__stat('sim t')") not in (None, "—"), timeout=timeout))
+
+
+def panel(title):
+    """One panel's own rendered text, by its header."""
+    return ws.js("(() => { const h = [...document.querySelectorAll('div')]"
+                 ".find(d => d.textContent.trim() === %r);"
+                 " return h ? h.parentElement.parentElement.innerText : ''; })()" % title)
 
 
 def goto(origin=ORIGIN, settle=2.2):
@@ -515,7 +538,11 @@ else:
     mock_t = float((ws.js("__stat('sim t')") or "0 s").split()[0])
     check("the mock resumes where it paused, not from zero", mock_t > 25,
           "mock sim t %.1f s (live had reached %.1f s)" % (mock_t, live_t))
-    check("its scripted fall is still there", "FALL" in (ws.js("__txt()") or ""))
+    # The mock's fall is now the RULE's verdict on the script's samples, so it
+    # arrives a beat after the scripted collapse at T_FALL rather than with it.
+    check("its scripted fall is still there",
+          wait_for(lambda: "FALL DETECTED" in (ws.js("__txt()") or ""), timeout=20),
+          "mock sim t %s" % ws.js("__stat('sim t')"))
     check("no console errors", ws.js("window.__errs.length") == 0, str(ws.js("window.__errs")))
 
 group("10. nothing is ever dialled without a click")
@@ -524,6 +551,108 @@ view("Dashboard")
 check("a reload opens no socket", ws.js("window.__sockets.length") == 0,
       str(ws.js("window.__sockets")))
 check("and the mode is mock", ws.js("__stat('mode')") == "mock (scripted demo)")
+
+# ---------------------------------------------------------------- 11
+group("11. the gait/contact timeline, live")
+HAVE_FALL = os.path.isfile(FALL_FIXTURE) and FALL_PORT
+if not HAVE_FIXTURE:
+    skip("the timeline", "no fixture")
+else:
+    goto()
+    view("Dashboard")
+    ws.js("__set(__bridgeInput(), %r)" % BRIDGE_URL)
+    ws.js("__connectBtn().click()")
+    check("the live source is producing", wait_live())
+    tl = panel("Gait / contact timeline")
+    check("the timeline leaves its empty state", "No gait or contact stream" not in tl, tl[:60])
+    check("it says what the four rows mean",
+          all(w in tl for w in ("planned stance", "actual contact", "normal force",
+                                "touchdown mismatch")),
+          tl.replace(chr(10), " | ")[:120])
+    # The gait block reports the sequencer's own signature -- the same
+    # period/duty/offsets kennel-verify.sh check 6 asserts against.
+    check("the pipeline strip reports the live gait signature",
+          wait_for(lambda: re.search(r"period 0\.500 s · duty 0\.60", ws.js("__txt()") or "") is not None,
+                   timeout=25),
+          "WALKING_TROT is 0.5 / 0.6 / [0, 0.5, 0.5, 0] (verify.md check 6)")
+    # The fixture has 2 touchdowns past 25 ms out of 82, computed here from the
+    # recording; the page must find them too, and say leg and offset.
+    if fx["mismatches"] > 0:
+        check("the feed reports the fixture's touchdown mismatches, with leg and offset",
+              wait_for(lambda: any(re.search(r"(Early|Late) contact (FL|FR|RL|RR) [−+]\d+ ms", t)
+                                   for _, t in (ws.js("__feed()") or [])), timeout=45),
+              "%d of %d touchdowns are past %d ms in the fixture"
+              % (fx["mismatches"], fx["touchdowns"], CONTACT_MISMATCH_MS))
+    else:
+        skip("touchdown mismatches", "the healthy fixture has none past the threshold")
+    check("and a healthy fixture never raises the fall banner",
+          "FALL DETECTED" not in (ws.js("__txt()") or ""), str(fx["fall"]))
+
+# ---------------------------------------------------------------- 12
+group("12. a real fall raises the banner and pins the post-mortem")
+if not HAVE_FALL:
+    skip("the fall", "no %s" % FALL_FIXTURE)
+else:
+    ffx = fixture_stats(FALL_FIXTURE)
+    check("the fall fixture contains a fall by verify.md's rule",
+          ffx["fall"] is not None,
+          "%s at sim +%.2f s" % (ffx["fall"]["trigger"], ffx["fall"]["sim"]) if ffx["fall"] else "none")
+    goto()
+    view("Dashboard")
+    ws.js("__set(__bridgeInput(), %r)" % FALL_URL)
+    ws.js("__connectBtn().click()")
+    check("the live source is producing", wait_live())
+    check("the banner appears", wait_for(lambda: "FALL DETECTED" in (ws.js("__txt()") or ""),
+                                         timeout=60))
+    txt = ws.js("__txt()") or ""
+    check("it names the trigger the rule fired on",
+          ffx["fall"] and ffx["fall"]["trigger"] in txt,
+          "expected '%s'" % (ffx["fall"]["trigger"] if ffx["fall"] else "?"))
+    simt = float((ws.js("__stat('sim t')") or "0 s").split()[0])
+    feed = ws.js("__feed()") or []
+    fall_rows = [(float(t.rstrip("s")), txt2) for t, txt2 in feed if txt2.startswith("FALL:")]
+    check("the fall is timestamped where the rule fires on the recording",
+          fall_rows and abs(fall_rows[0][0] - ffx["fall"]["sim"]) <= 0.5,
+          "page %.1f s, fixture %.1f s" % (fall_rows[0][0] if fall_rows else -1, ffx["fall"]["sim"]))
+    # s003.diagnose step 6: the feed pins the five seconds before the fall.
+    check("the feed pins itself to the five seconds before it",
+          "pinned · last 5 s before fall" in txt and "unpin feed" in txt)
+    if fall_rows:
+        at = fall_rows[0][0]
+        pinned = [(float(t.rstrip("s")), x) for t, x in feed]
+        check("and shows only that window",
+              pinned and all(at - 5.05 <= t <= at + 0.05 for t, _ in pinned),
+              "%.1f..%.1f s around %.1f" % (pinned[0][0], pinned[-1][0], at) if pinned else "")
+        check("the post-mortem reads in order, ending in the fall (s003 step 7)",
+              pinned[-1][1].startswith("FALL:"), pinned[-1][1][:60])
+        check("it is at least five seconds of events", len(pinned) >= 2, "%d entries" % len(pinned))
+    ws.js("__connBtn().click()")
+    time.sleep(1.0)
+
+# ---------------------------------------------------------------- 13
+group("13. one grammar, both sources")
+GRAMMAR = [
+    r"^(MPC|WBC) exceeded \d+ ms deadline \([\d.]+ ms(, \d+ iters)?\) — (previous solution held|torque command late)$",
+    r"^(MPC|WBC) solver failed \(.+\) — falling back to the last feasible plan$",
+    r"^(Early|Late) contact (FL|FR|RL|RR) [−+]\d+ ms vs planned touchdown$",
+    r"^FALL: .+ — .+ — controller latched to damping mode$",
+    r"^data source: (live|mock)( \(.+\))?( — .+)?$",
+    r"^sim clock restarted at [\d.]+ s — windows cleared$",
+    r"^Disturbance: \d+ N for [\d.]+ s at body CoM \(.+\)$",
+    r"^\S+ stale for [\d.]+ s$",
+]
+goto(PLAIN_ORIGIN)     # mock only: no bridge, no /api/, nothing but the demo
+view("Dashboard")
+check("the mock demo still plays its own fall",
+      wait_for(lambda: "FALL DETECTED" in (ws.js("__txt()") or ""), timeout=40))
+feed = ws.js("__feed()") or []
+check("the demo produced a feed to read", len(feed) >= 5, "%d entries" % len(feed))
+bad = [t for _, t in feed if not any(re.match(p, t) for p in GRAMMAR)]
+check("every line the mock writes is in the shared grammar", not bad, str(bad[:3]))
+check("its fall is the rule's verdict, in the same words as the live one",
+      any(t.startswith("FALL: ") and "controller latched to damping mode" in t for _, t in feed),
+      next((t for _, t in feed if t.startswith("FALL:")), "no FALL line"))
+check("no console errors", ws.js("window.__errs.length") == 0, str(ws.js("window.__errs")))
 
 print()
 for g in groups:
