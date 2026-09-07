@@ -1,0 +1,14 @@
+=== relaunching a clean stack after the E-STOP latch of the first attempt ===
+2026-09-07T14:46:22Z
+[p21-launch]   leg driver up (5s): /leg_driver in the graph, publishing /joint_cmd
+[p21-launch] shell 3 -> /tmp/p21-ctrl.log  (ros2 launch controllers mit_controller.launch.py sim:=go2)
+[p21-launch]   controller started
+[p21-launch]   node graph complete (0s after 'Starting controller'): the six healthy-session nodes, no duplicates
+[p21-launch] stack is up, launched from the console's generated commands.txt
+[p21-launch] logs: /tmp/p21-sim.log /tmp/p21-legdrv.log /tmp/p21-ctrl.log (in the container)
+
+pass=10 fail=0
+kennel-verify: verdict 'completed' -- /tmp/kennel-verify/report.json
+VERDICT: PASS -- healthy and walking
+kennel-verify: report in /tmp/kennel-verify (exit 0)
+[kennel-demo] verify report    /home/thales/kennel-runs/run-20260907T144210Z/verify.json (verdict completed)

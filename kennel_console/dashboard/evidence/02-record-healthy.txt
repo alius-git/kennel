@@ -1,0 +1,26 @@
+=== row 2: the healthy fixture -- stand, then a commanded trot, 30 s ===
+=== run: /home/thales/kennel-runs/run-20260907T144210Z (OSQP, flat plane, simulator_realtime_rate 0.5)
+2026-09-07T14:48:02Z
+
+[kennel-demo] In the console: Dashboard -> Interventions -> connect, pick a gait, push the stick.
+[kennel-demo] The velocity target is published while the page is connected; releasing the
+[kennel-demo] stick ramps it back to zero. STAND and E-STOP are beside the gait picker.
+[kennel-demo] When you are done:  demo/tools/kennel-demo.sh teleop stop
+--- recording 30 s; walk starts ~5 s in and stops at ~27 s
+--- [t+5] walk
+[kennel-demo] return it to STAND with:  demo/tools/kennel-demo.sh walk stop
+[kennel-demo] or drive it yourself:      demo/tools/kennel-demo.sh teleop
+[record-fixture] provenance  /home/thales/kennel/kennel_console/fixtures/healthy.run.json
+[record-fixture] /home/thales/kennel/kennel_console/fixtures/healthy.jsonl.gz  7837 messages in 30.0 s, 1440293 bytes
+topic                        msgs       Hz
+/clock                        298      9.9
+/quad_state                  1470     49.0
+/solve_time                  1469     49.0
+/wbc_solve_time              1469     49.0
+/gait_state                  1468     48.9
+/contact_state               1470     49.0
+/controller_heartbeat          30      1.0
+/quad_control_target          163      5.4
+--- [t+27] walk stop
+[p21-trot] stopping the velocity target
+[p21-trot] gait returned to STAND, target zeroed

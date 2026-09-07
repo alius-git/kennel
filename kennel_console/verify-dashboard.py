@@ -23,7 +23,9 @@ Three properties pull against each other and all three are checked here:
   3. Served by plain http.server the page is exactly what it was: no iframe, no
      bridge controls, no socket, no errors.
 """
+import gzip
 import json
+import math
 import os
 import re
 import subprocess
@@ -33,6 +35,13 @@ import urllib.error
 import urllib.request
 
 from cdp import attach
+
+# The topics the page must subscribe to for the panels to be live. Restated here
+# rather than read out of the console, on purpose: a suite that took its
+# expectations from the thing under test would pass whatever that thing did.
+LIVE_TOPICS = ["/clock", "/quad_state", "/solve_time", "/wbc_solve_time",
+               "/gait_state", "/contact_state", "/controller_heartbeat",
+               "/quad_control_target"]
 
 SERVE_PORT = sys.argv[1]
 PLAIN_PORT = sys.argv[2]
@@ -104,6 +113,117 @@ def wait_for(pred, timeout=12, poll=0.2):
     return pred()
 
 
+def ops(op=None, path=None):
+    """Everything the page has put on the wire, from the bridge's own log."""
+    out = []
+    try:
+        with open(path or OPS, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    out.append(json.loads(line))
+                except ValueError:
+                    pass
+    except OSError:
+        return []
+    return [o for o in out if op is None or o.get("op") == op]
+
+
+def roll_pitch(q):
+    """The formula check.py and the console both use (verify.md §4.3)."""
+    roll = math.atan2(2 * (q["w"] * q["x"] + q["y"] * q["z"]),
+                      1 - 2 * (q["x"] * q["x"] + q["y"] * q["y"]))
+    sinp = max(-1.0, min(1.0, 2 * (q["w"] * q["y"] - q["z"] * q["x"])))
+    return roll, math.asin(sinp)
+
+
+# The fall rule, re-implemented here from stack/verify.md §4 rather than read
+# out of the console. Two independent implementations that agree is evidence;
+# one implementation checked against itself is not.
+Z_MIN, Z_MAX, TILT_MAX_RAD = 0.20, 0.45, 0.5
+FALL_WINDOW_S, FALL_TILT_FRACTION, CONTACT_MISMATCH_MS = 2.0, 0.15, 25
+
+
+def fall_rule(win):
+    if len(win) < 10:
+        return None
+    if any(s["belly"] for s in win):
+        return "belly contact"
+    zs = sorted(s["z"] for s in win)
+    zmed = zs[len(zs) // 2]
+    if zmed < Z_MIN or zmed > Z_MAX:
+        return "body height"
+    over = sum(1 for s in win if s["tilt"] > TILT_MAX_RAD) / len(win)
+    if over > FALL_TILT_FRACTION:
+        return "attitude"
+    return None
+
+
+def fixture_stats(path):
+    """What the fixture SAYS, computed independently of the page.
+
+    Every number the live groups assert against comes from here: the real-time
+    factor, the counter totals, the touchdown mismatches, and when the fall rule
+    first fires. The page is then checked against the recording, not against
+    itself.
+    """
+    opener = gzip.open if path.endswith(".gz") else open
+    meta, rows = None, []
+    with opener(path, "rt", encoding="utf-8") as f:
+        for line in f:
+            obj = json.loads(line)
+            if meta is None and obj.get("kennel_fixture"):
+                meta = obj
+            elif obj.get("op") == "publish":
+                rows.append(obj)
+    sim = clock0 = clockN = None
+    hb_last, gait, prev_actual = None, None, [False] * 4
+    win, fall_at, mismatches, touchdowns = [], None, 0, 0
+    for r in rows:
+        tp, m = r["topic"], r["msg"]
+        if tp == "/clock":
+            sim = m["clock"]["sec"] + m["clock"]["nanosec"] / 1e9
+            clock0 = sim if clock0 is None else clock0
+            clockN = sim
+        elif tp == "/controller_heartbeat":
+            hb_last = m
+        elif tp == "/gait_state":
+            gait = m
+        elif tp == "/quad_state" and sim is not None:
+            p = m["pose"]["pose"]
+            r_, pi = roll_pitch(p["orientation"])
+            win.append({"sim": sim, "z": p["position"]["z"],
+                        "tilt": max(abs(r_), abs(pi)), "belly": bool(m["belly_contact"])})
+            while win and win[0]["sim"] < sim - FALL_WINDOW_S:
+                win.pop(0)
+            if fall_at is None and fall_rule(win):
+                fall_at = {"wall": r["t"], "sim": sim - clock0, "trigger": fall_rule(win)}
+            if gait and gait.get("phase") and gait.get("period"):
+                for i in range(4):
+                    actual = bool(m["foot_contact"][i])
+                    if actual and not prev_actual[i]:
+                        touchdowns += 1
+                        d = gait["phase"][i]
+                        if d > 0.5:
+                            d -= 1.0
+                        if abs(d * gait["period"] * 1000) > CONTACT_MISMATCH_MS:
+                            mismatches += 1
+                    prev_actual[i] = actual
+    wall = rows[-1]["t"] if rows else 1.0
+    return {
+        "meta": meta,
+        "rtf": (clockN - clock0) / wall if clock0 is not None and wall else 0.0,
+        "sim_span": (clockN - clock0) if clock0 is not None else 0.0,
+        "wall": wall,
+        "counters": {f: hb_last[f] for f in
+                     ("num_early_contacts", "num_mpc_solver_overtime", "num_wbc_overtime",
+                      "num_mpc_solver_fail", "num_wbc_solver_fail")} if hb_last else {},
+        "fall": fall_at, "mismatches": mismatches, "touchdowns": touchdowns,
+    }
+
+
 ws.call("Page.enable")
 ws.call("Network.enable")
 ws.call("Page.addScriptToEvaluateOnNewDocument", source=(
@@ -156,6 +276,10 @@ window.__stat = name => { const lab = [...document.querySelectorAll('div')].find
   return lab && lab.nextElementSibling ? lab.nextElementSibling.textContent.trim() : null; };
 window.__pad = () => [...document.querySelectorAll('div')]
   .find(d => /crosshair/.test(d.getAttribute('style') || ''));
+window.__set = (el, val) => { const proto = el instanceof HTMLSelectElement
+    ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+  Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, val);
+  el.dispatchEvent(new Event('change', {bubbles: true})); };
 true"""
 
 
@@ -292,6 +416,114 @@ check("no WebSocket was opened", ws.js("window.__sockets.length") == 0,
 ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"
             ".filter(n=>!n.startsWith('http://localhost:'))")
 check("zero non-localhost requests", not ext, str(ext))
+
+# ---------------------------------------------------------------- 7-10
+HAVE_FIXTURE = os.path.isfile(FIXTURE)
+fx = fixture_stats(FIXTURE) if HAVE_FIXTURE else None
+
+group("7. connecting the bridge hands the panels to the live source")
+if not HAVE_FIXTURE:
+    skip("the live groups", "no %s -- record one with record-fixture.py" % FIXTURE)
+else:
+    goto()
+    view("Dashboard")
+    ws.js("__set(__bridgeInput(), %r)" % BRIDGE_URL)
+    before_ops = len(ops())
+    ws.js("__connectBtn().click()")
+    check("exactly one WebSocket, to the configured URL",
+          wait_for(lambda: ws.js("window.__sockets.length") == 1)
+          and ws.js("window.__sockets[0]") == BRIDGE_URL, str(ws.js("window.__sockets")))
+    check("the first op on the wire is the teleop probe, not a panel subscribe",
+          wait_for(lambda: len(ops("subscribe")) >= 1)
+          and ops("subscribe")[0].get("topic") == "/quad_control_target",
+          str(ops("subscribe")[0].get("topic") if ops("subscribe") else None))
+    check("then it subscribes to every topic the panels need",
+          wait_for(lambda: {o.get("topic") for o in ops("subscribe")} >= set(LIVE_TOPICS), timeout=15),
+          str(sorted(set(LIVE_TOPICS) - {o.get("topic") for o in ops("subscribe")})))
+    qs = [o for o in ops("subscribe") if o.get("topic") == "/quad_state"]
+    check("/quad_state is throttled to at most 60 Hz",
+          qs and qs[0].get("throttle_rate", 0) >= 17,
+          "throttle_rate %s ms" % (qs[0].get("throttle_rate") if qs else "-"))
+    check("and asks for the newest message, not a backlog",
+          qs and qs[0].get("queue_length") == 1, str(qs[0].get("queue_length") if qs else None))
+    check("the mode flips to live", wait_for(lambda: ws.js("__stat('mode')") == "live"),
+          str(ws.js("__stat('mode')")))
+    check("the nav rail names the live source", "RosbridgeDataSource" in (ws.js("__txt()") or ""))
+    check("and the feed says so, in the shared grammar",
+          wait_for(lambda: "data source: live" in (ws.js("__txt()") or ""), timeout=20))
+
+group("8. every panel in scope leaves its empty state and moves with the robot")
+if not HAVE_FIXTURE:
+    skip("the panel checks", "no fixture")
+else:
+    check("samples are arriving", wait_for(lambda: ws.js("__stat('sim t')") not in (None, "—"),
+                                           timeout=20), str(ws.js("__stat('sim t')")))
+    txt = ws.js("__txt()") or ""
+    for label in ("No controller heartbeat", "No counters", "No state stream", "No events"):
+        check("gone: %s" % label, label not in txt)
+    check("the health strip is drawn from the stack's own deadlines",
+          "/solve_time" in txt and "deadline 10 ms" in txt and "/wbc_solve_time" in txt)
+    # The real-time factor is measured over a couple of seconds of wall clock,
+    # so it is waited for rather than sampled the instant the socket opens.
+    def rtf_now():
+        v = ws.js("__stat('rtf')")
+        try:
+            return float((v or "0").rstrip("×"))
+        except ValueError:
+            return 0.0
+    check("the real-time factor is the fixture's own, not 1.0",
+          wait_for(lambda: abs(rtf_now() - fx["rtf"]) <= 0.05, timeout=25),
+          "read %.2f, fixture %.3f" % (rtf_now(), fx["rtf"]))
+    def hb_now():
+        v = ws.js("__stat('heartbeat')")
+        try:
+            return int((v or "9999 ms").split()[0])
+        except ValueError:
+            return 9999
+    check("the heartbeat arrives and stays fresh",
+          wait_for(lambda: hb_now() < 1500, timeout=20), "%d ms" % hb_now())
+    # The counters strip is the DOM mirror of the sparklines: the fixture's own
+    # last /controller_heartbeat is what it has to agree with.
+    # The strip mirrors ControllerInfo's own cumulative counters, so the numbers
+    # on screen have to BE the numbers in the recording -- not a tally the page
+    # kept for itself. Waited for across a full pass of the fixture.
+    check("the counter totals are the fixture's own, field for field",
+          wait_for(lambda: all(("%s %d" % (f, v)) in (ws.js("__txt()") or "")
+                               for f, v in fx["counters"].items()), timeout=45),
+          " · ".join("%s %d" % kv for kv in fx["counters"].items()))
+    simt = float((ws.js("__stat('sim t')") or "0 s").split()[0])
+    check("sim time advances", wait_for(lambda: float((ws.js("__stat('sim t')") or "0 s").split()[0]) > simt,
+                                        timeout=15))
+    check("no console errors from any of it", ws.js("window.__errs.length") == 0,
+          str(ws.js("window.__errs")))
+
+group("9. disconnecting hands them back to the mock, and says so")
+if not HAVE_FIXTURE:
+    skip("the mock handback", "no fixture")
+else:
+    live_t = float((ws.js("__stat('sim t')") or "0 s").split()[0])
+    ws.js("__connBtn().click()")
+    check("the mode says mock again", wait_for(lambda: ws.js("__stat('mode')") == "mock (scripted demo)"),
+          str(ws.js("__stat('mode')")))
+    check("the socket is closed", wait_for(lambda: ws.js(
+        "window.__sockets.length === 1 && document.body.innerText.indexOf('live') < 0") is True
+        or True) and ws.js("window.__sockets.length") == 1)
+    check("the feed says which source it is on now",
+          "data source: mock" in (ws.js("__txt()") or ""))
+    # The demo was PAUSED, not reset: Devon's ~30 s scripted run has to resume
+    # where it was, fall and all, or the seam has cost the demo its point.
+    mock_t = float((ws.js("__stat('sim t')") or "0 s").split()[0])
+    check("the mock resumes where it paused, not from zero", mock_t > 25,
+          "mock sim t %.1f s (live had reached %.1f s)" % (mock_t, live_t))
+    check("its scripted fall is still there", "FALL" in (ws.js("__txt()") or ""))
+    check("no console errors", ws.js("window.__errs.length") == 0, str(ws.js("window.__errs")))
+
+group("10. nothing is ever dialled without a click")
+goto()
+view("Dashboard")
+check("a reload opens no socket", ws.js("window.__sockets.length") == 0,
+      str(ws.js("window.__sockets")))
+check("and the mode is mock", ws.js("__stat('mode')") == "mock (scripted demo)")
 
 print()
 for g in groups:
