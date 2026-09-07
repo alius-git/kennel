@@ -1,0 +1,39 @@
+=== D.3 §6: what the bridge costs, and whether it lags, at two composed rates (#65) ===
+2026-09-07T20:36:44Z
+guest kennel-vm, 8 vCPU. In both cases: the console connected, all eight panel
+subscriptions live, and the joystick publishing /quad_control_target at 20 Hz
+while the robot trots. Rates measured in WALL time -- the page's publish timer
+is a browser timer and does not know what the sim is doing.
+
+                                simulator_realtime_rate 0.5    1.0
+  page -> bridge, wall rate        20.1 Hz            20.01 Hz
+  inter-arrival std                 3.65 ms             1.53 ms
+  inter-arrival max                67-70 ms            54.70 ms
+  rosbridge_websocket CPU           84.3 %              79.0 %
+  robot vx while driven            0.467 m/s           0.220 m/s
+  robot body height (median)       0.289 m             0.221 m
+
+NO GROWING LAG. The gap distribution is tight at both rates and the maximum gap
+is tens of milliseconds, not seconds: rosbridge's default queue is not building a
+backlog at 20 Hz of a 165-byte message. The 50-70 ms outliers are single missed
+browser ticks, not accumulation -- the mean stays at the nominal 50 ms.
+
+THE COST IS ONE CORE, and it is the subscriptions, not the joystick: 20 Hz out is
+nothing beside ~50 Hz of /quad_state at 2.6 kB serialised to JSON. 84.3 % and
+79.0 % of a single core on an 8-vCPU guest, which matches the 70-90 % measured
+for #62 (kennel_console/dashboard.md) with the same eight subscriptions.
+
+WHAT IS NOT ABOUT THE BRIDGE: at rate 1.0 the ROBOT is worse off -- 0.220 m/s
+against the same 0.5 m/s command, and a body sagging to 0.221 m where at 0.5 it
+holds 0.289 m. That is the simulator failing to keep up with wall time on this
+guest, which is why the composed default is 0.75 and why #21 measured at 0.5. The
+bridge is slightly CHEAPER at 1.0 because the sim is delivering fewer sim-seconds
+of data per wall second, not because anything got better.
+
+--- raw: the 10 sim-second window at rate 1.0
+KENNEL_JSON {"at_rest_at_end_since_sim": null, "belly_hits": 0, "gait": {"duty": [0.6, 0.6, 0.6, 0.6], "name": "WALKING_TROT", "offsets": [0.0, 0.5, 0.5, 0.0], "period": 0.5, "sequencer": 0}, "gait_changes": [{"duty": 0.6, "name": "WALKING_TROT", "period": 0.5, "sim": 433.803}], "hb_hz": 2.0, "label": "rate10", "n_hb": 20, "n_state": 10000, "rtf": 1.0003, "sim_window": 10.0, "target": {"distinct_vx": [0.5], "distinct_vx_n": 1, "first_zero_after_nonzero_sim": null, "first_zero_after_nonzero_wall": null, "gap_max_ms": 54.7, "gap_mean_ms": 50.0, "gap_std_ms": 1.53, "hz": 20.0, "hz_wall": 20.007, "last_msg": {"body_x_dot": 0.5, "body_y_dot": 0.0, "hybrid_theta_dot": 0.0, "pitch": 0.0, "roll": 0.0, "world_z": 0.3}, "last_nonzero_sim": 443.784, "last_nonzero_wall": 1788813851.338, "last_sim": 443.784, "last_wall": 1788813851.338, "n": 200, "n_publishers": 2}, "tilt_max": 1.0872, "tilt_over_frac": 1.0, "vx_below_0_05_since_sim": null, "vx_max": 0.4088, "vx_mean": 0.2195, "vx_min": -0.1873, "wall_window": 9.997, "x_travel": 2.1951, "z_max": 0.25287, "z_median": 0.22148, "z_min": 0.19191, "z_p01": 0.19385}
+
+--- raw: top on rosbridge_websocket at rate 1.0
+
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+ 192462 root      20   0 1704564  78448  34908 S  79.0   0.5   1:59.97 python3

@@ -1,0 +1,79 @@
+=== D.3 §8: which readiness signal comes first, over ten bridge starts (#65) ===
+2026-09-07 (UTC)
+guest kennel-vm at 192.168.122.32, stack up, rosbridge 2.0.7 in the pinned image.
+
+THE QUESTION. kennel-bridge.sh `start` waits for TWO signals -- /rosbridge_websocket
+in `ros2 node list` AND :9090 bound in `ss` -- and plan/teleop-joystick.md D.3 §8
+asks for the observation that justifies waiting for both instead of one.
+
+-----------------------------------------------------------------------------
+PART 1 -- what the script's own wait sees (KENNEL_BRIDGE_POLL=0.1). Each signal
+is reported as the WINDOW it became true in, never as an instant.
+
+--- iteration 1
+[kennel-bridge]   /rosbridge_websocket in the graph  (+0.95 .. +1.84 s)
+[kennel-bridge]   port 9090 bound (0.0.0.0:9090)  (+1.85 .. +1.86 s)
+[kennel-bridge] bridge up on port 9090 (pid 63788)
+[kennel-bridge] bridge stopped
+--- iteration 2
+[kennel-bridge]   /rosbridge_websocket in the graph  (+0.94 .. +1.81 s)
+[kennel-bridge]   port 9090 bound (0.0.0.0:9090)  (+1.81 .. +1.82 s)
+[kennel-bridge] bridge up on port 9090 (pid 64151)
+[kennel-bridge] bridge stopped
+--- iteration 3
+[kennel-bridge]   /rosbridge_websocket in the graph  (+0.95 .. +1.92 s)
+[kennel-bridge]   port 9090 bound (0.0.0.0:9090)  (+1.93 .. +1.95 s)
+[kennel-bridge] bridge up on port 9090 (pid 64514)
+[kennel-bridge] bridge stopped
+--- iteration 4
+[kennel-bridge]   /rosbridge_websocket in the graph  (+0.97 .. +1.80 s)
+[kennel-bridge]   port 9090 bound (0.0.0.0:9090)  (+1.80 .. +1.82 s)
+[kennel-bridge] bridge up on port 9090 (pid 64876)
+[kennel-bridge] bridge stopped
+... (ten iterations; all the same shape)
+
+READ THAT CAREFULLY, BECAUSE IT IS WRONG. It says the node arrives first and the
+port a fraction of a second later, every single time. That is an artefact of the
+instrument: the two probes cost very different amounts -- `ss` on the guest is a
+few milliseconds, `ros2 node list` inside the container is ~0.9 s -- and they
+share one polling loop, so the cheap probe only ever runs in the gaps the
+expensive one leaves. The port cannot be OBSERVED before the node check returns,
+so it can never be REPORTED first, whatever the stack actually did.
+
+-----------------------------------------------------------------------------
+PART 2 -- the same ten starts, measured without that bias:
+stack/bridge/tools/race-probe.sh, two watcher processes against one clock,
+neither waiting on the other.
+
+iteration,port_s,node_s,first,delta_s
+1,3.42,3.58,port,0.16
+2,3.06,3.61,port,0.55
+3,3.06,3.53,port,0.47
+4,3.01,3.50,port,0.49
+5,3.08,5.26,port,2.18
+6,3.41,3.51,port,0.10
+7,3.04,3.54,port,0.50
+8,3.10,3.56,port,0.46
+9,3.04,3.53,port,0.49
+10,3.04,3.55,port,0.51
+
+port bound   min 3.01 s  median 3.06 s  max 3.42 s
+node listed  min 3.50 s  median 3.55 s  max 5.26 s
+delta        min 0.10 s  median 0.49 s  max 2.18 s
+first        port, 10 of 10
+
+THE ANSWER, AND WHY THE WAIT IS BOTH. The port is bound FIRST in every start, by
+0.10 to 2.18 seconds. So the cheap signal is the EARLY one: a `start` that
+returned as soon as :9090 answered would hand the operator a URL up to 2.2 s
+before /rosbridge_websocket was in the ROS graph -- a socket that accepts a
+WebSocket and then cannot resolve interfaces/msg/QuadControlTarget, because the
+ROS side of the bridge is not up yet. That is exactly the shape of #52: a gate
+that watched one signal and returned while another was still arriving.
+
+Iteration 5 is the one that matters. Nine starts put the node 0.10-0.55 s behind
+the port; one put it 2.18 s behind. A wait tuned to the median would have been
+wrong on that start, and nothing about the median predicts it.
+
+The reverse is also true and is why the node check stays: a node in the graph
+with no socket bound is a bridge no browser can reach. Neither signal implies
+the other, and this is what "readiness is observed, twice" means.
