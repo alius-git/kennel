@@ -1,0 +1,50 @@
+=== the event feed, live, during a commanded trot ===
+2026-09-07T15:49:12Z
+
+--- timeline panel:
+GAIT / CONTACT TIMELINE
+/gait_state + /quad_state.foot_contact + /contact_state
+planned stance
+actual contact
+normal force
+touchdown mismatch >25 ms
+
+--- pipeline health:
+PIPELINE HEALTH
+/solve_time + /wbc_solve_time vs deadline · ms
+GAIT SEQUENCER
+/gait_state · period 0.500 s · duty 0.60
+seq 0 · offsets 0.0/0.5/0.5/0.0
+MPC
+/solve_time · 25 iters · deadline 10 ms
+2.4 / 10.0 ms
+WBC
+/wbc_solve_time · deadline 2 ms
+0.22 / 2.00 ms
+SWING LEG CTRL
+/quad_state.foot_contact · touchdown timing
+clearance 0.09 m
+CONTACT LOGIC
+/contact_state · early contacts 56
+56 early
+MODEL ADAPTATION
+/controller_heartbeat.num_model_updates · off
+disabled
+
+--- feed:
+0.0s  data source: live (ws://192.168.122.32:9090/)
+0.0s  Early contact FL −191 ms vs planned touchdown
+0.0s  Late contact FR +59 ms vs planned touchdown
+0.0s  Late contact RL +59 ms vs planned touchdown
+0.0s  Early contact RR −191 ms vs planned touchdown
+0.9s  Early contact RR −240 ms vs planned touchdown
+1.7s  Early contact FR −240 ms vs planned touchdown
+2.4s  Late contact FR +30 ms vs planned touchdown
+3.3s  WBC missed its 2 ms deadline — worst solve sampled 0.4 ms; torque command late
+4.4s  Early contact FL −221 ms vs planned touchdown
+4.6s  Early contact RL −241 ms vs planned touchdown
+4.7s  Early contact FR −210 ms vs planned touchdown
+5.5s  Late contact FR +49 ms vs planned touchdown
+5.9s  Early contact FL −230 ms vs planned touchdown
+6.3s  WBC missed its 2 ms deadline — worst solve sampled 0.3 ms; torque command late
+6.4s  Early contact RR −240 ms vs planned touchdown

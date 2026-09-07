@@ -150,7 +150,9 @@ FALL_WINDOW_S, FALL_TILT_FRACTION, CONTACT_MISMATCH_MS = 2.0, 0.15, 25
 
 
 def fall_rule(win):
-    if len(win) < 10:
+    # The same two guards the console has: enough samples, and a window that has
+    # actually filled. "Sustained" over a fifth of a second is not sustained.
+    if len(win) < 10 or (win[-1]["sim"] - win[0]["sim"]) < FALL_WINDOW_S * 0.8:
         return None
     if any(s["belly"] for s in win):
         return "belly contact"
@@ -632,7 +634,8 @@ else:
 # ---------------------------------------------------------------- 13
 group("13. one grammar, both sources")
 GRAMMAR = [
-    r"^(MPC|WBC) exceeded \d+ ms deadline \([\d.]+ ms(, \d+ iters)?\) — (previous solution held|torque command late)$",
+    r"^(MPC|WBC) missed its \d+ ms deadline( ×\d+)? — worst solve sampled [\d.]+ ms"
+    r"(, \d+ iters)?; (previous solution held|torque command late)$",
     r"^(MPC|WBC) solver failed \(.+\) — falling back to the last feasible plan$",
     r"^(Early|Late) contact (FL|FR|RL|RR) [−+]\d+ ms vs planned touchdown$",
     r"^FALL: .+ — .+ — controller latched to damping mode$",

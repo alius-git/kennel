@@ -1,0 +1,6 @@
+=== is a fall banner at connect a true positive? watching /quad_state z across walk -> walk stop ===
+2026-09-07T15:32:57Z
+[p21-launch]   controller started
+[p21-launch]   node graph complete (1s after 'Starting controller'): the six healthy-session nodes, no duplicates
+[p21-launch] stack is up, launched from the console's generated commands.txt
+[p21-launch] logs: /tmp/p21-sim.log /tmp/p21-legdrv.log /tmp/p21-ctrl.log (in the container)

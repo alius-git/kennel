@@ -1,0 +1,625 @@
+{
+  "out": "/home/thales/kennel-runs",
+  "runs": [
+    {
+      "run": "run-20260907T151610Z",
+      "path": "/home/thales/kennel-runs/run-20260907T151610Z",
+      "modified": "2026-09-07T15:17:18Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml",
+        "verify.json",
+        "verify.txt"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/terrain.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 1,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": {
+        "verdict": "fell",
+        "exit": 1,
+        "pass": 7,
+        "fail": 3,
+        "finished_at": "2026-09-07T15:25:09Z",
+        "active_solver": "PARTIAL_CONDENSING_OSQP",
+        "headline": {
+          "early_contacts": 47,
+          "mpc_fail": 0,
+          "mpc_overtime": 0,
+          "wbc_fail": 1,
+          "wbc_overtime": 0
+        },
+        "sim_window": 15.0,
+        "checks": [
+          {
+            "n": 1,
+            "name": "node-graph",
+            "status": "PASS"
+          },
+          {
+            "n": 2,
+            "name": "sim-clock",
+            "status": "PASS"
+          },
+          {
+            "n": null,
+            "name": "realtime-rate",
+            "status": "INFO"
+          },
+          {
+            "n": 3,
+            "name": "state-stream",
+            "status": "PASS"
+          },
+          {
+            "n": 4,
+            "name": "controller-alive",
+            "status": "PASS"
+          },
+          {
+            "n": null,
+            "name": "heartbeat-counters",
+            "status": "INFO"
+          },
+          {
+            "n": 5,
+            "name": "gait-command",
+            "status": "PASS"
+          },
+          {
+            "n": 6,
+            "name": "gait-active",
+            "status": "PASS"
+          },
+          {
+            "n": 7,
+            "name": "solver-health",
+            "status": "FAIL"
+          },
+          {
+            "n": 8,
+            "name": "walking",
+            "status": "FAIL"
+          },
+          {
+            "n": 9,
+            "name": "no-fall",
+            "status": "FAIL"
+          },
+          {
+            "n": null,
+            "name": "height-tracking",
+            "status": "INFO"
+          },
+          {
+            "n": 10,
+            "name": "composed-config",
+            "status": "PASS"
+          }
+        ]
+      }
+    },
+    {
+      "run": "run-20260907T151451Z",
+      "path": "/home/thales/kennel-runs/run-20260907T151451Z",
+      "modified": "2026-09-07T15:15:58Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml",
+        "verify.json",
+        "verify.txt"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 1,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_HPIPM",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": {
+        "verdict": "completed",
+        "exit": 0,
+        "pass": 10,
+        "fail": 0,
+        "finished_at": "2026-09-07T15:23:49Z",
+        "active_solver": "PARTIAL_CONDENSING_HPIPM",
+        "headline": {
+          "early_contacts": 0,
+          "mpc_fail": 0,
+          "mpc_overtime": 0,
+          "wbc_fail": 0,
+          "wbc_overtime": 0
+        },
+        "sim_window": 15.0,
+        "checks": [
+          {
+            "n": 1,
+            "name": "node-graph",
+            "status": "PASS"
+          },
+          {
+            "n": 2,
+            "name": "sim-clock",
+            "status": "PASS"
+          },
+          {
+            "n": null,
+            "name": "realtime-rate",
+            "status": "INFO"
+          },
+          {
+            "n": 3,
+            "name": "state-stream",
+            "status": "PASS"
+          },
+          {
+            "n": 4,
+            "name": "controller-alive",
+            "status": "PASS"
+          },
+          {
+            "n": null,
+            "name": "heartbeat-counters",
+            "status": "INFO"
+          },
+          {
+            "n": 5,
+            "name": "gait-command",
+            "status": "PASS"
+          },
+          {
+            "n": 6,
+            "name": "gait-active",
+            "status": "PASS"
+          },
+          {
+            "n": 7,
+            "name": "solver-health",
+            "status": "PASS"
+          },
+          {
+            "n": 8,
+            "name": "walking",
+            "status": "PASS"
+          },
+          {
+            "n": 9,
+            "name": "no-fall",
+            "status": "PASS"
+          },
+          {
+            "n": null,
+            "name": "height-tracking",
+            "status": "INFO"
+          },
+          {
+            "n": 10,
+            "name": "composed-config",
+            "status": "PASS"
+          }
+        ]
+      }
+    },
+    {
+      "run": "run-20260907T144210Z",
+      "path": "/home/thales/kennel-runs/run-20260907T144210Z",
+      "modified": "2026-09-07T14:43:48Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml",
+        "verify.json",
+        "verify.txt"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.5,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": {
+        "verdict": "completed",
+        "exit": 0,
+        "pass": 10,
+        "fail": 0,
+        "finished_at": "2026-09-07T15:35:40Z",
+        "active_solver": "PARTIAL_CONDENSING_OSQP",
+        "headline": {
+          "early_contacts": 32,
+          "mpc_fail": 0,
+          "mpc_overtime": 0,
+          "wbc_fail": 0,
+          "wbc_overtime": 0
+        },
+        "sim_window": 15.0,
+        "checks": [
+          {
+            "n": 1,
+            "name": "node-graph",
+            "status": "PASS"
+          },
+          {
+            "n": 2,
+            "name": "sim-clock",
+            "status": "PASS"
+          },
+          {
+            "n": null,
+            "name": "realtime-rate",
+            "status": "INFO"
+          },
+          {
+            "n": 3,
+            "name": "state-stream",
+            "status": "PASS"
+          },
+          {
+            "n": 4,
+            "name": "controller-alive",
+            "status": "PASS"
+          },
+          {
+            "n": null,
+            "name": "heartbeat-counters",
+            "status": "INFO"
+          },
+          {
+            "n": 5,
+            "name": "gait-command",
+            "status": "PASS"
+          },
+          {
+            "n": 6,
+            "name": "gait-active",
+            "status": "PASS"
+          },
+          {
+            "n": 7,
+            "name": "solver-health",
+            "status": "PASS"
+          },
+          {
+            "n": 8,
+            "name": "walking",
+            "status": "PASS"
+          },
+          {
+            "n": 9,
+            "name": "no-fall",
+            "status": "PASS"
+          },
+          {
+            "n": null,
+            "name": "height-tracking",
+            "status": "INFO"
+          },
+          {
+            "n": 10,
+            "name": "composed-config",
+            "status": "PASS"
+          }
+        ]
+      }
+    },
+    {
+      "run": "run-20260906T212107Z",
+      "path": "/home/thales/kennel-runs/run-20260906T212107Z",
+      "modified": "2026-09-06T21:21:08Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260906T211815Z",
+      "path": "/home/thales/kennel-runs/run-20260906T211815Z",
+      "modified": "2026-09-06T21:18:15Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260906T211522Z",
+      "path": "/home/thales/kennel-runs/run-20260906T211522Z",
+      "modified": "2026-09-06T21:15:22Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260906T211227Z",
+      "path": "/home/thales/kennel-runs/run-20260906T211227Z",
+      "modified": "2026-09-06T21:12:27Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260906T210635Z",
+      "path": "/home/thales/kennel-runs/run-20260906T210635Z",
+      "modified": "2026-09-06T21:06:35Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260906T210256Z",
+      "path": "/home/thales/kennel-runs/run-20260906T210256Z",
+      "modified": "2026-09-06T21:02:56Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260830T200816Z",
+      "path": "/home/thales/kennel-runs/run-20260830T200816Z",
+      "modified": "2026-08-30T20:08:16Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 1,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_HPIPM",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260830T192838Z",
+      "path": "/home/thales/kennel-runs/run-20260830T192838Z",
+      "modified": "2026-08-30T19:28:38Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260830T192548Z",
+      "path": "/home/thales/kennel-runs/run-20260830T192548Z",
+      "modified": "2026-08-30T19:25:58Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.5,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_HPIPM",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260830T181403Z",
+      "path": "/home/thales/kennel-runs/run-20260830T181403Z",
+      "modified": "2026-08-30T18:14:03Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260830T173133Z",
+      "path": "/home/thales/kennel-runs/run-20260830T173133Z",
+      "modified": "2026-08-30T17:31:33Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260830T172502Z",
+      "path": "/home/thales/kennel-runs/run-20260830T172502Z",
+      "modified": "2026-08-30T17:25:02Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    },
+    {
+      "run": "run-20260830T172131Z",
+      "path": "/home/thales/kennel-runs/run-20260830T172131Z",
+      "modified": "2026-08-30T17:21:31Z",
+      "files": [
+        "commands.txt",
+        "mit_controller_sim_go2.yaml",
+        "run.json",
+        "simulator_params_go2.yaml"
+      ],
+      "complete": true,
+      "run_id": "RUN-2026-0724-1401",
+      "choices": {
+        "world_urdf": "src/common/model/urdf/plane.urdf",
+        "world_fix_link": "plane_base_link",
+        "simulator_realtime_rate": 0.75,
+        "publish_quad_state": true,
+        "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+        "mpc_hpipm_mode": "SPEED",
+        "mpc_condensed_size": 5
+      },
+      "verify": null
+    }
+  ]
+}

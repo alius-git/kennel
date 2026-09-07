@@ -1,0 +1,10 @@
+=== the eight console suites, after everything ===
+2026-09-07T15:53:22Z
+verify-serve      exit=0  0 checks passed
+verify-scope      exit=0  36 checks passed
+verify-generate   exit=0  45 checks passed
+verify-export     exit=0  55 checks passed
+verify-send       exit=0  43 checks passed
+verify-teleop     exit=0  51 checks passed
+verify-dashboard  exit=0  85 checks passed
+verify-runs       exit=0  51 checks passed

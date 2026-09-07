@@ -291,7 +291,54 @@ both rates; assert it in #21's own step against that number. Expect the OSQP run
 to look different in the `height-tracking` line (§4.2); that is the composition
 being visible, not a fault.
 
-## 7. Reproducing the evidence
+## 7. The report file
+
+Since [#64](https://github.com/alius-git/kennel/issues/64) the recipe writes
+`report.json` beside `report.txt`, and `kennel-demo.sh verify` copies it into the
+applied run's folder as `verify.json`. That is what the console's Runs view reads
+([`kennel_console/runs.md`](../kennel_console/runs.md)); before it, this report
+was written on the guest and nobody ever read it back.
+
+`report.txt` is unchanged. It is what an operator reads and what every evidence
+file here quotes.
+
+```
+schema           "kennel-verify/1"
+verdict          completed | fell | solver-failed | unhealthy
+exit pass fail   the same numbers as the verdict block
+finished_at      UTC ISO-8601
+run pin          KENNEL_RUN / KENNEL_PIN, as the driver passed them (null by hand)
+expect_solver    --expect-solver, or null
+active_solver    what check 10 read from the running node
+solver_log_line  the construction-time corroboration, or null
+gait             KENNEL_GAIT
+windows_sim_s    {observe, settle, trot}
+knobs            every threshold in effect, by name
+checks[]         {n, name, status, observable, measured, required} -- INFO rows carry n: null
+metrics          the numbers behind the `measured` strings, as numbers (below)
+headline         {early_contacts, mpc_overtime, wbc_overtime, mpc_fail, wbc_fail}
+```
+
+`metrics` carries what `check.py` already computed: `state_hz`, `hb_hz`,
+`realtime_rate`, `vx_mean`, `dx`, `sim_window`, `buckets_ok`, `n_samples`,
+`n_heartbeats`, the z quantiles (`z_median`, `z_p01`, `z_min`, `z_max`,
+`z_p2p`), `tilt_max`, `tilt_over_frac`, `belly_hits`, the commanded
+`target_vx`/`target_z`, the gait signature, and `hb_first` / `hb_last` /
+`deltas` for the six `ControllerInfo` counters. The floats live in one place and
+are written from there; parsing them back out of the `measured` prose would be a
+second and weaker copy.
+
+**`headline` is check 7's deltas**, not the absolute counters — those are
+cumulative since the controller started and mostly say how old the session is.
+
+**The verdict mapping**, in this order: check 9 failed → `fell`; the solver-fail
+deltas above zero → `solver-failed`; exit 0 → `completed`; otherwise
+`unhealthy`. Exit 2 writes nothing at all — there is no verdict when the recipe
+could not look, and an old report left in a run folder would be a lie about a
+run that never ran. A fall outranks a solver failure because a run that fell
+**is** the finding, and the solver counters are how it got there.
+
+## 8. Reproducing the evidence
 
 The stack has to be up first. [`verify/tools/k14-stack-up.sh`](verify/tools/k14-stack-up.sh)
 is what the evidence runs used: the first half of

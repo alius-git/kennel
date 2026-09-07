@@ -272,6 +272,13 @@ In [`bridge/evidence/`](bridge/evidence/):
 - **`/reset_sim` and the disturbance injector are not wired.** Both are named in
   the Interventions spec; both are sim-level service calls this bridge could
   carry, and neither is this issue.
-- **No `RosbridgeDataSource`.** The Dashboard's panels still run on
-  `MockDataSource`. This issue proves the socket, the type resolution and the
-  URL hand-off that the real one will need.
+- ~~**No `RosbridgeDataSource`.**~~ Landed in
+  [#62](https://github.com/alius-git/kennel/issues/62) /
+  [#63](https://github.com/alius-git/kennel/issues/63): the Dashboard's panels
+  read this bridge across the `DataSource` seam, on the same socket the
+  joystick uses. What this issue proved — the socket, the type resolution and
+  the URL hand-off — is what it was built on
+  ([`kennel_console/dashboard.md`](../kennel_console/dashboard.md)).
+  Measured with eight subscriptions and a held trot at
+  `simulator_realtime_rate 0.5`: the bridge process runs at **70–90 % of one
+  core**, which is the cost of serialising `/quad_state` to JSON at ~50 Hz.

@@ -807,9 +807,18 @@ const FALL_WINDOW_S = 2.0;                // sim seconds the rule looks at
 const FALL_TILT_FRACTION = 0.15;          // = verify's 0.3 s of sustained tilt
 const CONTACT_MISMATCH_MS = 25;           // the timeline's amber threshold
 
-// win: [{z, tilt (rad), belly}] over the last FALL_WINDOW_S. null = upright.
+// win: [{sim, z, tilt (rad), belly}] over the last FALL_WINDOW_S. null = upright.
+//
+// THE WINDOW HAS TO BE FULL. Every clause here is about a SUSTAINED condition,
+// and none of them means anything over a fraction of a second: measured live,
+// a source that had been connected for 0.2 s reported `FALL: body height -- z
+// median 0.174 m` about a robot the same page was drawing at 0.311 m. Ten
+// samples is 0.2 s at the subscribed rate, not two seconds. So the span is
+// checked, not the count -- and until the window has filled, the rule says
+// nothing rather than guessing from what little it has.
 function fallRule(win) {
   if (!win || win.length < 10) return null;
+  if (win[win.length - 1].sim - win[0].sim < FALL_WINDOW_S * 0.8) return null;
   if (win.some(s => s.belly)) {
     return {trigger: 'belly contact', values: 'belly_contact true in ' +
             win.filter(s => s.belly).length + ' of ' + win.length + ' samples'};
@@ -1526,7 +1535,7 @@ function r3(x) { return Math.round(x * 1000) / 1000; }
 // eight subscriptions. Two sockets to one rosbridge would be two connections a
 // teardown has to find, two probe windows, and two places to be wrong about
 // what "connected" means -- so there is exactly ONE, and both halves are its
-// clients. `grep -c 'new WebSocket'` over this file is the check.
+// clients. Counting the socket constructor in this file is the check: one.
 //
 // Ops are routed by op and by topic. rosbridge answers a call_service with the
 // `id` it was given, and delivers a publish with the topic, which is all the
@@ -1795,10 +1804,18 @@ class RosbridgeTarget {
 // from the live console's is a demo of something else.
 function narrate(kind, d) {
   switch (kind) {
+    // The COUNT and the SOLVE TIME are different observables and this says so.
+    // Live, the violation is a heartbeat counter increment; the solve time is
+    // the worst one SAMPLED, at 50 Hz, from a WBC running at 500 Hz -- so it is
+    // routinely not the offending cycle. Measured on the live stack, the first
+    // draft of this line read `WBC exceeded 2 ms deadline (0.5 ms)`, which is a
+    // contradiction on its face.
     case 'deadline':
-      return d.stage + ' exceeded ' + d.deadline + ' ms deadline (' + d.ms.toFixed(1) + ' ms'
-             + (d.iters ? ', ' + d.iters + ' iters' : '') + ') — '
-             + (d.stage === 'MPC' ? 'previous solution held' : 'torque command late');
+      return d.stage + ' missed its ' + d.deadline + ' ms deadline'
+             + (d.n > 1 ? ' ×' + d.n : '')
+             + ' — worst solve sampled ' + d.ms.toFixed(1) + ' ms'
+             + (d.iters ? ', ' + d.iters + ' iters' : '')
+             + '; ' + (d.stage === 'MPC' ? 'previous solution held' : 'torque command late');
     case 'solverFail':
       return d.stage + ' solver failed (' + d.detail + ') — falling back to the last feasible plan';
     case 'contact':
@@ -1864,12 +1881,12 @@ class MockDataSource {
     if (!fallen && mpcMs > MPC_DEADLINE) {
       this.bump('mpcOvertime');
       this.emit('mpcOver', 'warn', narrate('deadline',
-        {stage: 'MPC', deadline: MPC_DEADLINE, ms: mpcMs, iters: mpcIters}), 1.2);
+        {stage: 'MPC', deadline: MPC_DEADLINE, n: 1, ms: mpcMs, iters: mpcIters}), 1.2);
     }
     if (!fallen && wbcMs > WBC_DEADLINE) {
       this.bump('wbcOvertime');
       this.emit('wbcOver', 'warn', narrate('deadline',
-        {stage: 'WBC', deadline: WBC_DEADLINE, ms: wbcMs}), 1.5);
+        {stage: 'WBC', deadline: WBC_DEADLINE, n: 1, ms: wbcMs}), 1.5);
     }
     if (solverFail) {
       this.bump('mpcFail');
@@ -2166,11 +2183,13 @@ class RosbridgeDataSource {
       this.lastInc[key] = this.t;
       if (key === 'mpcOvertime') {
         this.emit('mpcOver', 'warn', narrate('deadline',
-          {stage: 'MPC', deadline: MPC_DEADLINE, ms: this.bin.mpcMs || (this.last() ? this.last().mpcMs : 0),
+          {stage: 'MPC', deadline: MPC_DEADLINE, n: d,
+           ms: Math.max(this.bin.mpcMs, this.last() ? this.last().mpcMs : 0),
            iters: this.bin.mpcIters}), 1.2);
       } else if (key === 'wbcOvertime') {
         this.emit('wbcOver', 'warn', narrate('deadline',
-          {stage: 'WBC', deadline: WBC_DEADLINE, ms: this.bin.wbcMs || (this.last() ? this.last().wbcMs : 0)}), 1.5);
+          {stage: 'WBC', deadline: WBC_DEADLINE, n: d,
+           ms: Math.max(this.bin.wbcMs, this.last() ? this.last().wbcMs : 0)}), 1.5);
       } else if (key === 'mpcFail') {
         this.emit('mpcFail', 'error', narrate('solverFail',
           {stage: 'MPC', detail: d + ' since the last heartbeat'}), 0.9);

@@ -129,20 +129,38 @@ was written, and implemented by it exactly:
 | `start()` `stop()` `reset()` `last()` | lifecycle | the status bar toggle, unmount |
 | `advance()` `seedDemo(s)` `inject(f)` | the scripted interventions | `step`, `reset sim`, `inject` |
 
-The `Component` makes **33 `ds.<member>` references** and this pass changed
-none of them. That is what "the seam holds" means here, and it is checkable:
+**Every member above is implemented by both sources, and no panel's reads
+changed**: `buf`, `counters`, `lastInc`, `events`, `t`, the fall state and the
+lifecycle are consumed by exactly the code that consumed them before. That is
+what "the seam holds" means here, and it is checkable:
 
 ```bash
-grep -oE '\bds\.[a-zA-Z]+' "kennel_console/Kennel Console.dc.html" | wc -l
+git show main:"kennel_console/Kennel Console.dc.html" | grep -oE '\bds\.[a-zA-Z]+' | sort -u
+grep -oE '\bds\.[a-zA-Z]+' "kennel_console/Kennel Console.dc.html" | sort -u
 ```
+
+**Two members are new, and they are the honest exception.** #63's health strip
+reports the sequencer's live signature, which needs the newest raw `/gait_state`
+and a way to ask whether it is still arriving, so the live source also exposes:
+
+| Member | |
+|---|---|
+| `latest[topic]` | the newest raw message per topic |
+| `fresh(topic, s)` | has this topic said anything in the last `s` wall seconds |
+
+Both are read **only** under `isLive`, so the mock does not implement them and
+nothing on the mock path can reach them. They are additions to the contract, not
+changes to it — but they are additions, and the contract table above is the
+place that has to say so. (`ds.seedDemo` left the list in the other direction:
+the demo is seeded through `this.mock` now, because only the mock has one.)
 
 ### 2.2 One socket
 
 `RosbridgeLink` owns the WebSocket; `RosbridgeTarget` (#58, publishes one topic
 and calls two services) and `RosbridgeDataSource` (subscribes to eight topics)
 are its clients. Ops are routed by `op`, by topic for a publish and by `id` for
-a service response — no framework, and `grep -c 'new WebSocket'` over the page
-is **1**.
+a service response — no framework, and the page constructs **one** WebSocket
+(`grep -n 'new WebSocket'` finds a single call site, in `RosbridgeLink.connect`).
 
 Two consequences worth stating:
 

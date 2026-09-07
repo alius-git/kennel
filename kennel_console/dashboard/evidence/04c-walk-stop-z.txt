@@ -1,0 +1,37 @@
+=== /quad_state body height across walk -> walk stop, from the real bridge ===
+=== The question the live session raised: does an ordinary stop dip the body
+=== below 0.20 m for a sustained 2 sim-seconds -- which the fall rule would
+=== report as a fall? (walk at t+8, walk stop at t+32)
+
+  wall    sim     z(now)   median over the trailing 2 sim-s   n   verdict
+    0.0    51.95  0.2955     ----    1  upright
+    2.0    52.96  0.3138     ----  101  upright
+    4.0    53.96  0.3132   0.3126  196  upright
+    6.1    54.96  0.3075   0.3120  196  upright
+    8.1    55.97  0.3168   0.3107  197  upright
+   10.1    56.98  0.3136   0.3114  196  upright
+   12.1    57.98  0.3133   0.3145  195  upright
+   14.1    58.98  0.3040   0.3132  196  upright
+   16.1    59.99  0.3091   0.3061  196  upright
+   18.1    60.99  0.2994   0.3049  197  upright
+   20.1    62.00  0.2893   0.2937  197  upright
+   22.2    63.01  0.2845   0.2892  197  upright
+   24.2    64.01  0.2811   0.2868  197  upright
+   26.2    65.02  0.2867   0.2857  197  upright
+   28.2    66.02  0.2858   0.2863  198  upright
+   30.2    67.03  0.2835   0.2868  198  upright
+   32.2    68.03  0.2856   0.2870  198  upright
+   34.2    69.04  0.2860   0.2879  198  upright
+   36.3    70.04  0.2889   0.2888  198  upright
+   38.3    71.05  0.2876   0.2897  198  upright
+   40.3    72.05  0.2909   0.2894  199  upright
+   42.3    73.06  0.2930   0.2898  199  upright
+   44.3    74.06  0.2921   0.2911  198  upright
+   46.3    75.07  0.2906   0.2943  198  upright
+   48.3    76.08  0.0757   0.2884  199  upright
+   50.3    77.08  0.1070   0.0777  199  FALL by the rule
+   52.4    78.08  0.2363   0.1081  199  FALL by the rule
+   54.4    79.09  0.2189   0.2237  200  upright
+
+overall: n=2730  z median 0.2908  min 0.0749  max 0.3282
+samples at which the rule would have fired: 240 (first at wall 48.8 s, median 0.1995)
