@@ -3,6 +3,11 @@
 Driven by verify-teleop.sh.
 Usage: verify-teleop.py <servePort> <plainPort> <cdpPort> <bridgePort> <opsLog>
                         <foreignPort> <foreignOpsLog>
+                        <gaitPort> <gaitOpsLog> <fallPort> <fallOpsLog>
+
+Groups 1-12 are #58's and are unchanged. Groups 13-17 are #66: `reset sim` as a
+real /reset_sim call in the sequence the live stack forced, and a gait picker
+that says `active` or `refused` because it read /gait_state -- never just `sent`.
 
 No VM, no ROS, no stack: the far end is fake-rosbridge.py, and every assertion
 is made against THE BYTES THE PAGE SENT (the ops log on disk), never against a
@@ -23,6 +28,7 @@ Three properties pull against each other and all three are checked here:
 """
 import json
 import os
+import re
 import sys
 import time
 
@@ -35,7 +41,17 @@ BRIDGE_PORT = sys.argv[4]
 OPS = os.path.abspath(sys.argv[5])
 FOREIGN_PORT = sys.argv[6]
 FOREIGN_OPS = os.path.abspath(sys.argv[7])
+GAIT_PORT = sys.argv[8]
+GAIT_OPS = os.path.abspath(sys.argv[9])
+FALL_PORT = sys.argv[10]
+FALL_OPS = os.path.abspath(sys.argv[11])
 FOREIGN_URL = "ws://localhost:%s/" % FOREIGN_PORT
+GAIT_URL = "ws://localhost:%s/" % GAIT_PORT
+FALL_URL = "ws://localhost:%s/" % FALL_PORT
+RESET_SRV = "/reset_sim"
+RESET_TYPE = "interfaces/srv/ResetSimulation"
+UNDAMP_SRV = "/set_damping_mode"
+PARAM_SRV = "/mit_controller_node/set_parameters"
 ORIGIN = "http://localhost:%s" % SERVE_PORT
 PAGE = "/Kennel%20Console.dc.html"
 BRIDGE_URL = "ws://localhost:%s/" % BRIDGE_PORT
@@ -330,6 +346,152 @@ print("12. no network escaped")
 ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"
             ".filter(n=>!n.startsWith('http://localhost:'))")
 check("zero non-localhost requests", not ext, str(ext))
+
+# ---------------------------------------------------------------- #66
+# `reset sim` and the gait picker, against three different far ends. Everything
+# below is APPENDED: groups 1-12 above are #58's and are not touched.
+
+
+def connect_to(url, ops_path, want="driving"):
+    """Point the page at one of the fake bridges and press connect."""
+    goto(ORIGIN)
+    dash()
+    ws.js("__set(__bridgeInput(), %r)" % url)
+    ws.js("__connectBtn().click()")
+    return wait_for(lambda: want in (ws.js("__txt()") or ""), timeout=12)
+
+
+def reset_click():
+    ws.js("(() => { const b = __btn(/^reset sim$/); if (b) { b.click(); return true; } return false; })()")
+
+
+def svc(entries, name):
+    return [c for c in entries if c.get("service") == name]
+
+
+print("13. reset sim, connected: the zero, the STAND and the call, in that order")
+connect_to(BRIDGE_URL, OPS)
+base_c = len(ops("call_service"))
+base_p = len(ops("publish"))
+reset_click()
+check("reset sim calls /reset_sim on the simulator",
+      wait_for(lambda: bool(svc(ops("call_service")[base_c:], RESET_SRV))))
+calls = ops("call_service")[base_c:]
+rs = svc(calls, RESET_SRV)
+check("with the stack's own service type",
+      rs and rs[0].get("type") == RESET_TYPE, rs[0].get("type", "") if rs else "")
+check("spawning at the simulator's own height, upright",
+      rs and rs[0]["args"]["pose"]["position"]["z"] == 0.40
+      and rs[0]["args"]["pose"]["orientation"]["w"] == 1,
+      json.dumps(rs[0]["args"]["pose"]) if rs else "")
+check("and with NO joint positions, so the simulator uses its own",
+      rs and rs[0]["args"]["joint_positions"] == [],
+      "anything but exactly 12 makes drake_simulator fall back to "
+      "initial_joint_positions -- the stock spawn, with no constants copied here")
+stand = [c for c in calls if c.get("service") == PARAM_SRV
+         and c["args"]["parameters"][0]["value"]["string_value"] == "STAND"]
+check("STAND is asked for BEFORE the reset", stand and rs and stand[0]["t"] < rs[0]["t"],
+      "a gait change after the reset would fight the fresh spawn")
+zeros = [o for o in ops("publish")[base_p:] if o["msg"]["body_x_dot"] == 0.0]
+check("a zero was published before either call",
+      zeros and stand and zeros[0]["t"] <= stand[0]["t"],
+      "the controller keeps the last target forever; a reset under a held "
+      "velocity walks the fresh robot off its spawn (launch.md §4.2)")
+check("the robot was NOT taken out of damping -- it was never in it",
+      not svc(calls, UNDAMP_SRV),
+      "/set_damping_mode on a standing robot would drop it")
+check("and the page says what happened", "sim reset" in (ws.js("__txt()") or ""))
+
+print("14. reset sim on a FALLEN robot leaves emergency damping first")
+# The recorded fall (kennel_console/fixtures/fall.jsonl.gz) is a real stack going
+# to the floor under /set_emergency_damping_mode. The page has to notice.
+connect_to(FALL_URL, FALL_OPS)
+fell = wait_for(lambda: "FALL" in (ws.js("__txt()") or ""), timeout=40)
+check("the replayed fall reaches the page", fell)
+base_c = len(ops("call_service", FALL_OPS))
+reset_click()
+check("reset sim still calls /reset_sim",
+      wait_for(lambda: bool(svc(ops("call_service", FALL_OPS)[base_c:], RESET_SRV)), timeout=15))
+calls = ops("call_service", FALL_OPS)[base_c:]
+und, rs2 = svc(calls, UNDAMP_SRV), svc(calls, RESET_SRV)
+check("and this time it leaves EMERGENCY_DAMPING on the way",
+      bool(und), "the leg driver stays damping through a reset otherwise, and the "
+                 "fresh robot lands with no controller under it")
+check("as a std_srvs/srv/Trigger", und and und[0].get("type") == "std_srvs/srv/Trigger",
+      und[0].get("type", "") if und else "")
+check("before the reset, not after", und and rs2 and und[0]["t"] < rs2[0]["t"])
+
+print("15. reset sim is refused while somebody else holds the topic")
+connect_to(FOREIGN_URL, FOREIGN_OPS, want="another publisher is holding")
+base_c = len(ops("call_service", FOREIGN_OPS))
+reset_click()
+time.sleep(2.0)
+check("no service is called at all", not ops("call_service", FOREIGN_OPS)[base_c:],
+      "a reset under a held trot spawns the robot and walks it straight off")
+txt = ws.js("__txt()") or ""
+check("and the page names the fix", "walk stop" in txt)
+
+print("16. the gait picker reports what /gait_state says, not what it asked for")
+connect_to(GAIT_URL, GAIT_OPS)
+ws.js("__set(__gaitSel(), 'WALKING_TROT')")
+check("a gait the node loads reads back as ACTIVE",
+      wait_for(lambda: "gait WALKING_TROT active" in (ws.js("__txt()") or ""), timeout=8),
+      "period 0.500 s, duty 0.60, offsets [0,0.5,0.5,0] -- gait.cpp's own signature")
+# A name the node does not know: it answers `successful: true` and keeps the
+# sequencer it had (verify.md §4.4). The picker only offers the ten it knows, so
+# the suite adds the eleventh -- which is what a future gait, or a typo in a
+# preset, would look like.
+ws.js("(() => { const s = __gaitSel(); const o = document.createElement('option');"
+      " o.value = 'GARBAGE'; o.textContent = 'GARBAGE'; s.appendChild(o); return true; })()")
+base_c = len(ops("call_service", GAIT_OPS))
+ws.js("__set(__gaitSel(), 'GARBAGE')")
+sent = wait_for(lambda: any(c["args"]["parameters"][0]["value"]["string_value"] == "GARBAGE"
+                            for c in ops("call_service", GAIT_OPS)[base_c:]
+                            if c.get("service") == PARAM_SRV))
+check("an unknown gait is still SENT -- the node accepts the parameter", sent)
+check("but it is reported as REFUSED, because the signature never changed",
+      wait_for(lambda: "gait GARBAGE refused" in (ws.js("__txt()") or ""), timeout=10),
+      "SetParameters answered successful: true for it (verify.md §4.4)")
+check("and never as active", "gait GARBAGE active" not in (ws.js("__txt()") or ""))
+ws.js("__set(__gaitSel(), 'STAND')")
+check("picking a gait the node does load says active again",
+      wait_for(lambda: "gait STAND active" in (ws.js("__txt()") or ""), timeout=8))
+check("the page subscribed to /gait_state to know any of that",
+      any(o.get("topic") == "/gait_state" for o in ops("subscribe", GAIT_OPS)))
+first_sub = ops("subscribe", GAIT_OPS)[0] if ops("subscribe", GAIT_OPS) else {}
+check("and the FIRST subscribe on the wire is still the foreign-publisher probe",
+      first_sub.get("topic") == TOPIC, first_sub.get("topic", ""),)
+
+
+def sim_t():
+    """The status bar's `sim t`, read from its LABEL rather than by pattern.
+
+    Matching "a line that ends in ` s`" looked fine and was not: once the mock's
+    scripted demo falls, the value reads `45.6 s · frozen at fall` and the match
+    silently finds nothing at all.
+    """
+    lines = [l.strip() for l in (ws.js("__txt()") or "").split("\n")]
+    for i, line in enumerate(lines):
+        if line.lower().replace(" ", "") == "simt" and i + 1 < len(lines):
+            m = re.match(r"([0-9]+(?:\.[0-9]+)?)\s*s", lines[i + 1])
+            return float(m.group(1)) if m else None
+    return None
+
+
+print("17. served by plain http.server, reset sim still rewinds the mock")
+ws.call("Page.navigate", url="http://localhost:%s%s" % (PLAIN_PORT, PAGE))
+time.sleep(2.2)
+ws.js(HELPERS)
+dash()
+time.sleep(2.0)
+before = sim_t()
+reset_click()
+time.sleep(0.6)
+after = sim_t()
+check("the mock's clock went back", before is not None and after is not None and after < before,
+      "%s s -> %s s" % (before, after))
+check("no socket was opened by any of it", ws.js("window.__sockets.length") == 0)
+check("and nothing threw", ws.js("window.__errs.length") == 0, str(ws.js("window.__errs")))
 
 print()
 print("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED")

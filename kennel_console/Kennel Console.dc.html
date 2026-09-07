@@ -1528,6 +1528,63 @@ const PROBE_MS = 1000;        // how long to listen before advertising
 
 function r3(x) { return Math.round(x * 1000) / 1000; }
 
+// ---- Sim-level interventions (#66) -----------------------------------------
+// Both of these are service calls against an already-running sim, which is the
+// same side of the line the joystick is on (design/03-console.md:27). Nothing
+// here starts or stops a process.
+const RESET_SRV = '/reset_sim';
+const RESET_TYPE = 'interfaces/srv/ResetSimulation';
+// EMERGENCY_DAMPING can be left, and only into DAMPING, which returns to OPERATE
+// by itself once a leg command and a quad state arrive (leg_driver.cpp:233-237,
+// :348-374 at the pin). Without this a reset after an E-STOP spawns a robot that
+// crumples on landing: the simulator is fine, the leg driver is still damping.
+const UNDAMP_SRV = '/set_damping_mode';
+// simulator_params_go2.yaml initial_robot_height at the pin. The composer never
+// touches it (composer-scope.md), so it is the stock spawn height.
+const RESET_Z = 0.40;
+// Below this median height the robot is down. #66's own E-STOP criterion, and
+// well under verify.md §4.2's 0.20 m floor for a standing robot.
+const DOWN_Z = 0.15;
+const GAIT_TOPIC = '/gait_state';
+const GAIT_TYPE = 'interfaces/msg/GaitState';
+// The node reports `successful: true` for a gait it then refuses to load
+// (verify.md §4.4), so the ONLY way to know a gait took is to watch the
+// signature. 2 s is generous: measured on the live stack, a gait the node
+// accepts is on /gait_state inside one second (stack/bridge.md §10).
+const GAIT_SETTLE_MS = 2000;
+// GaitDatabase::getGait, controllers/src/mit_controller/gait.cpp:748-783 at the
+// pin: name -> [period, duty factor, phase offsets]. /gait_state carries no gait
+// NAME -- it carries what a gait IS -- so this table is what turns a message
+// into an answer. The same table lives in kennel-verify.sh's check.py and in
+// k13-target-monitor.py; all three are read from the same lines of gait.cpp, and
+// a drift shows up loudly as `refused` on a gait that actually loaded.
+const GAIT_SIGS = {
+  STAND: [0.5, 1.0, [0, 0, 0, 0]],            STATIC_WALK: [1.25, 0.8, [0, 0.5, 0.75, 0.25]],
+  WALKING_TROT: [0.5, 0.6, [0, 0.5, 0.5, 0]], TROT: [0.5, 0.5, [0, 0.5, 0.5, 0]],
+  FLYING_TROT: [0.4, 0.4, [0, 0.5, 0.5, 0]],  PACE: [0.35, 0.5, [0, 0.5, 0, 0.5]],
+  BOUND: [0.4, 0.4, [0, 0, 0.5, 0.5]],        ROTARY_GALLOP: [0.4, 0.2, [0, 0.8571, 0.3571, 0.5]],
+  TRAVERSE_GALLOP: [0.5, 0.2, [0, 0.8571, 0.3571, 0.5]], PRONK: [0.5, 0.5, [0, 0, 0, 0]]
+};
+function sigMatches(g, want) {
+  if (!g || !want) return false;
+  const near = (a, b) => Math.abs(a - b) < 1e-3;
+  const duty = g.duty_factor || [], off = g.phase_offset || [];
+  return near(g.period, want[0]) && duty.length === 4 && duty.every(d => near(d, want[1]))
+         && off.length === 4 && off.every((o, i) => near(o, want[2][i]));
+}
+function gaitArgs(name) {
+  return {parameters: [{name: GAIT_PARAM, value: {type: 4, string_value: name}}]};
+}
+// joint_positions EMPTY is deliberate: with anything other than exactly 12 the
+// simulator uses its own initial_joint_positions and logs that it did
+// (drake_simulator.cpp:504-512). The stock spawn is therefore the simulator's to
+// define, and this page copies no joint constants it would have to keep in step.
+function resetArgs() {
+  return {pose: {position: {x: 0, y: 0, z: RESET_Z},
+                 orientation: {x: 0, y: 0, z: 0, w: 1}},
+          joint_positions: []};
+}
+
 // ---- One socket, two clients (#62) -----------------------------------------
 //
 // design.md §1: "all live data crosses one DataSource seam". #58 opened a
@@ -1642,6 +1699,12 @@ class RosbridgeTarget {
     this.v = {x: 0, y: 0};              // what is actually sent, after the ramp
     this.z = TELEOP_Z; this.maxv = TELEOP_VMAX;
     this.sent = 0; this.foreign = 0;
+    // The gait is asked for over a service and ANSWERED on a topic (#66). These
+    // are the two halves: what was asked, and what /gait_state says is running.
+    this.gaitWant = null;      // the name last asked for
+    this.gaitState = 'idle';   // idle | sent | active | refused
+    this.gaitT0 = 0; this.gaitSig = null;
+    this.gaitSubId = null; this.gaitTimer = null;
   }
   driving() { return this.state === 'driving'; }
   open() { return this.link.open(); }
@@ -1685,6 +1748,13 @@ class RosbridgeTarget {
 
   drive() {
     this.send({op: 'advertise', topic: TELEOP_TOPIC, type: TELEOP_TYPE, id: 'kennel-teleop'});
+    // AFTER the advertise, deliberately: the FIRST subscribe on the wire has to
+    // stay the foreign-publisher probe (verify-teleop.py:187,
+    // verify-dashboard.py:461), and a target that refused to drive subscribes to
+    // nothing at all. 100 ms is plenty to watch a signature change, and the
+    // bridge takes the MINIMUM throttle over a topic's subscriptions, so this
+    // cannot slow the DataSource's own 20 ms stream.
+    this.gaitSubId = this.link.subscribe(GAIT_TOPIC, GAIT_TYPE, 100, m => this.onGaitState(m));
     this.state = 'driving';
     this.say('driving — ' + TELEOP_HZ + ' Hz to ' + TELEOP_TOPIC, false);
     this.timer = setInterval(() => this.tick(), 1000 / TELEOP_HZ);
@@ -1764,13 +1834,96 @@ class RosbridgeTarget {
     });
   }
 
-  // `ros2 param set` reports success for a gait the node then rejects
-  // (verify.md §4.4), so this says "sent" and never "active". /gait_state is
-  // the observable that could say active, and reading it is not this issue.
+  // `ros2 param set` reports success for a gait the node then REFUSES to load
+  // (verify.md §4.4, reproduced live: `GARBAGE` answers successful: true and the
+  // sequencer keeps running what it had). Until #66 this page could only say
+  // "sent". Now it waits for /gait_state -- the observable that carries what a
+  // gait actually IS -- and says `active` or, when nothing changed, `refused`.
   setGait(name) {
-    this.call(CTRL_PARAM_SRV, CTRL_PARAM_TYPE,
-              {parameters: [{name: GAIT_PARAM, value: {type: 4, string_value: name}}]},
-              'gait ' + name + ' sent (the node reports success even for a gait it rejects)');
+    this.gaitWant = name;
+    this.gaitState = 'sent';
+    this.gaitT0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    if (this.gaitTimer) { clearTimeout(this.gaitTimer); this.gaitTimer = null; }
+    this.call(CTRL_PARAM_SRV, CTRL_PARAM_TYPE, gaitArgs(name),
+              'gait ' + name + ' sent — waiting for /gait_state');
+    // The honest signal for a gait the node ignores. Bounded, and it fires only
+    // if nothing on the wire has confirmed the change by then.
+    this.gaitTimer = setTimeout(() => {
+      this.gaitTimer = null;
+      if (this.gaitState !== 'sent' || this.gaitWant !== name) return;
+      this.gaitState = 'refused';
+      this.say('gait ' + name + ' refused — /gait_state has not changed '
+               + (GAIT_SETTLE_MS / 1000).toFixed(1) + ' s after the node reported success.'
+               + '  The node accepts the parameter and keeps the sequencer it had'
+               + ' for a name it does not know (launch.md §4.1).', true);
+    }, GAIT_SETTLE_MS);
+  }
+
+  // What the sequencer says it is doing. `contact` and `phase` change every
+  // message; only the SIGNATURE decides whether the gait took.
+  onGaitState(m) {
+    this.gaitSig = m;
+    if (this.gaitState !== 'sent' || !this.gaitWant) return;
+    const want = GAIT_SIGS[this.gaitWant];
+    if (!want || !sigMatches(m, want)) return;
+    this.gaitState = 'active';
+    if (this.gaitTimer) { clearTimeout(this.gaitTimer); this.gaitTimer = null; }
+    const dt = ((typeof performance !== 'undefined' ? performance.now() : Date.now())
+                - this.gaitT0) / 1000;
+    this.say('gait ' + this.gaitWant + ' active — /gait_state period '
+             + m.period.toFixed(3) + ' s, duty ' + m.duty_factor[0].toFixed(2)
+             + ', offsets [' + (m.phase_offset || []).map(o => o.toFixed(2)).join(', ')
+             + '] after ' + dt.toFixed(2) + ' s', false);
+  }
+
+  // ---- reset sim (#66), in the order measured on the live stack.
+  //
+  // The zero goes FIRST and it is not a formality: /reset_sim replaces the
+  // simulator's context and does not touch the controller, which keeps the last
+  // target it was ever sent (mit_controller_node.cpp:793-798). Resetting under a
+  // held velocity spawns a robot that walks away from its spawn point.
+  //
+  // Then STAND, then -- ONLY if the robot is on the floor -- the leg driver is
+  // brought out of EMERGENCY_DAMPING, because a reset while damped puts a fresh
+  // robot on the ground with no controller under it. A standing robot is never
+  // touched: /set_damping_mode on one that is walking would drop it.
+  resetSim(zNow) {
+    if (this.state === 'refused') {
+      this.say('another publisher is holding ' + TELEOP_TOPIC
+               + ' — a reset under a held trot walks the robot off its spawn.'
+               + '  Stop it:  kennel-demo.sh walk stop', true);
+      return;
+    }
+    if (this.state === 'probing') {
+      this.say('still listening for another publisher — try the reset again in a second', true);
+      return;
+    }
+    if (!this.open()) { this.say('not connected — nothing was sent', true); return; }
+    this.panic();
+    this.say('reset: target zeroed, asking for STAND …', false);
+    this.link.call(CTRL_PARAM_SRV, CTRL_PARAM_TYPE, gaitArgs('STAND'), () => {
+      const go = () => this.link.call(RESET_SRV, RESET_TYPE, resetArgs(), m => {
+        const values = m && m.values;
+        if (m && m.result === false) {
+          this.say('the simulator refused the reset: ' + JSON.stringify(values || ''), true);
+          return;
+        }
+        this.say('sim reset — spawned at z ' + RESET_Z.toFixed(2)
+                 + ' m with the simulator\'s own joint positions; the sim clock restarts', false);
+      });
+      // Ask the gait question again from a known answer: STAND is what
+      // /gait_state must now show, and the picker says so when it does.
+      this.gaitWant = 'STAND';
+      this.gaitState = 'sent';
+      this.gaitT0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (typeof zNow === 'number' && zNow < DOWN_Z) {
+        this.say('the robot is down (z ' + zNow.toFixed(3)
+                 + ' m) — leaving emergency damping before the reset', false);
+        this.link.call(UNDAMP_SRV, ESTOP_TYPE, {}, go);
+      } else {
+        go();
+      }
+    });
   }
   estop() {
     this.panic();
@@ -1780,10 +1933,13 @@ class RosbridgeTarget {
   stopTimer() {
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
     if (this.probeT) { clearTimeout(this.probeT); this.probeT = null; }
+    if (this.gaitTimer) { clearTimeout(this.gaitTimer); this.gaitTimer = null; }
   }
   close() {
     this.stopTimer();
     if (this.probeId) { this.link.unsubscribe(TELEOP_TOPIC, this.probeId); this.probeId = null; }
+    if (this.gaitSubId) { this.link.unsubscribe(GAIT_TOPIC, this.gaitSubId); this.gaitSubId = null; }
+    this.gaitState = 'idle'; this.gaitWant = null;
     this.state = 'idle';
   }
   disconnect() {
@@ -1828,6 +1984,12 @@ function narrate(kind, d) {
              + (d.why ? ' — ' + d.why : '');
     case 'reset':
       return 'sim clock restarted at ' + d.sim.toFixed(1) + ' s — windows cleared';
+    // The CALL (#66). Its consequence -- the clock going back to zero -- arrives a
+    // moment later as `reset` above, from /clock, and the two lines together are
+    // what an operator needs to see: what was asked, and what happened.
+    case 'resetSim':
+      return '/reset_sim called — spawn at z ' + d.z.toFixed(2)
+             + ' m with the simulator\'s own joint positions; the sim clock restarts';
     case 'disturb':
       return 'Disturbance: ' + d.mag.toFixed(0) + ' N for ' + d.duration.toFixed(2)
              + ' s at body CoM (' + d.fx + ', ' + d.fy + ', ' + d.fz + ')';
@@ -3166,7 +3328,19 @@ class Component extends DCLogic {
       onInject: () => { if (ds) ds.inject(Object.assign({mag:100}, st.dist)); this.setState(s => ({tick:s.tick + 1})); },
       onStep: () => { if (ds) { ds.advance(); this.setState(s => ({tick:s.tick + 1})); } },
       onStep10: () => { if (ds) { for (let i = 0; i < 10; i++) ds.advance(); this.setState(s => ({tick:s.tick + 1})); } },
-      onReset: () => { if (ds) { const wasRunning = !!ds.timer; ds.stop(); ds.reset(); if (wasRunning) ds.start(); } this.setState({pinFall:false, detail:null, tick:0}); },
+      // `reset sim` is a sim-level service call when there is a sim to call
+      // (#66) and the mock's own rewind when there is not. Served by plain
+      // http.server, or with no bridge connected, it is exactly what it was.
+      onReset: () => {
+        if (tp && link && link.open()) {
+          tp.resetSim(last ? last.height : NaN);
+          if (ds && ds.emit) ds.emit('resetSim', 'info', narrate('resetSim', {z: RESET_Z}), 0);
+          this.setState({gaitSel: 'STAND', pinFall: false, detail: null});
+          return;
+        }
+        if (ds) { const wasRunning = !!ds.timer; ds.stop(); ds.reset(); if (wasRunning) ds.start(); }
+        this.setState({pinFall:false, detail:null, tick:0});
+      },
       // Normalised by whatever the live target's full scale is, so the knob
       // stays inside the pad on both (the mock's ±1.2 / ±1.5 predate this).
       joyLeft: (50 + (tp ? tp.cmd.wz / TELEOP_YAW : (ds ? ds.cmd.wz : 0)) * 40) + '%',

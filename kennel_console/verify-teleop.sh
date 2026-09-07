@@ -4,6 +4,11 @@
 #
 #   ./kennel_console/verify-teleop.sh [servePort] [plainPort] [cdpPort] [bridgePort]
 #
+# Since #66 there are FOUR far ends, all fake-rosbridge.py: the plain one, one
+# with a foreign publisher already on the topic, one that follows the gait
+# parameter and publishes /gait_state for it, and one replaying the recorded
+# FALL fixture so `reset sim` can be tested against a robot that is on the floor.
+#
 # Runs on the HOST. NO VM, NO ROS, NO STACK: the far end is fake-rosbridge.py,
 # which records every op the page sends to a JSONL file, so every assertion is
 # made against bytes the page actually put on the wire. The real protocol shapes
@@ -36,6 +41,13 @@ BRIDGE_PORT="${4:-9391}"
 # A second fixture, identical but with a publisher already on the topic. The
 # console must refuse to drive against it rather than join the fight.
 FOREIGN_PORT="$((BRIDGE_PORT + 1))"
+# A third that answers the gait parameter with a real /gait_state, so `sent` can
+# become `active` -- or stay `sent` and time out into `refused` (#66).
+GAIT_PORT="$((BRIDGE_PORT + 2))"
+# A fourth replaying the recorded fall, minus the held trot the recording carries
+# on /quad_control_target -- otherwise the page's probe refuses to drive and
+# there is no reset to test.
+FALL_PORT="$((BRIDGE_PORT + 3))"
 PAGE="Kennel%20Console.dc.html"
 
 if ! command -v google-chrome >/dev/null 2>&1; then
@@ -48,6 +60,8 @@ profile="$tmp/profile"
 out="$tmp/kennel-runs"
 ops="$tmp/ops.jsonl"
 foreign_ops="$tmp/ops-foreign.jsonl"
+gait_ops="$tmp/ops-gait.jsonl"
+fall_ops="$tmp/ops-fall.jsonl"
 mkdir -p "$profile" "$out"
 
 # What `kennel-demo.sh teleop` writes after it has discovered the guest. serve.py
@@ -55,9 +69,9 @@ mkdir -p "$profile" "$out"
 # field from there. Writing it here is the point: the hand-off is under test.
 echo "ws://localhost:$BRIDGE_PORT/" > "$out/.kennel-bridge"
 
-serve=""; plain=""; chrome=""; bridge=""; foreign=""
+serve=""; plain=""; chrome=""; bridge=""; foreign=""; gaitb=""; fallb=""
 cleanup() {
-  for p in "$chrome" "$serve" "$plain" "$bridge" "$foreign"; do
+  for p in "$chrome" "$serve" "$plain" "$bridge" "$foreign" "$gaitb" "$fallb"; do
     [[ -n "$p" ]] && kill "$p" 2>/dev/null
   done
   [[ -n "$chrome" ]] && wait "$chrome" 2>/dev/null
@@ -70,6 +84,13 @@ bridge=$!
 python3 "$DIR/fake-rosbridge.py" --port "$FOREIGN_PORT" --log "$foreign_ops" --foreign \
   >"$tmp/bridge-foreign.log" 2>&1 &
 foreign=$!
+python3 "$DIR/fake-rosbridge.py" --port "$GAIT_PORT" --log "$gait_ops" --gait-follow \
+  >"$tmp/bridge-gait.log" 2>&1 &
+gaitb=$!
+python3 "$DIR/fake-rosbridge.py" --port "$FALL_PORT" --log "$fall_ops" \
+  --replay "$DIR/fixtures/fall.jsonl.gz" --drop /quad_control_target \
+  >"$tmp/bridge-fall.log" 2>&1 &
+fallb=$!
 python3 "$DIR/serve.py" --port "$SERVE_PORT" --out "$out" >"$tmp/serve.log" 2>&1 &
 serve=$!
 python3 -m http.server "$PLAIN_PORT" --directory "$DIR" >/dev/null 2>&1 &
@@ -88,7 +109,7 @@ for port in "$SERVE_PORT" "$PLAIN_PORT"; do
     exit 2
   }
 done
-for port in "$BRIDGE_PORT" "$FOREIGN_PORT"; do
+for port in "$BRIDGE_PORT" "$FOREIGN_PORT" "$GAIT_PORT" "$FALL_PORT"; do
   up=0
   for _ in $(seq 40); do
     # A TCP connect is enough: the fixture only speaks WebSocket, and the suite's
@@ -119,9 +140,10 @@ done
 sleep 3   # let the console boot and the mock DataSource settle
 
 python3 "$DIR/verify-teleop.py" "$SERVE_PORT" "$PLAIN_PORT" "$CDP_PORT" "$BRIDGE_PORT" "$ops" \
-  "$FOREIGN_PORT" "$foreign_ops"
+  "$FOREIGN_PORT" "$foreign_ops" "$GAIT_PORT" "$gait_ops" "$FALL_PORT" "$fall_ops"
 rc=$?
 
 echo
-echo "the fake bridges recorded $(wc -l < "$ops") and $(wc -l < "$foreign_ops") ops."
+echo "the fake bridges recorded $(wc -l < "$ops"), $(wc -l < "$foreign_ops"), \
+$(wc -l < "$gait_ops") and $(wc -l < "$fall_ops") ops."
 exit $rc
