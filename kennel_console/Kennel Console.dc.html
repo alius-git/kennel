@@ -565,24 +565,39 @@ select{appearance:none}
             <div style="font:600 15px 'IBM Plex Sans'">Runs</div>
             <div style="font:400 11px 'IBM Plex Mono';color:#6f7a88;margin-top:3px">{{ runsSub }}</div>
           </div>
-          <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">{{ diffHint }}</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">{{ diffHint }}</div>
+            <sc-if value="{{ hasServer }}" hint-placeholder-val="{{ true }}">
+              <div onClick="{{ onRefreshRuns }}" style="font:500 10px 'IBM Plex Mono';color:#8b93a0;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:3px 9px" style-hover="border-color:#3b4757;color:#dbe2ea">refresh</div>
+            </sc-if>
+          </div>
         </div>
 
         <div style="background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
-          <div style="display:grid;grid-template-columns:34px 132px 118px 1fr 78px 108px 190px;gap:0;padding:9px 12px;border-bottom:1px solid #1f2731;font:500 9px 'IBM Plex Mono';letter-spacing:.06em;text-transform:uppercase;color:#5d6875">
-            <div style="overflow:hidden">cmp</div><div style="overflow:hidden">run</div><div style="overflow:hidden">map</div><div style="overflow:hidden">pipeline</div><div style="overflow:hidden">dur</div><div style="overflow:hidden">verdict</div><div style="overflow:hidden">counters</div>
+          <div style="display:grid;grid-template-columns:34px 178px 118px 1fr 78px 108px 200px 58px;gap:0;padding:9px 12px;border-bottom:1px solid #1f2731;font:500 9px 'IBM Plex Mono';letter-spacing:.06em;text-transform:uppercase;color:#5d6875">
+            <div style="overflow:hidden">cmp</div><div style="overflow:hidden">run</div><div style="overflow:hidden">map</div><div style="overflow:hidden">pipeline</div><div style="overflow:hidden">dur</div><div style="overflow:hidden">verdict</div><div style="overflow:hidden">counters</div><div style="overflow:hidden">report</div>
           </div>
           <sc-for list="{{ runs }}" as="r" hint-placeholder-count="5">
-            <div style="display:grid;grid-template-columns:34px 132px 118px 1fr 78px 108px 190px;gap:0;padding:10px 12px;border-bottom:1px solid #161d26;align-items:center;background:{{ r.bg }}">
+            <div style="display:grid;grid-template-columns:34px 178px 118px 1fr 78px 108px 200px 58px;gap:0;padding:10px 12px;border-bottom:1px solid #161d26;align-items:center;background:{{ r.bg }}">
               <div onClick="{{ r.onSelect }}" style="width:14px;height:14px;border:1px solid {{ r.cbBorder }};background:{{ r.cbBg }};border-radius:3px;cursor:pointer"></div>
-              <div style="font:500 11px 'IBM Plex Mono';color:#dbe2ea">{{ r.id }}</div>
+              <div style="display:flex;gap:6px;align-items:center;min-width:0">
+                <div style="font:500 11px 'IBM Plex Mono';color:#dbe2ea;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.id }}</div>
+                <sc-if value="{{ r.isDemo }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:500 8px 'IBM Plex Mono';color:#7c8794;border:1px solid #2b3543;background:#0d1219;padding:1px 5px;border-radius:3px;flex:none">demo</div>
+                </sc-if>
+              </div>
               <div style="font:400 11px 'IBM Plex Mono';color:#9aa5b1">{{ r.map }}</div>
               <div style="font:400 10px 'IBM Plex Mono';color:#6f7a88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.stages }}</div>
               <div style="font:400 11px 'IBM Plex Mono';color:#9aa5b1">{{ r.dur }}</div>
               <div><span style="font:500 9px 'IBM Plex Mono';letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:3px;color:{{ r.vFg }};background:{{ r.vBg }};border:1px solid {{ r.vBorder }}">{{ r.verdict }}</span></div>
-              <div style="display:flex;gap:10px;align-items:center">
-                <div style="font:400 10px 'IBM Plex Mono';color:#8b93a0">{{ r.counters }}</div>
-                <div onClick="{{ r.onLoad }}" style="margin-left:auto;font:500 9px 'IBM Plex Mono';color:#8fc9ea;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:2px 7px">load</div>
+              <div style="display:flex;gap:10px;align-items:center;min-width:0">
+                <div style="font:400 10px 'IBM Plex Mono';color:#8b93a0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.counters }}</div>
+                <div onClick="{{ r.onLoad }}" style="margin-left:auto;font:500 9px 'IBM Plex Mono';color:#8fc9ea;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:2px 7px;flex:none">load</div>
+              </div>
+              <div>
+                <sc-if value="{{ r.hasVerify }}" hint-placeholder-val="{{ true }}">
+                  <a href="{{ r.verifyHref }}" target="_blank" style="font:500 9px 'IBM Plex Mono';color:#8fc9ea;border:1px solid #232b36;border-radius:3px;padding:2px 7px">verify</a>
+                </sc-if>
               </div>
             </div>
           </sc-for>
@@ -608,6 +623,41 @@ select{appearance:none}
               <div style="padding:20px;text-align:center;font:400 11px 'IBM Plex Mono';color:#5d6875">configurations are identical</div>
             </sc-if>
           </div>
+
+          <sc-if value="{{ hasVerdictDiff }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:16px;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
+              <div style="padding:10px 12px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+                <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Outcome</div>
+                <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">from each run&#39;s verify.json</div>
+              </div>
+              <sc-for list="{{ verdictRows }}" as="d" hint-placeholder-count="6">
+                <div style="display:grid;grid-template-columns:1fr 200px 200px;padding:6px 12px;border-bottom:1px solid #131a22">
+                  <div style="font:400 10px 'IBM Plex Mono';color:#8b93a0">{{ d.key }}</div>
+                  <div style="font:400 10px 'IBM Plex Mono';color:{{ d.aFg }}">{{ d.a }}</div>
+                  <div style="font:400 10px 'IBM Plex Mono';color:{{ d.bFg }}">{{ d.b }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ hasYamlDiff }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:16px;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
+              <div style="padding:10px 12px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+                <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Generated YAML</div>
+                <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">{{ yamlDiffTitle }}</div>
+              </div>
+              <sc-for list="{{ yamlDiffRows }}" as="d" hint-placeholder-count="4">
+                <div style="padding:6px 12px;border-bottom:1px solid #131a22">
+                  <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">{{ d.where }}</div>
+                  <div style="font:400 10px 'IBM Plex Mono';color:#e2564d;white-space:pre-wrap;word-break:break-all">- {{ d.a }}</div>
+                  <div style="font:400 10px 'IBM Plex Mono';color:#3fbf7f;white-space:pre-wrap;word-break:break-all">+ {{ d.b }}</div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ yamlDiffNone }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:20px;text-align:center;font:400 11px 'IBM Plex Mono';color:#5d6875">{{ yamlDiffNoneLabel }}</div>
+              </sc-if>
+            </div>
+          </sc-if>
         </sc-if>
       </div>
       </sc-if>
@@ -1409,6 +1459,23 @@ function cfgFromYaml(simText, ctrlText) {
 
   return normalizeCfg(cfg);   // pasted YAML is untrusted input like any other
 }
+// The composer state a run.json's `choices` describes (#64). The Runs view's
+// `load` uses it, so a real run reopens in the composer exactly as a pasted
+// YAML pair does -- through normalizeCfg, because a run folder is untrusted
+// input like any other (composer-scope.md §3).
+function cfgFromChoices(ch) {
+  const cfg = defaultCfg();
+  if (!ch || typeof ch !== 'object') return normalizeCfg(cfg);
+  const hit = MAP_IDS.filter(id => MAP_WORLD[id].urdf === ch.world_urdf);
+  if (hit.length) cfg.map = hit[0];
+  if (ch.simulator_realtime_rate !== undefined) cfg.sim.real_time_rate = Number(ch.simulator_realtime_rate);
+  if (ch.publish_quad_state !== undefined) cfg.sim.ground_truth_state = !!ch.publish_quad_state;
+  if (ch.mpc_solver) cfg.blocks.mpc.impl = ch.mpc_solver;
+  if (ch.mpc_hpipm_mode) cfg.blocks.mpc.params.mpc_hpipm_mode = ch.mpc_hpipm_mode;
+  if (ch.mpc_condensed_size !== undefined) cfg.blocks.mpc.params.mpc_condensed_size = Number(ch.mpc_condensed_size);
+  return normalizeCfg(cfg);
+}
+
 function flatten(cfg) {
   const out = {};
   out['sim.map'] = cfg.map;
@@ -2224,6 +2291,10 @@ class Component extends DCLogic {
       // state: served by plain http.server there is no such endpoint, and the
       // console must then be exactly what it was before serve.py existed.
       kennel: null, sendMsg: '', sendErr: false,
+      // The runs the HOST has (#64), from GET /api/runs -- null until asked,
+      // which is also the state under plain http.server, where the view falls
+      // back to the seeded demo history it has always shown.
+      serverRuns: null, yamlDiff: null,
       // Teleop (#58). bridgeUrl is prefilled from /api/health when the driver
       // has written one, and stays editable -- a lab that knows its own URL
       // should not have to run a verb to type it.
@@ -2285,10 +2356,52 @@ class Component extends DCLogic {
           // socket: connecting stays a click. With no teleop verb run, bridge is
           // null and the field is empty with its placeholder saying so.
           this.setState(s2 => ({kennel: h, bridgeUrl: s2.bridgeUrl || h.bridge || ''}));
+          this.fetchRuns();
         })
         .catch(() => {});
     } catch (e) {}
   }
+  // What the host has on disk. Called when the probe finds a kennel server, on
+  // entering the Runs view, after a send, and from `refresh` -- never on a timer:
+  // a run folder changes when the operator runs something, not at 10 Hz.
+  fetchRuns() {
+    try {
+      fetch('/api/runs', {cache: 'no-store'})
+        .then(r => (r.ok ? r.json() : null))
+        .then(j => { if (j && j.runs) this.setState({serverRuns: j.runs}); })
+        .catch(() => {});
+    } catch (e) {}
+  }
+
+  // The two generated YAML pairs, compared line by line (s005.compare step 5).
+  // Positional comparison is exact here and only here: both files are emitted
+  // from the same stock template with only composed fields substituted, so they
+  // have the same lines in the same order by construction (generate.md §4
+  // group 5). If a future pin makes that untrue the lengths differ, and this
+  // says so rather than guessing at an alignment.
+  loadYamlDiff(a, b) {
+    if (!a || !b) return;
+    const files = ['simulator_params_go2.yaml', 'mit_controller_sim_go2.yaml'];
+    const get = (run, f) => fetch('/api/runs/' + run + '/' + f, {cache: 'no-store'})
+      .then(r => (r.ok ? r.text() : null)).catch(() => null);
+    Promise.all([get(a, files[0]), get(b, files[0]), get(a, files[1]), get(b, files[1])])
+      .then(([sa, sb, ca, cb]) => {
+        const rows = [];
+        let lengthMismatch = false;
+        [[files[0], sa, sb], [files[1], ca, cb]].forEach(([name, ta, tb]) => {
+          if (ta === null || tb === null) return;
+          const la = ta.split('\n'), lb = tb.split('\n');
+          if (la.length !== lb.length) lengthMismatch = true;
+          const n = Math.min(la.length, lb.length);
+          for (let i = 0; i < n; i++) {
+            if (la[i] !== lb[i]) rows.push({where: name + ':' + (i + 1), a: la[i], b: lb[i]});
+          }
+        });
+        this.setState({yamlDiff: {a: a, b: b, rows: rows, lengthMismatch: lengthMismatch,
+                                  fetched: sa !== null && sb !== null}});
+      });
+  }
+
   componentWillUnmount() {
     if (this.mock) this.mock.stop();
     if (this.ds && this.ds !== this.mock) this.ds.stop();
@@ -2550,6 +2663,9 @@ class Component extends DCLogic {
           sendMsg: 'saved ' + res.body.path,
           sendErr: false
         }));
+        // It is on the host now, so the Runs view can read it from there rather
+        // than from a copy this page kept (#64).
+        this.fetchRuns();
       })
       .catch(e => show('could not reach the host server: ' + e, true));
   }
@@ -2610,7 +2726,11 @@ class Component extends DCLogic {
       {id:'compose', label:'Compose'}, {id:'dashboard', label:'Dashboard'}, {id:'runs', label:'Runs'}
     ].map(n => {
       const on = st.view === n.id;
-      return {label:n.label, onClick:() => this.setState({view:n.id, detail:null}),
+      return {label:n.label,
+        // Entering Runs re-reads the host's folders: a `kennel-demo.sh run` may
+        // have finished since the page was opened, and its verdict is the whole
+        // point of the view (#64).
+        onClick:() => { if (n.id === 'runs') this.fetchRuns(); this.setState({view:n.id, detail:null, sel:[], yamlDiff:null}); },
         bg: on ? '#141a23' : 'transparent', mark: on ? '#4aa8d8' : 'transparent',
         fg: on ? '#dbe2ea' : '#7c8794', dot: on ? '#4aa8d8' : '#39465a', dotFill: on ? '#1c3648' : 'transparent'};
     });
@@ -2734,32 +2854,123 @@ class Component extends DCLogic {
       fg: e.sev === 'fatal' ? '#f0a19b' : e.sev === 'error' ? '#e59a94' : e.sev === 'warn' ? '#dcc08a' : '#8b93a0'
     }));
 
-    const runs = st.runs.map((r, i) => {
+    // ---- Runs (#64) --------------------------------------------------------
+    //
+    // Two sources, and which one is showing is stated on the page. With a kennel
+    // server the table is the HOST'S OWN run folders, with verdicts and counters
+    // read out of the verify report `kennel-demo.sh verify` filed there. Without
+    // one -- plain http.server, Devon's demo -- it is the seeded history the
+    // prototype has always carried, and every one of those rows now says `demo`.
+    //
+    // The seeded rows are not deleted: s007.bridge's mock half is a console with
+    // no stack at all, and a Runs view that were empty there would demonstrate
+    // nothing. What was wrong was showing invented runs UNLABELLED beside real
+    // ones.
+    const hasServer = !!st.kennel;
+    const server = st.serverRuns || [];
+    const VERDICT_COLOURS = {
+      completed: {fg:'#3fbf7f', bg:'#0e1714', b:'#1f4534'},
+      fell: {fg:'#e2564d', bg:'#1b1113', b:'#5c2622'},
+      'solver-failed': {fg:'#e0a63c', bg:'#191510', b:'#4a3a1c'},
+      unhealthy: {fg:'#e0a63c', bg:'#191510', b:'#4a3a1c'},
+      staged: {fg:'#8fc9ea', bg:'#101a24', b:'#2f5d78'}
+    };
+    const headline = h => h
+      ? ['early ' + (h.early_contacts || 0), 'mpc_over ' + (h.mpc_overtime || 0),
+         'wbc_over ' + (h.wbc_overtime || 0),
+         'fail ' + ((h.mpc_fail || 0) + (h.wbc_fail || 0))].join(' · ')
+      : 'not yet run';
+
+    // One row model, whichever source it came from.
+    const rowsIn = hasServer
+      ? server.map(r => {
+          const cfg = cfgFromChoices(r.choices);
+          const v = r.verify;
+          return {key: r.run, id: r.run, cfg: cfg, isDemo: false,
+                  verdict: v && v.verdict ? v.verdict : 'staged',
+                  dur: v && v.sim_window ? v.sim_window.toFixed(1) + ' s' : '—',
+                  counters: headline(v && v.headline), verify: v,
+                  hasVerify: !!v, verifyHref: '/api/runs/' + r.run + '/verify.txt'};
+        })
+      : st.runs.map((r, i) => ({key: 'seed' + i, id: r.id, cfg: r.cfg, isDemo: r.verdict !== 'staged',
+                                verdict: r.verdict, dur: r.dur, counters: r.counters,
+                                verify: null, hasVerify: false, verifyHref: ''}));
+
+    const runs = rowsIn.map((r, i) => {
       const on = st.sel.indexOf(i) >= 0;
       const stages = BLOCKS.map(b => (BY_ID[b.id].impls.find(x => x[0] === r.cfg.blocks[b.id].impl) || [0, r.cfg.blocks[b.id].impl])[1]).join(' → ');
-      const v = r.verdict;
-      const vc = v === 'completed' ? {fg:'#3fbf7f', bg:'#0e1714', b:'#1f4534'} : v === 'fell' ? {fg:'#e2564d', bg:'#1b1113', b:'#5c2622'}
-        : v === 'staged' ? {fg:'#8fc9ea', bg:'#101a24', b:'#2f5d78'} : {fg:'#e0a63c', bg:'#191510', b:'#4a3a1c'};
-      return {id:r.id, map:(MAPS.find(m => m.id === r.cfg.map) || {name:r.cfg.map}).name, stages, dur:r.dur, verdict:v,
-        counters:r.counters, vFg:vc.fg, vBg:vc.bg, vBorder:vc.b, bg: on ? '#111721' : 'transparent',
+      const vc = VERDICT_COLOURS[r.verdict] || VERDICT_COLOURS.unhealthy;
+      return {id:r.id, isDemo:r.isDemo, hasVerify:r.hasVerify, verifyHref:r.verifyHref,
+        map:(MAPS.find(m => m.id === r.cfg.map) || {name:r.cfg.map}).name, stages, dur:r.dur,
+        verdict:r.verdict, counters:r.counters,
+        vFg:vc.fg, vBg:vc.bg, vBorder:vc.b, bg: on ? '#111721' : 'transparent',
         cbBorder: on ? '#4aa8d8' : '#39465a', cbBg: on ? '#4aa8d8' : 'transparent',
         onSelect: () => this.setState(s => {
           const sel = s.sel.slice(); const k = sel.indexOf(i);
           if (k >= 0) sel.splice(k, 1); else { sel.push(i); if (sel.length > 2) sel.shift(); }
-          return {sel};
+          return {sel: sel, yamlDiff: null};
         }),
         onLoad: () => this.setState({cfg: normalizeCfg(r.cfg), view:'compose'})};
     });
-    let diffRows = [], diffA = '', diffB = '';
-    const hasDiff = st.sel.length === 2;
+
+    let diffRows = [], diffA = '', diffB = '', verdictRows = [];
+    const hasDiff = st.sel.length === 2 && st.sel.every(i => i < rowsIn.length);
     if (hasDiff) {
-      const A = st.runs[st.sel[0]], B = st.runs[st.sel[1]];
+      const A = rowsIn[st.sel[0]], B = rowsIn[st.sel[1]];
       diffA = A.id; diffB = B.id;
+      // The composed choices, not flatten(cfg): flatten carries the out-of-scope
+      // stages too, and a diff row for a stage nobody can select is noise about
+      // a value nobody set (composer-scope.md §2 removed exactly that dishonesty
+      // from the composer).
       const fa = flatten(A.cfg), fb = flatten(B.cfg);
-      Object.keys(fa).forEach(k => { if (String(fa[k]) !== String(fb[k])) diffRows.push({key:k, a:String(fa[k]), b:String(fb[k])}); });
+      const scope = ['sim.map', 'sim.real_time_rate', 'sim.ground_truth_state',
+                     'mpc.implementation', 'mpc.mpc_hpipm_mode', 'mpc.mpc_condensed_size'];
+      scope.forEach(k => {
+        if (String(fa[k]) === String(fb[k])) return;
+        diffRows.push({key: k, a: String(fa[k]), b: String(fb[k])});
+      });
+      // When the solver differs, its two dependent keys are shown with WHICH
+      // side actually reads them -- the 2x2 of composer-scope.md §2. A value
+      // that differs on a solver that ignores it is not a difference in the run.
+      if (fa['mpc.implementation'] !== fb['mpc.implementation']) {
+        PARAMS.mpc.forEach(p => {
+          if (!p.appliesTo) return;
+          const inA = p.appliesTo(A.cfg.blocks.mpc.impl), inB = p.appliesTo(B.cfg.blocks.mpc.impl);
+          const already = diffRows.some(d => d.key === 'mpc.' + p.k);
+          const note = inA && inB ? 'read by both' : inA ? 'read by ' + diffA + ' only'
+                     : inB ? 'read by ' + diffB + ' only' : 'read by neither';
+          if (already) {
+            diffRows.filter(d => d.key === 'mpc.' + p.k).forEach(d => { d.key = d.key + '  (' + note + ')'; });
+          } else {
+            diffRows.push({key: 'mpc.' + p.k + '  (' + note + ')',
+                           a: String(A.cfg.blocks.mpc.params[p.k]), b: String(B.cfg.blocks.mpc.params[p.k])});
+          }
+        });
+      }
+      if (A.verify && B.verify) {
+        const vrow = (key, a, b, colour) => verdictRows.push({
+          key: key, a: String(a), b: String(b),
+          aFg: colour ? (VERDICT_COLOURS[a] || VERDICT_COLOURS.unhealthy).fg : '#c3ccd6',
+          bFg: colour ? (VERDICT_COLOURS[b] || VERDICT_COLOURS.unhealthy).fg : '#c3ccd6'});
+        vrow('verdict', A.verify.verdict, B.verify.verdict, true);
+        vrow('active_solver', A.verify.active_solver, B.verify.active_solver, false);
+        Object.keys(A.verify.headline || {}).forEach(k =>
+          vrow('headline.' + k, (A.verify.headline || {})[k], (B.verify.headline || {})[k], false));
+      }
     }
 
     const rt = st.roundTrip;
+    const newestRun = (hasServer && server.length) ? server[0].run : '';
+    // The YAML pair is fetched once per selection, from render, because that is
+    // where the selection is known. Guarded on the pair it was fetched for, so
+    // this cannot loop: a render triggers a fetch only when the selection has
+    // moved since the last one.
+    let yd = st.yamlDiff && hasDiff && st.yamlDiff.a === diffA && st.yamlDiff.b === diffB
+      ? st.yamlDiff : null;
+    if (hasServer && hasDiff && !yd && this._yamlFor !== diffA + '|' + diffB) {
+      this._yamlFor = diffA + '|' + diffB;
+      setTimeout(() => this.loadYamlDiff(diffA, diffB), 0);
+    }
     return {
       nav, stop: this.stop,
       isCompose: st.view === 'compose', isDash: st.view === 'dashboard', isRuns: st.view === 'runs',
@@ -3000,7 +3211,11 @@ class Component extends DCLogic {
          color: live && last && last.hb > (isLive ? HB_STALE_S : 0.2) ? '#e0a63c' : '#9aa5b1'},
         {label:'sim t', value: live ? now.toFixed(1) + ' s' + (ds && ds.halted ? ' · frozen at fall' : '') : '—',
          color: ds && ds.halted ? '#e0a63c' : '#9aa5b1'},
-        {label:'run', value: runId, color:'#8fc9ea'}
+        // The run being watched, not the one the composer would generate next
+        // (#62: "run id = newest of /api/runs"). With a host to ask, that is the
+        // newest run folder it holds; without one it stays the composer's next
+        // id, which is what run.json will carry (export.md §3).
+        {label:'run', value: newestRun || runId, color:'#8fc9ea'}
       ],
       // The status bar's toggle owns the DataSource, which since #62 means it
       // owns the bridge when there is one to own. With no URL to dial it is
@@ -3017,8 +3232,26 @@ class Component extends DCLogic {
 
       runs, hasDiff, noDiff: hasDiff && diffRows.length === 0, diffRows, diffA, diffB,
       diffTitle: hasDiff ? diffRows.length + ' differing keys' : '',
-      runsSub: st.runs.length + ' manifests · configs stored, never executed',
-      diffHint: st.sel.length === 2 ? 'comparing 2 runs' : 'select two runs to diff (' + st.sel.length + '/2)'
+      hasServer,
+      onRefreshRuns: () => this.fetchRuns(),
+      runsSub: hasServer
+        ? runs.length + ' runs in ' + shortPath(st.kennel.out)
+          + ' · verdicts and counters from each run\u2019s verify.json'
+        : st.runs.length + ' manifests · seeded demo history, no host to read runs from',
+      diffHint: st.sel.length === 2 ? 'comparing 2 runs' : 'select two runs to diff (' + st.sel.length + '/2)',
+
+      hasVerdictDiff: verdictRows.length > 0, verdictRows,
+      // The generated YAML pair, fetched from the server for the two selected
+      // runs. Only with a server: the seeded demo rows have no files.
+      hasYamlDiff: hasServer && hasDiff,
+      yamlDiffTitle: yd
+        ? (yd.rows.length + ' differing lines' + (yd.lengthMismatch ? ' · the two files differ in length' : ''))
+        : 'reading …',
+      yamlDiffRows: yd ? yd.rows.slice(0, 40) : [],
+      yamlDiffNone: !!(yd && yd.rows.length === 0),
+      yamlDiffNoneLabel: yd && !yd.fetched
+        ? 'these runs have no generated YAML on the host'
+        : 'the generated files are identical'
     };
   }
   // The bridge, both halves of it (#62). One click opens ONE socket and both

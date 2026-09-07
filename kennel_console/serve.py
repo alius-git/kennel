@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serve the Kennel Console and accept the run folder it exports. 2026-08-30.
+"""Serve the Kennel Console and accept the run folder it exports. 2026-09-07.
 
 WHERE IT RUNS: HOST (the machine with the browser), from the repository root or
 anywhere -- it resolves its own directory.
@@ -17,7 +17,12 @@ same URLs, same directory listing, same %20 in the page name (serve.md section 1
     GET  /api/health   {"kennel": true, "out": "<abs run dir>", "pin": "<sha>",
                         "bridge": "<ws url>"|null, "meshcat": "<http url>"|null}
     POST /api/runs     body = the export archive; writes run-<stamp>/ under --out
-    GET  /api/runs     the run folders present, newest first
+    GET  /api/runs     the run folders present, newest first -- with each run's
+                       composed `choices` and, once `kennel-demo.sh verify` has
+                       filed one, a summary of its verify report (#64)
+    GET  /api/runs/<stamp>/<file>
+                       one file out of one run folder: the four export artifacts
+                       plus verify.json / verify.txt. Read-only, allow-listed
 
 The console feature-detects /api/health and shows its `send to kennel-runs`
 button only when this server answers, so plain http.server still serves the same
@@ -51,6 +56,20 @@ PIN_LOCK = os.path.join(REPO_ROOT, "stack", "pin.lock")
 # only the two YAMLs; a folder missing either of the other two is not an export.
 ARTIFACT_NAMES = ("simulator_params_go2.yaml", "mit_controller_sim_go2.yaml",
                   "commands.txt", "run.json")
+
+# What `kennel-demo.sh verify` files beside them (#64): kennel-verify.sh's own
+# report, machine-readable and human-readable. Served, never written here -- the
+# console composes runs, the driver runs them, and only the driver has a verdict.
+REPORT_NAMES = ("verify.json", "verify.txt")
+
+# The only files GET /api/runs/<stamp>/<file> will serve. An allow-list rather
+# than a sanitiser: a run folder is a known set of names, so there is nothing to
+# sanitise and no path to traverse.
+SERVABLE = {n: ("application/json" if n.endswith(".json")
+                else "text/plain; charset=utf-8")
+            for n in ARTIFACT_NAMES + REPORT_NAMES}
+SERVABLE["simulator_params_go2.yaml"] = "text/plain; charset=utf-8"
+SERVABLE["mit_controller_sim_go2.yaml"] = "text/plain; charset=utf-8"
 
 # What stampNow() emits: 'run-' + an ISO-8601 UTC instant with the punctuation
 # stripped (export.md section 2.4). Matching the full shape rather than a `run-*`
@@ -224,6 +243,44 @@ def write_run(out_dir, run, files, raw):
     return target, digests
 
 
+def read_json(path):
+    """A JSON file, or None. A run folder an operator has edited by hand is not a
+    reason for this server to stop answering."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def verify_summary(report):
+    """What the Runs table needs out of a verify report (#64).
+
+    A SUMMARY and not the report: the full thing carries every check's measured
+    string and the whole metrics block, which is a table's worth of data per row.
+    `GET /api/runs/<stamp>/verify.json` serves the rest.
+
+    Note what is deliberately NOT in here: a key called "run".
+    `kennel-demo.sh status` lists runs by sed-ing `"run": "..."` lines out of
+    this document, so a nested one would appear in the driver's output as a run
+    that does not exist.
+    """
+    if not isinstance(report, dict):
+        return None
+    return {
+        "verdict": report.get("verdict"),
+        "exit": report.get("exit"),
+        "pass": report.get("pass"),
+        "fail": report.get("fail"),
+        "finished_at": report.get("finished_at"),
+        "active_solver": report.get("active_solver"),
+        "headline": report.get("headline"),
+        "sim_window": (report.get("metrics") or {}).get("sim_window"),
+        "checks": [{"n": c.get("n"), "name": c.get("name"), "status": c.get("status")}
+                   for c in (report.get("checks") or []) if isinstance(c, dict)],
+    }
+
+
 def list_runs(out_dir):
     """The run folders present, newest first -- what `status` and a Runs view ask."""
     runs = []
@@ -240,13 +297,22 @@ def list_runs(out_dir):
         except OSError:
             continue
         present = sorted(n for n in ARTIFACT_NAMES if os.path.isfile(os.path.join(path, n)))
+        extra = sorted(n for n in REPORT_NAMES if os.path.isfile(os.path.join(path, n)))
+        meta = read_json(os.path.join(path, "run.json")) or {}
+        report = read_json(os.path.join(path, "verify.json"))
         runs.append({
             "run": name,
             "path": path,
             "modified": datetime.fromtimestamp(mtime, timezone.utc)
                                 .strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "files": present,
+            "files": present + extra,
+            # `complete` still means the four artifacts a console export carries.
+            # A run without a verify is a run that has not been run, not a broken
+            # export -- the Runs view shows it as `staged`.
             "complete": len(present) == len(ARTIFACT_NAMES),
+            "run_id": meta.get("run_id"),
+            "choices": meta.get("choices"),
+            "verify": verify_summary(report),
             "_t": mtime,
         })
     runs.sort(key=lambda r: r["_t"], reverse=True)
@@ -291,8 +357,42 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.split("?")[0] == "/api/runs":
             self._json(200, {"out": self.out_dir, "runs": list_runs(self.out_dir)})
             return
+        if self.path.split("?")[0].startswith("/api/runs/"):
+            self._run_file(self.path.split("?")[0][len("/api/runs/"):])
+            return
         # Anything else is a file. This is the whole of the static contract.
         SimpleHTTPRequestHandler.do_GET(self)
+
+    def _run_file(self, rest):
+        """GET /api/runs/<stamp>/<file> -- one file out of one run folder (#64).
+
+        The Runs view reads verify.json for verdicts and counters, and the two
+        YAMLs for the config diff. Both path segments are checked against a
+        pattern and an allow-list and the path is then BUILT from them, so
+        nothing the request says can reach outside the run directory: no
+        separator, no dot and no absolute path satisfies either check.
+        """
+        parts = rest.split("/")
+        if len(parts) != 2 or not RUN_DIR_RE.match(parts[0]) or parts[1] not in SERVABLE:
+            self._json(404, {"error": "no such run file: %s" % rest,
+                             "detail": ["GET /api/runs/run-<stamp>/<file>, where <file> is one of: "
+                                        + ", ".join(sorted(SERVABLE))]})
+            return
+        path = os.path.join(self.out_dir, parts[0], parts[1])
+        try:
+            with open(path, "rb") as f:
+                body = f.read()
+        except OSError:
+            self._json(404, {"error": "%s has no %s" % (parts[0], parts[1]),
+                             "detail": ["A run has a verify report only after "
+                                        "`kennel-demo.sh run` (or `verify`) has run it."]})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", SERVABLE[parts[1]])
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self):
         if self.path.split("?")[0] != "/api/runs":

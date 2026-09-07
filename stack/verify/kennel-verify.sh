@@ -19,6 +19,12 @@
 # command. It always returns the gait to STAND and zeroes the target on the way
 # out, including on failure.
 #
+# Since #64 it also writes a machine-readable report.json beside report.txt --
+# verdict, every check with its measured value, the headline counter deltas and
+# the metrics as numbers. `kennel-demo.sh verify` copies it into the applied
+# run's folder as verify.json, which is what the console's Runs view reads.
+# The schema is stack/verify.md section 8.
+#
 # See stack/verify.md for the observable/threshold/provenance table, and
 # stack/launch.md for the launch surface this verifies.
 #
@@ -65,7 +71,7 @@ PASSTHROUGH_ENV="KENNEL_CONTAINER KENNEL_CONTROLLER_NODE KENNEL_GAIT
   TARGET_Z VX_MIN VX_MAX X_ADVANCE_MIN_MPS Z_MIN Z_MAX TILT_MAX_RAD FALL_TOLERANCE
   STATE_HZ_MIN STATE_HZ_MAX HB_HZ_MIN HB_HZ_MAX OVERTIME_BUDGET
   CLOCK_WAIT_WALL_SECONDS KENNEL_EXPECT_SOLVER KENNEL_CONTROLLER_LOG
-  KENNEL_EXPECT_BRIDGE"
+  KENNEL_EXPECT_BRIDGE KENNEL_RUN KENNEL_PIN"
 
 usage() {
   cat <<'EOF'
@@ -86,6 +92,10 @@ Usage: kennel-verify.sh [options]        (run on the guest, kennel-vm)
                          check 1. Without it a bridge left up reports `extra:`,
                          which is the intended signal. Never REQUIRES them.
                          `kennel-demo.sh verify` sets it when the bridge is up.
+  KENNEL_RUN / KENNEL_PIN  recorded verbatim in report.json, so a report says
+                         which composed run it is of. Set by `kennel-demo.sh
+                         verify` from the applied run; empty when this script is
+                         run by hand, and then the report simply says null.
 
 Exit codes: 0 all asserts passed, 1 an assert failed, 2 infrastructure error.
 Thresholds are environment knobs; see the header of this file.
@@ -274,6 +284,7 @@ duration is invariant to simulator_realtime_rate (#21 runs this at 0.5).
 
 Exit 0 if every check it owns passed, 1 otherwise, 2 if it could not look.
 """
+import json
 import math
 import os
 import sys
@@ -343,6 +354,24 @@ def record(status, name, observable, measured, required):
         fh.write("%s|%s|%s|%s|%s\n" % (status, name, observable, measured, required))
     print("[%-4s] %-22s -- %s: measured %s, required %s"
           % (status, name, observable, measured, required), flush=True)
+
+
+# The numbers behind the `measured` strings, kept as numbers (#64). The console's
+# Runs view and the run record want the values, not prose about them, and this is
+# the one place they exist as floats -- re-parsing them off the report on the host
+# would be a second, weaker copy of what is already known here.
+METRICS = os.path.join(os.path.dirname(RESULTS), "metrics.json")
+
+
+def metrics(**kw):
+    try:
+        with open(METRICS) as fh:
+            cur = json.load(fh)
+    except (OSError, ValueError):
+        cur = {}
+    cur.update(kw)
+    with open(METRICS, "w") as fh:
+        json.dump(cur, fh, indent=2, sort_keys=True)
 
 
 def say(msg):
@@ -469,6 +498,8 @@ def phase_observe():
                   node.hb.num_wbc_overtime, node.hb.num_mpc_solver_fail,
                   node.hb.num_wbc_solver_fail, node.hb.num_model_updates),
                "informative, deltas are asserted by check 7")
+    metrics(state_hz=round(shz, 2), hb_hz=round(hhz, 3), realtime_rate=round(rate, 4),
+            observe_sim_s=round(sim_el, 3), observe_wall_s=round(wall_el, 2))
     return ok
 
 
@@ -718,6 +749,25 @@ def phase_walk():
            "median %.4f m, peak-to-peak %.4f m, commanded %.2f m" % (z_med, zs[-1] - zs[0], TARGET_Z),
            "informative, gait bob is config-dependent")
 
+    hb_fields = ("num_early_contacts", "num_mpc_solver_overtime", "num_wbc_overtime",
+                 "num_mpc_solver_fail", "num_wbc_solver_fail", "num_model_updates")
+    hb = {}
+    if node.hb_first is not None and node.hb_last is not None:
+        hb = {"hb_first": {f: getattr(node.hb_first, f) for f in hb_fields},
+              "hb_last": {f: getattr(node.hb_last, f) for f in hb_fields},
+              "deltas": {f: getattr(node.hb_last, f) - getattr(node.hb_first, f) for f in hb_fields}}
+    metrics(vx_mean=round(vx_mean, 4), dx=round(dx, 4), sim_window=round(sim_win, 3),
+            buckets_ok=bool(buckets_ok), n_samples=node.n_meas, n_heartbeats=node.n_hb,
+            z_median=round(z_med, 5), z_p01=round(z_p01, 5), z_min=round(zs[0], 5),
+            z_max=round(zs[-1], 5), z_p2p=round(zs[-1] - zs[0], 5),
+            tilt_max=round(node.tilt_max, 4), tilt_over_frac=round(f_tilt, 5),
+            belly_hits=node.belly_hits, target_vx=TARGET_VX, target_z=TARGET_Z,
+            gait=({"name": GAIT, "period": node.gait.period,
+                   "duty_factor": list(node.gait.duty_factor),
+                   "phase_offset": list(node.gait.phase_offset),
+                   "gait_sequencer": node.gait.gait_sequencer} if node.gait is not None else None),
+            **hb)
+
     node.stop()
     return ok
 
@@ -842,6 +892,107 @@ nfail=$(grep -c '^FAIL|' "$RESULTS")
   echo
   echo "pass=$npass fail=$nfail"
 } | tee "$WORK/report.txt"
+
+# ------------------------------------------------------------- report.json
+# The machine-readable half of the same verdict (#64). `kennel-demo.sh verify`
+# copies this into the applied run's folder as verify.json, serve.py serves it,
+# and the console's Runs view reads verdicts and counters out of it -- which is
+# what replaces the five fictional runs the view used to list.
+#
+# Assembled here rather than parsed on the host: results.psv and metrics.json
+# are both already on disk beside this script, and re-deriving numbers from the
+# `measured` prose would be a second, weaker copy of what check.py knew exactly.
+#
+# report.txt is NOT changed by any of this -- it is what an operator reads, and
+# every evidence file in the repo quotes it.
+KENNEL_VERDICT_EXIT=$([ "$nfail" -gt 0 ] && echo 1 || echo 0)
+KENNEL_NPASS="$npass" KENNEL_NFAIL="$nfail" KENNEL_VERDICT_EXIT="$KENNEL_VERDICT_EXIT" \
+KENNEL_WORK="$WORK" KENNEL_GAIT="$GAIT" KENNEL_ACTIVE_SOLVER="$active_solver" \
+KENNEL_SOLVER_LOG="$log_line" python3 - <<'REPORT_PY' || echo "kennel-verify: could not write report.json" >&2
+import json, os, re, sys
+
+work = os.environ["KENNEL_WORK"]
+rows, checks = [], []
+with open(os.path.join(work, "results.psv")) as fh:
+    for line in fh:
+        p = line.rstrip("\n").split("|")
+        if len(p) != 5:
+            continue
+        m = re.match(r"\s*(\d+)\s+(.*)", p[1])
+        checks.append({"n": int(m.group(1)) if m else None,
+                       "name": (m.group(2) if m else p[1]).strip(),
+                       "status": p[0], "observable": p[2],
+                       "measured": p[3], "required": p[4]})
+        rows.append(p)
+
+def by_n(n):
+    for c in checks:
+        if c["n"] == n:
+            return c
+    return None
+
+metrics = {}
+try:
+    with open(os.path.join(work, "metrics.json")) as fh:
+        metrics = json.load(fh)
+except (OSError, ValueError):
+    pass
+
+deltas = metrics.get("deltas") or {}
+nfail = int(os.environ["KENNEL_NFAIL"])
+exit_code = int(os.environ["KENNEL_VERDICT_EXIT"])
+c9 = by_n(9)
+solver_failed = (deltas.get("num_mpc_solver_fail", 0) + deltas.get("num_wbc_solver_fail", 0)) > 0
+# The mapping, in this order and defined once (stack/verify.md section 8):
+# a fall outranks a solver failure -- a run that fell IS the finding, and the
+# solver counters are how it got there.
+if c9 is not None and c9["status"] == "FAIL":
+    verdict = "fell"
+elif solver_failed:
+    verdict = "solver-failed"
+elif exit_code == 0:
+    verdict = "completed"
+else:
+    verdict = "unhealthy"
+
+knob_names = ("OBSERVE_SIM_SECONDS", "TROT_SETTLE_SIM_SECONDS", "TROT_SIM_SECONDS",
+              "TARGET_VX", "TARGET_Z", "VX_MIN", "VX_MAX", "X_ADVANCE_MIN_MPS",
+              "Z_MIN", "Z_MAX", "TILT_MAX_RAD", "FALL_TOLERANCE", "STATE_HZ_MIN",
+              "STATE_HZ_MAX", "HB_HZ_MIN", "HB_HZ_MAX", "OVERTIME_BUDGET",
+              "CLOCK_WAIT_WALL_SECONDS", "KENNEL_EXPECT_BRIDGE")
+report = {
+    "schema": "kennel-verify/1",
+    "verdict": verdict,
+    "exit": exit_code,
+    "pass": int(os.environ["KENNEL_NPASS"]),
+    "fail": nfail,
+    "finished_at": __import__("datetime").datetime.now(
+        __import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "run": os.environ.get("KENNEL_RUN") or None,
+    "pin": os.environ.get("KENNEL_PIN") or None,
+    "expect_solver": os.environ.get("KENNEL_EXPECT_SOLVER") or None,
+    "active_solver": os.environ.get("KENNEL_ACTIVE_SOLVER") or None,
+    "solver_log_line": os.environ.get("KENNEL_SOLVER_LOG") or None,
+    "gait": os.environ.get("KENNEL_GAIT"),
+    "windows_sim_s": {"observe": float(os.environ.get("OBSERVE_SIM_SECONDS") or 5),
+                      "settle": float(os.environ.get("TROT_SETTLE_SIM_SECONDS") or 5),
+                      "trot": float(os.environ.get("TROT_SIM_SECONDS") or 15)},
+    "knobs": {k: os.environ[k] for k in knob_names if os.environ.get(k)},
+    "checks": checks,
+    "metrics": metrics,
+    # What the Runs table shows as a run's counters: check 7's DELTAS over the
+    # measured window. The absolute values only say how old the session is.
+    "headline": {"early_contacts": deltas.get("num_early_contacts", 0),
+                 "mpc_overtime": deltas.get("num_mpc_solver_overtime", 0),
+                 "wbc_overtime": deltas.get("num_wbc_overtime", 0),
+                 "mpc_fail": deltas.get("num_mpc_solver_fail", 0),
+                 "wbc_fail": deltas.get("num_wbc_solver_fail", 0)},
+}
+with open(os.path.join(work, "report.json"), "w") as fh:
+    json.dump(report, fh, indent=2, sort_keys=True)
+    fh.write("\n")
+print("kennel-verify: verdict '%s' -- %s/report.json" % (verdict, work))
+REPORT_PY
 
 if [ "$nfail" -gt 0 ]; then
   echo "VERDICT: FAIL" | tee -a "$WORK/report.txt"
