@@ -1,0 +1,26 @@
+=== row 3: the fall fixture -- a trot, then E-STOP mid-stride at ~12 s ===
+=== chosen over obstacle terrain: the damping collapse is deterministic and is
+=== one of the two falls verify.md 4.1 calibrated the fall rule on (z 0.311 -> 0.075 m).
+2026-09-07T14:48:57Z
+[kennel-demo] return it to STAND with:  demo/tools/kennel-demo.sh walk stop
+[kennel-demo] or drive it yourself:      demo/tools/kennel-demo.sh teleop
+--- recording 25 s; E-STOP at ~12 s
+--- [t+12] ros2 service call /set_emergency_damping_mode std_srvs/srv/Trigger
+response:
+std_srvs.srv.Trigger_Response(success=True, message='See log')
+
+[record-fixture] provenance  /home/thales/kennel/kennel_console/fixtures/fall.run.json
+[record-fixture] /home/thales/kennel/kennel_console/fixtures/fall.jsonl.gz  6670 messages in 25.0 s, 1170150 bytes
+topic                        msgs       Hz
+/clock                        250     10.0
+/quad_state                  1240     49.6
+/solve_time                  1225     49.0
+/wbc_solve_time              1225     49.0
+/gait_state                  1223     48.9
+/contact_state               1238     49.5
+/controller_heartbeat          25      1.0
+/quad_control_target          244      9.8
+[p21-trot] stopping the velocity target
+[p21-trot] gait returned to STAND, target zeroed
+[kennel-bridge] bridge stopped
+[kennel-demo] teleop stopped. The console will report the bridge as unreachable.

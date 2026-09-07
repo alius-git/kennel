@@ -1,0 +1,33 @@
+=== relaunch after the damping latch, so the guest is left green ===
+2026-09-07T14:45:28Z
+[p21-trot] gait returned to STAND, target zeroed
+[kennel-bridge] bridge stopped
+[kennel-demo] teleop stopped. The console will report the bridge as unreachable.
+[p21-launch]   settled at sim 10s
+[p21-launch] shell 2 -> /tmp/p21-legdrv.log  (ros2 launch drivers leg_driver_launch.py sim:=go2)
+[p21-launch]   leg driver up (5s): /leg_driver in the graph, publishing /joint_cmd
+[p21-launch] shell 3 -> /tmp/p21-ctrl.log  (ros2 launch controllers mit_controller.launch.py sim:=go2)
+[p21-launch]   controller started
+[p21-launch]   node graph complete (0s after 'Starting controller'): the six healthy-session nodes, no duplicates
+[p21-launch] stack is up, launched from the console's generated commands.txt
+[p21-launch] logs: /tmp/p21-sim.log /tmp/p21-legdrv.log /tmp/p21-ctrl.log (in the container)
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp linear system solver to qdldl), required PARTIAL_CONDENSING_OSQP
+
+=== verdict ===
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes, no duplicates
+[FAIL] 2 sim-clock            -- /clock: measured advanced only -0.77 sim-s in 40.0 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured -0.019, required informative, #21 runs this at 0.5
+[FAIL] 3 state-stream         -- /quad_state rate: measured sim clock frozen, required 900-1100 Hz per sim-second
+[FAIL] 4 controller-alive     -- /controller_heartbeat rate: measured sim clock frozen, required 1.50-2.50 Hz per sim-second
+[FAIL] 5 gait-command         -- ros2 param set /mit_controller_node simple_gait_sequencer.gait: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 6 gait-active          -- /gait_state: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 7 solver-health        -- /controller_heartbeat counters: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp linear system solver to qdldl), required PARTIAL_CONDENSING_OSQP
+
+pass=2 fail=8
+kennel-verify: verdict 'fell' -- /tmp/kennel-verify/report.json
+VERDICT: FAIL
+kennel-verify: report in /tmp/kennel-verify (exit 1)
+[kennel-demo] verify report    /home/thales/kennel-runs/run-20260907T144210Z/verify.json (verdict fell)

@@ -1,0 +1,204 @@
+=== the Runs view reading the host's own run folders, with two real runs compared ===
+2026-09-07T15:50:37Z
+
+Kennel Console
+go2 · sim control room
+Compose
+Dashboard
+Runs
+DataSource
+MockDataSource
+10 Hz · scripted
+Runs
+16 runs in kennel-runs · verdicts and counters from each run’s verify.json
+comparing 2 runs
+refresh
+CMP
+RUN
+MAP
+PIPELINE
+DUR
+VERDICT
+COUNTERS
+REPORT
+run-20260907T151610Z
+Obstacle terrain
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+15.0 s
+FELL
+early 47 · mpc_over 0 · wbc_over 0 · fail 1
+load
+verify
+run-20260907T151451Z
+Flat plane
+Simple → HPIPM · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+15.0 s
+COMPLETED
+early 0 · mpc_over 0 · wbc_over 0 · fail 0
+load
+verify
+run-20260907T144210Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+15.0 s
+COMPLETED
+early 32 · mpc_over 0 · wbc_over 0 · fail 0
+load
+verify
+run-20260906T212107Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260906T211815Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260906T211522Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260906T211227Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260906T210635Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260906T210256Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260830T200816Z
+Flat plane
+Simple → HPIPM · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260830T192838Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260830T192548Z
+Flat plane
+Simple → HPIPM · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260830T181403Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260830T173133Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260830T172502Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+run-20260830T172131Z
+Flat plane
+Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → stock — no selection key → Off
+—
+STAGED
+not yet run
+load
+CONFIG DIFF
+4 differing keys
+KEY
+RUN-20260907T151451Z
+RUN-20260907T144210Z
+sim.real_time_rate
+1
+0.5
+mpc.implementation
+PARTIAL_CONDENSING_HPIPM
+PARTIAL_CONDENSING_OSQP
+mpc.mpc_hpipm_mode (read by run-20260907T151451Z only)
+SPEED
+SPEED
+mpc.mpc_condensed_size (read by both)
+5
+5
+OUTCOME
+from each run's verify.json
+verdict
+completed
+completed
+active_solver
+PARTIAL_CONDENSING_HPIPM
+PARTIAL_CONDENSING_OSQP
+headline.early_contacts
+0
+32
+headline.mpc_fail
+0
+0
+headline.mpc_overtime
+0
+0
+headline.wbc_fail
+0
+0
+headline.wbc_overtime
+0
+0
+GENERATED YAML
+3 differing lines
+simulator_params_go2.yaml:16
+-     simulator_realtime_rate: 1.0                    # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
++     simulator_realtime_rate: 0.5                    # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+mit_controller_sim_go2.yaml:34
+-     # PARTIAL_CONDENSING_HPIPM reads both keys below.
++     # PARTIAL_CONDENSING_OSQP reads mpc_condensed_size; mpc_hpipm_mode is declared but unused.
+mit_controller_sim_go2.yaml:35
+-     mpc_solver: "PARTIAL_CONDENSING_HPIPM"
++     mpc_solver: "PARTIAL_CONDENSING_OSQP"
+MODE
+mock (scripted demo)
+CONN
+MockDataSource · connected
+BRIDGE
+off
+RTF
+1.00×
+HEARTBEAT
+96 ms
+SIM T
+34.0 s · frozen at fall
+RUN
+run-20260907T151610Z
+connect bridge

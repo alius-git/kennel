@@ -1,0 +1,38 @@
+=== a real fall on the live stack, and the post-mortem the console pinned ===
+2026-09-07T15:49:18Z
+the fall was induced with /set_emergency_damping_mode mid-stride -- the same
+collapse stack/verify.md 4.1 calibrated the fall rule on.
+
+--- banner:
+FALL DETECTED — body height — z median 0.199 m, outside [0.20, 0.45] m
+
+--- the pinned window (s003.diagnose step 6: the last 5 s before the fall):
+13.9s  Late contact FR +29 ms vs planned touchdown
+14.0s  Late contact RL +50 ms vs planned touchdown
+14.3s  Late contact FL +130 ms vs planned touchdown
+14.5s  Early contact RR −180 ms vs planned touchdown
+15.0s  FALL: body height — z median 0.199 m, outside [0.20, 0.45] m — controller latched to damping mode
+
+--- status bar: mode live | rtf 0.50× | heartbeat 789 ms | sim t 16.2 s | run run-20260907T151610Z
+
+--- pipeline health after the fall:
+PIPELINE HEALTH
+/solve_time + /wbc_solve_time vs deadline · ms
+GAIT SEQUENCER
+halted at fall · controller latched to damping
+stopped
+MPC
+halted at fall · controller latched to damping
+stopped
+WBC
+halted at fall · controller latched to damping
+stopped
+SWING LEG CTRL
+halted at fall · controller latched to damping
+stopped
+CONTACT LOGIC
+halted at fall · controller latched to damping
+stopped
+MODEL ADAPTATION
+halted at fall · controller latched to damping
+stopped

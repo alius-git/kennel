@@ -152,19 +152,29 @@ tab mid-stride and the robot keeps walking until someone runs
 path is a guest-side watchdog node that damps the target when it goes stale,
 which is a new ROS node and not this issue.
 
-## 6. What the Dashboard still shows, and why it is confusing
+## 6. What the Dashboard showed while this issue was the whole of the bridge
+
+> **Resolved by [#62](https://github.com/alius-git/kennel/issues/62) and
+> [#63](https://github.com/alius-git/kennel/issues/63)** — see
+> [`dashboard.md`](dashboard.md). The finding is kept as found, because it is
+> what those issues were for.
 
 The render above is honest about it: a red **FALL DETECTED** banner and three
 `stopped` pipeline blocks, while the real robot trots along at 0.47 m/s.
 
-That is `MockDataSource`'s scripted demo — ~30 s of trot, degrading solve times,
-a fall — playing out on panels this issue deliberately does not touch. The only
-live things on the page are the bridge status item, the teleop message line, and
-the robot itself. Until the `RosbridgeDataSource` lands, **the panels narrate a
-recording while the joystick drives a robot**, and an operator has to know that.
+That was `MockDataSource`'s scripted demo — ~30 s of trot, degrading solve
+times, a fall — playing out on panels this issue deliberately did not touch. The
+only live things on the page were the bridge status item, the teleop message
+line, and the robot itself. Until the `RosbridgeDataSource` landed, **the panels
+narrated a recording while the joystick drove a robot**, and an operator had to
+know that.
 
-Mitigating it properly means the seam work; mitigating it cosmetically (hiding
-panels when a bridge is connected) would hide the demo Devon presents.
+Mitigating it properly meant the seam work, and that is what happened: since
+#62 the panels read the stack across the `DataSource` seam, the status bar says
+`mode · live` or `mode · mock (scripted demo)`, and the fall banner is
+[`verify.md` §4](../stack/verify.md)'s rule on live samples. The demo is
+unchanged and still plays when no bridge is connected — which is why the
+cosmetic fix (hiding panels) was never the answer.
 
 ## 7. Feature detection, exactly like `send`
 
@@ -220,13 +230,16 @@ The other five suites are green and unmodified: `verify-serve.sh`,
 
 ## 10. Limits
 
-- **The Dashboard is still on `MockDataSource`** (§6). This is the big one.
+- ~~**The Dashboard is still on `MockDataSource`** (§6). This is the big one.~~
+  **Done** in #62/#63 — [`dashboard.md`](dashboard.md).
 - **No `/reset_sim`, no disturbance injector.** Both are in the Interventions
   spec, both are sim-level service calls this bridge could carry, neither is
   this issue. The existing `inject` / `reset sim` buttons still drive the mock.
 - **No keyboard driving.** The same publisher would carry WASD; not built.
-- **The 3D pane is still a placeholder.** `/api/health` now also carries
-  `meshcat`, so pointing the iframe at the real viewer is a small follow-up.
+- ~~**The 3D pane is still a placeholder.**~~ **Done** in
+  [#61](https://github.com/alius-git/kennel/issues/61): the pane frames the
+  viewer `/api/health` carries, and Drake's Meshcat sets no `X-Frame-Options`
+  ([`dashboard.md` §1.1](dashboard.md)).
 - **One operator.** Two connected browsers are two publishers; the probe makes
   the second one refuse, which is the right outcome but not a shared-control
   design.

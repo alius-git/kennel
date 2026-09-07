@@ -50,7 +50,7 @@ select{appearance:none}
       </sc-for>
     </div>
     <div style="margin-top:auto;padding:12px 14px;border-top:1px solid #1b222c">
-      <div style="font:400 9px 'IBM Plex Mono';color:#4b5563;line-height:1.6">DataSource<br><span style="color:#7c8794">MockDataSource</span><br>10 Hz · scripted</div>
+      <div style="font:400 9px 'IBM Plex Mono';color:#4b5563;line-height:1.6;word-break:break-all">DataSource<br><span style="color:#7c8794">{{ sourceName }}</span><br>{{ sourceRate }}</div>
     </div>
   </div>
 
@@ -382,21 +382,18 @@ select{appearance:none}
           <div style="grid-column:1;grid-row:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
             <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
               <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">3D scene</div>
-              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">meshcat · /tf · 30 Hz</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">meshcat · 20 Hz (visualisation_update_rate 0.05 s)</div>
             </div>
-            <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
-              <div style="flex:1;min-height:0;position:relative;background:#0a0e14;display:flex;align-items:center;justify-content:center">
-                <div style="position:absolute;inset:0;background-image:linear-gradient(#131b24 1px,transparent 1px),linear-gradient(90deg,#131b24 1px,transparent 1px);background-size:28px 28px;opacity:.55"></div>
-                <div style="position:relative;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;max-height:100%;padding:8px;overflow:hidden">
-                  <div style="width:150px;height:64px;flex:0 1 auto;min-height:28px;border:1px dashed #2b3543;border-radius:4px;display:flex;align-items:center;justify-content:center;font:400 9px 'IBM Plex Mono';color:#4b5563">meshcat iframe slot</div>
-                  <div style="font:400 9px/1.6 'IBM Plex Mono';color:#5d6875;flex:none">http://localhost:7000/static/<br>pose {{ poseText }}</div>
-                </div>
+            <sc-if value="{{ hasScene }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;min-height:0;position:relative;background:#0a0e14">
+                <iframe src="{{ meshcatUrl }}" title="Drake Meshcat" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#0a0e14"></iframe>
               </div>
+              <div style="padding:4px 11px;border-top:1px solid #1f2731;font:400 9px 'IBM Plex Mono';color:#5d6875;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ meshcatUrl }} · pose {{ poseText }}</div>
             </sc-if>
-            <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
+            <sc-if value="{{ noScene }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
                 <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No viewer attached</div>
-                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">start the visualizer, then reconnect:<br><span style="color:#8fc9ea">ros2 launch kennel_viz meshcat.launch.py port:=7000</span></div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">Meshcat is served by the simulator and reaches this page through /api/health:<br><span style="color:#8fc9ea">kennel-demo.sh run</span><br>then <span style="color:#8fc9ea">kennel-demo.sh walk</span> or <span style="color:#8fc9ea">kennel-demo.sh teleop</span> to see it move</div>
               </div>
             </sc-if>
           </div>
@@ -404,7 +401,7 @@ select{appearance:none}
           <div style="grid-column:3;grid-row:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden;margin-left:6px">
             <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
               <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Pipeline health</div>
-              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">solve time vs deadline · ms</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">/solve_time + /wbc_solve_time vs deadline · ms</div>
             </div>
             <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;min-height:0;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:7px">
@@ -422,8 +419,11 @@ select{appearance:none}
             </sc-if>
             <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
-                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No diagnostics on /pipeline/diagnostics</div>
-                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">start the controller stack:<br><span style="color:#8fc9ea">ros2 launch kennel_control pipeline.launch.py</span></div>
+                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No controller heartbeat</div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">/controller_heartbeat, /solve_time and /wbc_solve_time are silent — launch the stack:<br><span style="color:#8fc9ea">kennel-demo.sh run</span><br>block 3 of commands.txt is <span style="color:#8fc9ea">ros2 launch controllers mit_controller.launch.py sim:=go2</span></div>
+                <sc-if value="{{ isMock }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:400 10px/1.7 'IBM Plex Mono';color:#5d6875">mock — the scripted demo is paused; connect resumes it</div>
+                </sc-if>
               </div>
             </sc-if>
           </div>
@@ -437,7 +437,7 @@ select{appearance:none}
           <div style="grid-column:1;grid-row:3;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
             <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
               <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Gait / contact timeline</div>
-              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">/gait/plan + /contact_state · bool · 10 Hz</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">/gait_state + /quad_state.foot_contact + /contact_state</div>
             </div>
             <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;min-height:0;position:relative">
@@ -446,13 +446,17 @@ select{appearance:none}
               <div style="padding:5px 11px;border-top:1px solid #1f2731;display:flex;gap:14px;font:400 9px 'IBM Plex Mono';color:#5d6875">
                 <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:7px;background:rgba(63,191,127,0.22);border:1px solid #24523c"></div>planned stance</div>
                 <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:5px;background:#3fbf7f"></div>actual contact</div>
+                <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:5px;background:rgba(63,191,127,0.45)"></div>normal force</div>
                 <div style="display:flex;align-items:center;gap:5px"><div style="width:2px;height:9px;background:#e0a63c"></div>touchdown mismatch &gt;25 ms</div>
               </div>
             </sc-if>
             <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
-                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No contact stream</div>
-                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">/contact_state has never been seen — launch:<br><span style="color:#8fc9ea">ros2 launch kennel_control pipeline.launch.py</span></div>
+                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No gait or contact stream</div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">/gait_state and /quad_state are silent — launch the stack:<br><span style="color:#8fc9ea">kennel-demo.sh run</span></div>
+                <sc-if value="{{ isMock }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:400 10px/1.7 'IBM Plex Mono';color:#5d6875">mock — the scripted demo is paused; connect resumes it</div>
+                </sc-if>
               </div>
             </sc-if>
           </div>
@@ -460,17 +464,21 @@ select{appearance:none}
           <div style="grid-column:3;grid-row:3;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden;margin-left:6px">
             <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
               <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Health counters</div>
-              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">/diagnostics · events·s⁻¹</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">/controller_heartbeat · Δ per s</div>
             </div>
             <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;min-height:0;position:relative">
                 <canvas ref="{{ refSpark }}" style="position:absolute;inset:0"></canvas>
               </div>
+              <div style="padding:4px 11px;border-top:1px solid #1f2731;font:400 9px 'IBM Plex Mono';color:#6f7a88;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ counterTotals }}</div>
             </sc-if>
             <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
                 <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No counters</div>
-                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">/diagnostics is silent — launch:<br><span style="color:#8fc9ea">ros2 launch kennel_control pipeline.launch.py</span></div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">/controller_heartbeat is silent — launch the stack:<br><span style="color:#8fc9ea">kennel-demo.sh run</span></div>
+                <sc-if value="{{ isMock }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:400 10px/1.7 'IBM Plex Mono';color:#5d6875">mock — the scripted demo is paused; connect resumes it</div>
+                </sc-if>
               </div>
             </sc-if>
           </div>
@@ -480,7 +488,7 @@ select{appearance:none}
           <div style="grid-column:1;grid-row:5;min-width:0;min-height:0;display:flex;flex-direction:column;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
             <div style="padding:8px 11px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
               <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">State plots</div>
-              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">/odom + /imu/data · m, deg, m·s⁻¹ · 10 Hz</div>
+              <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">/quad_state + /quad_control_target · m, deg, m·s⁻¹</div>
             </div>
             <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;min-height:0;position:relative">
@@ -489,8 +497,11 @@ select{appearance:none}
             </sc-if>
             <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
-                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No state estimate</div>
-                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">/odom missing — launch:<br><span style="color:#8fc9ea">ros2 launch kennel_estimation state_estimation.launch.py</span></div>
+                <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No state stream</div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">/quad_state is silent — the simulator publishes it with publish_quad_state: true:<br><span style="color:#8fc9ea">kennel-demo.sh run</span><br>block 1 of commands.txt is <span style="color:#8fc9ea">ros2 launch simulator simulator.launch.py sim:=go2</span></div>
+                <sc-if value="{{ isMock }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:400 10px/1.7 'IBM Plex Mono';color:#5d6875">mock — the scripted demo is paused; connect resumes it</div>
+                </sc-if>
               </div>
             </sc-if>
           </div>
@@ -513,7 +524,10 @@ select{appearance:none}
             <sc-if value="{{ offline }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:16px;text-align:center">
                 <div style="font:500 11px 'IBM Plex Sans';color:#7c8794">No events</div>
-                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">nothing publishing on /rosout — launch:<br><span style="color:#8fc9ea">ros2 launch kennel_sim go2_sim.launch.py</span></div>
+                <div style="font:400 10px/1.7 'IBM Plex Mono';color:#4b5563">the feed narrates /controller_heartbeat, /solve_time, /wbc_solve_time and /quad_state — launch the stack:<br><span style="color:#8fc9ea">kennel-demo.sh run</span></div>
+                <sc-if value="{{ isMock }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:400 10px/1.7 'IBM Plex Mono';color:#5d6875">mock — the scripted demo is paused; connect resumes it</div>
+                </sc-if>
               </div>
             </sc-if>
           </div>
@@ -551,24 +565,39 @@ select{appearance:none}
             <div style="font:600 15px 'IBM Plex Sans'">Runs</div>
             <div style="font:400 11px 'IBM Plex Mono';color:#6f7a88;margin-top:3px">{{ runsSub }}</div>
           </div>
-          <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">{{ diffHint }}</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">{{ diffHint }}</div>
+            <sc-if value="{{ hasServer }}" hint-placeholder-val="{{ true }}">
+              <div onClick="{{ onRefreshRuns }}" style="font:500 10px 'IBM Plex Mono';color:#8b93a0;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:3px 9px" style-hover="border-color:#3b4757;color:#dbe2ea">refresh</div>
+            </sc-if>
+          </div>
         </div>
 
         <div style="background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
-          <div style="display:grid;grid-template-columns:34px 132px 118px 1fr 78px 108px 190px;gap:0;padding:9px 12px;border-bottom:1px solid #1f2731;font:500 9px 'IBM Plex Mono';letter-spacing:.06em;text-transform:uppercase;color:#5d6875">
-            <div style="overflow:hidden">cmp</div><div style="overflow:hidden">run</div><div style="overflow:hidden">map</div><div style="overflow:hidden">pipeline</div><div style="overflow:hidden">dur</div><div style="overflow:hidden">verdict</div><div style="overflow:hidden">counters</div>
+          <div style="display:grid;grid-template-columns:34px 178px 118px 1fr 78px 108px 200px 58px;gap:0;padding:9px 12px;border-bottom:1px solid #1f2731;font:500 9px 'IBM Plex Mono';letter-spacing:.06em;text-transform:uppercase;color:#5d6875">
+            <div style="overflow:hidden">cmp</div><div style="overflow:hidden">run</div><div style="overflow:hidden">map</div><div style="overflow:hidden">pipeline</div><div style="overflow:hidden">dur</div><div style="overflow:hidden">verdict</div><div style="overflow:hidden">counters</div><div style="overflow:hidden">report</div>
           </div>
           <sc-for list="{{ runs }}" as="r" hint-placeholder-count="5">
-            <div style="display:grid;grid-template-columns:34px 132px 118px 1fr 78px 108px 190px;gap:0;padding:10px 12px;border-bottom:1px solid #161d26;align-items:center;background:{{ r.bg }}">
+            <div style="display:grid;grid-template-columns:34px 178px 118px 1fr 78px 108px 200px 58px;gap:0;padding:10px 12px;border-bottom:1px solid #161d26;align-items:center;background:{{ r.bg }}">
               <div onClick="{{ r.onSelect }}" style="width:14px;height:14px;border:1px solid {{ r.cbBorder }};background:{{ r.cbBg }};border-radius:3px;cursor:pointer"></div>
-              <div style="font:500 11px 'IBM Plex Mono';color:#dbe2ea">{{ r.id }}</div>
+              <div style="display:flex;gap:6px;align-items:center;min-width:0">
+                <div style="font:500 11px 'IBM Plex Mono';color:#dbe2ea;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.id }}</div>
+                <sc-if value="{{ r.isDemo }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:500 8px 'IBM Plex Mono';color:#7c8794;border:1px solid #2b3543;background:#0d1219;padding:1px 5px;border-radius:3px;flex:none">demo</div>
+                </sc-if>
+              </div>
               <div style="font:400 11px 'IBM Plex Mono';color:#9aa5b1">{{ r.map }}</div>
               <div style="font:400 10px 'IBM Plex Mono';color:#6f7a88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.stages }}</div>
               <div style="font:400 11px 'IBM Plex Mono';color:#9aa5b1">{{ r.dur }}</div>
               <div><span style="font:500 9px 'IBM Plex Mono';letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:3px;color:{{ r.vFg }};background:{{ r.vBg }};border:1px solid {{ r.vBorder }}">{{ r.verdict }}</span></div>
-              <div style="display:flex;gap:10px;align-items:center">
-                <div style="font:400 10px 'IBM Plex Mono';color:#8b93a0">{{ r.counters }}</div>
-                <div onClick="{{ r.onLoad }}" style="margin-left:auto;font:500 9px 'IBM Plex Mono';color:#8fc9ea;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:2px 7px">load</div>
+              <div style="display:flex;gap:10px;align-items:center;min-width:0">
+                <div style="font:400 10px 'IBM Plex Mono';color:#8b93a0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.counters }}</div>
+                <div onClick="{{ r.onLoad }}" style="margin-left:auto;font:500 9px 'IBM Plex Mono';color:#8fc9ea;cursor:pointer;border:1px solid #232b36;border-radius:3px;padding:2px 7px;flex:none">load</div>
+              </div>
+              <div>
+                <sc-if value="{{ r.hasVerify }}" hint-placeholder-val="{{ true }}">
+                  <a href="{{ r.verifyHref }}" target="_blank" style="font:500 9px 'IBM Plex Mono';color:#8fc9ea;border:1px solid #232b36;border-radius:3px;padding:2px 7px">verify</a>
+                </sc-if>
               </div>
             </div>
           </sc-for>
@@ -594,6 +623,41 @@ select{appearance:none}
               <div style="padding:20px;text-align:center;font:400 11px 'IBM Plex Mono';color:#5d6875">configurations are identical</div>
             </sc-if>
           </div>
+
+          <sc-if value="{{ hasVerdictDiff }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:16px;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
+              <div style="padding:10px 12px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+                <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Outcome</div>
+                <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">from each run&#39;s verify.json</div>
+              </div>
+              <sc-for list="{{ verdictRows }}" as="d" hint-placeholder-count="6">
+                <div style="display:grid;grid-template-columns:1fr 200px 200px;padding:6px 12px;border-bottom:1px solid #131a22">
+                  <div style="font:400 10px 'IBM Plex Mono';color:#8b93a0">{{ d.key }}</div>
+                  <div style="font:400 10px 'IBM Plex Mono';color:{{ d.aFg }}">{{ d.a }}</div>
+                  <div style="font:400 10px 'IBM Plex Mono';color:{{ d.bFg }}">{{ d.b }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ hasYamlDiff }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:16px;background:#0f141b;border:1px solid #1f2731;border-radius:6px;overflow:hidden">
+              <div style="padding:10px 12px;border-bottom:1px solid #1f2731;display:flex;justify-content:space-between;align-items:center">
+                <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:#9aa5b1">Generated YAML</div>
+                <div style="font:400 10px 'IBM Plex Mono';color:#5d6875">{{ yamlDiffTitle }}</div>
+              </div>
+              <sc-for list="{{ yamlDiffRows }}" as="d" hint-placeholder-count="4">
+                <div style="padding:6px 12px;border-bottom:1px solid #131a22">
+                  <div style="font:400 9px 'IBM Plex Mono';color:#5d6875">{{ d.where }}</div>
+                  <div style="font:400 10px 'IBM Plex Mono';color:#e2564d;white-space:pre-wrap;word-break:break-all">- {{ d.a }}</div>
+                  <div style="font:400 10px 'IBM Plex Mono';color:#3fbf7f;white-space:pre-wrap;word-break:break-all">+ {{ d.b }}</div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ yamlDiffNone }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:20px;text-align:center;font:400 11px 'IBM Plex Mono';color:#5d6875">{{ yamlDiffNoneLabel }}</div>
+              </sc-if>
+            </div>
+          </sc-if>
         </sc-if>
       </div>
       </sc-if>
@@ -714,6 +778,64 @@ const LEGS = ['FL','FR','RL','RR'];
 const OFF = [0, 0.5, 0.5, 0];
 const GAIT_T = 0.6, DUTY = 0.55;
 const MPC_DEADLINE = 10, WBC_DEADLINE = 2;
+
+// ---- The fall rule (#63) ---------------------------------------------------
+//
+// NOT the specification's rule. prompts.txt says "belly_contact OR
+// attitude/height thresholds"; the evidence says belly_contact NEVER FIRES at
+// this pin -- it stayed false through a damping collapse with the body flat on
+// the floor and through a full tip-over at 166 degrees of roll
+// (stack/verify.md §4.1). So this is kennel-verify.sh check 9's rule, constant
+// for constant, under the names of its own knobs -- change them together:
+//
+//   belly_contact  never false-positives, so any hit IS a fall; its absence
+//                  proves nothing (verify.md §4.1)
+//   z              as a MEDIAN, never per-sample: the OSQP gait bobs 97 mm
+//                  around a 0.287 m median while walking perfectly well, so a
+//                  per-sample floor tuned to HPIPM rejects it (verify.md §4.2)
+//   tilt           as a SUSTAINED fraction: a tipped robot holds its attitude,
+//                  a gait transient does not (verify.md §4.3)
+//
+// The one number that is not verify's: the WINDOW. The recipe judges a 15 s
+// measurement after the fact; a dashboard has to say so while it is happening,
+// so it looks at 2 s. verify's FALL_TOLERANCE of 2% of 15 s is 0.3 s of
+// sustained tilt, and 0.3 s of 2 s is 15% -- the DURATION is what is preserved,
+// not the percentage. Widen the window before touching the fraction.
+const Z_MIN = 0.20, Z_MAX = 0.45;        // verify's Z_MIN / Z_MAX, m
+const TILT_MAX_RAD = 0.5;                 // verify's TILT_MAX_RAD
+const FALL_WINDOW_S = 2.0;                // sim seconds the rule looks at
+const FALL_TILT_FRACTION = 0.15;          // = verify's 0.3 s of sustained tilt
+const CONTACT_MISMATCH_MS = 25;           // the timeline's amber threshold
+
+// win: [{sim, z, tilt (rad), belly}] over the last FALL_WINDOW_S. null = upright.
+//
+// THE WINDOW HAS TO BE FULL. Every clause here is about a SUSTAINED condition,
+// and none of them means anything over a fraction of a second: measured live,
+// a source that had been connected for 0.2 s reported `FALL: body height -- z
+// median 0.174 m` about a robot the same page was drawing at 0.311 m. Ten
+// samples is 0.2 s at the subscribed rate, not two seconds. So the span is
+// checked, not the count -- and until the window has filled, the rule says
+// nothing rather than guessing from what little it has.
+function fallRule(win) {
+  if (!win || win.length < 10) return null;
+  if (win[win.length - 1].sim - win[0].sim < FALL_WINDOW_S * 0.8) return null;
+  if (win.some(s => s.belly)) {
+    return {trigger: 'belly contact', values: 'belly_contact true in ' +
+            win.filter(s => s.belly).length + ' of ' + win.length + ' samples'};
+  }
+  const zs = win.map(s => s.z).sort((a, b) => a - b);
+  const zMed = zs[zs.length >> 1];
+  if (zMed < Z_MIN || zMed > Z_MAX) {
+    return {trigger: 'body height', values: 'z median ' + zMed.toFixed(3) +
+            ' m, outside [' + Z_MIN.toFixed(2) + ', ' + Z_MAX.toFixed(2) + '] m'};
+  }
+  const over = win.filter(s => s.tilt > TILT_MAX_RAD).length / win.length;
+  if (over > FALL_TILT_FRACTION) {
+    return {trigger: 'attitude', values: 'tilt over ' + TILT_MAX_RAD + ' rad in ' +
+            (100 * over).toFixed(0) + '% of the last ' + FALL_WINDOW_S + ' s'};
+  }
+  return null;
+}
 // mit_controller_params.hpp:6 at the pin — bounds mpc_condensed_size (mpc.cpp:225).
 const MPC_PREDICTION_HORIZON = 10;
 const T_FALL = 32.4;
@@ -724,20 +846,20 @@ const T_FALL = 32.4;
 // stack/mapping.md that the stock value corresponds to; null where the pin has
 // no selection key at all (mapping.md §4.3).
 const BLOCKS = [
-  {id:'gait', name:'Gait Sequencer', topic:'/gait/plan', fixed:true, key:'gait_sequencer',
+  {id:'gait', name:'Gait Sequencer', topic:'/gait_state', fixed:true, key:'gait_sequencer',
    impls:[['Simple','Simple']]},
-  {id:'mpc', name:'MPC', topic:'/mpc/solution', key:'mpc_solver',
+  {id:'mpc', name:'MPC', topic:'/solve_time', key:'mpc_solver',
    impls:[['PARTIAL_CONDENSING_HPIPM','HPIPM · partial condensing'],
           ['FULL_CONDENSING_HPIPM','HPIPM · full condensing'],
           ['PARTIAL_CONDENSING_OSQP','OSQP · partial condensing'],
           ['FULL_CONDENSING_QPOASES','qpOASES · full condensing']]},
-  {id:'wbc', name:'WBC', topic:'/wbc/torque_cmd', fixed:true, key:'wbc.arc_opt.solver',
+  {id:'wbc', name:'WBC', topic:'/wbc_target', fixed:true, key:'wbc.arc_opt.solver',
    impls:[['EiquadprogSolver','ArcOPT · Eiquadprog']]},
-  {id:'swing', name:'Swing Leg Ctrl', topic:'/swing/foot_target', fixed:true, key:null,
+  {id:'swing', name:'Swing Leg Ctrl', topic:'(internal — no topic at the pin)', fixed:true, key:null,
    impls:[['stock','stock — single implementation']]},
   {id:'contact', name:'Contact Logic', topic:'/contact_state', fixed:true, key:null,
    impls:[['stock','stock — no selection key']]},
-  {id:'adapt', name:'Model Adaptation', topic:'/model/estimate', fixed:true, key:'use_model_adaptation',
+  {id:'adapt', name:'Model Adaptation', topic:'/quad_model_update', fixed:true, key:'use_model_adaptation',
    impls:[['off','Off']]}
 ];
 const BY_ID = {}; BLOCKS.forEach(b => BY_ID[b.id] = b);
@@ -1346,6 +1468,23 @@ function cfgFromYaml(simText, ctrlText) {
 
   return normalizeCfg(cfg);   // pasted YAML is untrusted input like any other
 }
+// The composer state a run.json's `choices` describes (#64). The Runs view's
+// `load` uses it, so a real run reopens in the composer exactly as a pasted
+// YAML pair does -- through normalizeCfg, because a run folder is untrusted
+// input like any other (composer-scope.md §3).
+function cfgFromChoices(ch) {
+  const cfg = defaultCfg();
+  if (!ch || typeof ch !== 'object') return normalizeCfg(cfg);
+  const hit = MAP_IDS.filter(id => MAP_WORLD[id].urdf === ch.world_urdf);
+  if (hit.length) cfg.map = hit[0];
+  if (ch.simulator_realtime_rate !== undefined) cfg.sim.real_time_rate = Number(ch.simulator_realtime_rate);
+  if (ch.publish_quad_state !== undefined) cfg.sim.ground_truth_state = !!ch.publish_quad_state;
+  if (ch.mpc_solver) cfg.blocks.mpc.impl = ch.mpc_solver;
+  if (ch.mpc_hpipm_mode) cfg.blocks.mpc.params.mpc_hpipm_mode = ch.mpc_hpipm_mode;
+  if (ch.mpc_condensed_size !== undefined) cfg.blocks.mpc.params.mpc_condensed_size = Number(ch.mpc_condensed_size);
+  return normalizeCfg(cfg);
+}
+
 function flatten(cfg) {
   const out = {};
   out['sim.map'] = cfg.map;
@@ -1389,46 +1528,125 @@ const PROBE_MS = 1000;        // how long to listen before advertising
 
 function r3(x) { return Math.round(x * 1000) / 1000; }
 
-class RosbridgeTarget {
+// ---- One socket, two clients (#62) -----------------------------------------
+//
+// design.md §1: "all live data crosses one DataSource seam". #58 opened a
+// WebSocket for the joystick; the RosbridgeDataSource needs the same bridge for
+// eight subscriptions. Two sockets to one rosbridge would be two connections a
+// teardown has to find, two probe windows, and two places to be wrong about
+// what "connected" means -- so there is exactly ONE, and both halves are its
+// clients. Counting the socket constructor in this file is the check: one.
+//
+// Ops are routed by op and by topic. rosbridge answers a call_service with the
+// `id` it was given, and delivers a publish with the topic, which is all the
+// routing this needs -- no request/response framework, no queue.
+class RosbridgeLink {
   constructor(url, sink) {
     this.url = url; this.sink = sink;
-    this.ws = null; this.timer = null; this.probeT = null;
-    // idle | connecting | probing | driving | refused | error
+    this.ws = null;
+    this.state = 'idle';          // idle | connecting | open | error | closed
+    this.subs = {};               // topic -> [{id, cb}]
+    this.calls = {};              // call id -> cb
+    this.seq = 0;
+    this.onOpen = []; this.onClose = [];
+  }
+  open() { return !!this.ws && this.ws.readyState === 1; }
+
+  connect() {
+    if (this.ws) return;
+    this.state = 'connecting';
+    let ws;
+    try { ws = new WebSocket(this.url); }
+    catch (e) {
+      this.state = 'error';
+      this.sink('not a usable WebSocket URL: ' + e, true);
+      return;
+    }
+    this.ws = ws;
+    ws.onopen = () => {
+      this.state = 'open';
+      // In registration order, and the order matters: the teleop probe has to
+      // be the first subscribe on the wire, so that what it counts in its
+      // window is another publisher and not our own DataSource warming up.
+      this.onOpen.slice().forEach(f => { try { f(); } catch (e) {} });
+    };
+    ws.onmessage = e => this.route(e);
+    // onerror carries no detail by design (browsers hide it), so the message
+    // names the two things that are actually wrong when it fires.
+    ws.onerror = () => {
+      if (this.state === 'closed') return;
+      this.state = 'error';
+      this.sink('could not reach ' + this.url + ' — is the bridge up?  kennel-demo.sh teleop', true);
+    };
+    ws.onclose = () => {
+      const was = this.state;
+      this.ws = null; this.state = 'closed';
+      this.onClose.slice().forEach(f => { try { f(was); } catch (e) {} });
+    };
+  }
+
+  send(obj) { if (this.open()) { try { this.ws.send(JSON.stringify(obj)); } catch (e) {} } }
+
+  subscribe(topic, type, throttleMs, cb) {
+    const id = 'kennel-sub-' + (++this.seq);
+    (this.subs[topic] = this.subs[topic] || []).push({id: id, cb: cb});
+    // queue_length 1: a panel wants the newest message, never a backlog. The
+    // bridge takes the MINIMUM throttle_rate over a topic's subscriptions
+    // (rosbridge_library/capabilities/subscribe.py), so nothing here can make
+    // another subscriber's stream slower than it asked for.
+    this.send({op: 'subscribe', id: id, topic: topic, type: type,
+               throttle_rate: throttleMs, queue_length: 1});
+    return id;
+  }
+  unsubscribe(topic, id) {
+    this.subs[topic] = (this.subs[topic] || []).filter(s => s.id !== id);
+    this.send({op: 'unsubscribe', id: id, topic: topic});
+  }
+  call(service, type, args, cb) {
+    const id = 'kennel-call-' + (++this.seq);
+    this.calls[id] = cb;
+    this.send({op: 'call_service', service: service, type: type, args: args, id: id});
+  }
+  route(e) {
+    let m;
+    try { m = JSON.parse(e.data); } catch (err) { return; }
+    if (m.op === 'publish') {
+      const subs = this.subs[m.topic];
+      if (subs) subs.forEach(s => { try { s.cb(m.msg); } catch (err) {} });
+      return;
+    }
+    if (m.op === 'service_response') {
+      const cb = this.calls[m.id];
+      delete this.calls[m.id];
+      if (cb) cb(m);
+      return;
+    }
+    if (m.op === 'status' && (m.level === 'error' || m.level === 'warning')) {
+      this.sink('bridge: ' + m.msg, m.level === 'error');
+    }
+  }
+  close() {
+    this.state = 'closed';
+    if (this.ws) { try { this.ws.close(); } catch (e) {} this.ws = null; }
+    this.subs = {}; this.calls = {};
+  }
+}
+
+class RosbridgeTarget {
+  constructor(link, sink) {
+    this.link = link; this.sink = sink;
+    this.timer = null; this.probeT = null; this.probeId = null;
+    // idle | probing | driving | refused
     this.state = 'idle'; this.msg = ''; this.err = false;
     this.cmd = {vx: 0, vy: 0, wz: 0};   // what the operator asks for
     this.v = {x: 0, y: 0};              // what is actually sent, after the ramp
     this.z = TELEOP_Z; this.maxv = TELEOP_VMAX;
-    this.sent = 0; this.foreign = 0; this.callSeq = 0; this.pending = {};
+    this.sent = 0; this.foreign = 0;
   }
   driving() { return this.state === 'driving'; }
-  open() { return !!this.ws && this.ws.readyState === 1; }
+  open() { return this.link.open(); }
   say(msg, err) { this.msg = msg; this.err = !!err; this.sink(); }
-
-  connect() {
-    if (this.ws) return;
-    this.say('connecting to ' + this.url + ' …', false);
-    this.state = 'connecting';
-    let ws;
-    try { ws = new WebSocket(this.url); }
-    catch (e) { this.state = 'error'; this.say('not a usable WebSocket URL: ' + e, true); return; }
-    this.ws = ws;
-    ws.onopen = () => this.probe();
-    ws.onmessage = e => this.onMessage(e);
-    // onerror carries no detail by design (browsers hide it), so the message
-    // names the two things that are actually wrong when it fires.
-    ws.onerror = () => {
-      if (this.state === 'refused') return;
-      this.state = 'error';
-      this.say('could not reach ' + this.url + ' — is the bridge up?  kennel-demo.sh teleop', true);
-    };
-    ws.onclose = () => {
-      this.stopTimer();
-      this.ws = null;
-      if (this.state === 'refused' || this.state === 'error') return;
-      this.state = 'idle';
-      this.say('the bridge closed the connection — the stack keeps its last target', true);
-    };
-  }
+  send(obj) { this.link.send(obj); }
 
   // Listen before speaking. The controller consumes the LATEST message on this
   // topic every cycle, so a second publisher does not merge with ours -- the
@@ -1438,17 +1656,27 @@ class RosbridgeTarget {
   probe() {
     this.state = 'probing'; this.foreign = 0;
     this.say('listening on ' + TELEOP_TOPIC + ' for another publisher …', false);
+    // The probe's own subscription, kept on the link's routing table like any
+    // other. Its literal id is unchanged from #58 because the evidence in
+    // stack/bridge.md reads it off the wire.
+    this.probeId = 'kennel-probe';
+    (this.link.subs[TELEOP_TOPIC] = this.link.subs[TELEOP_TOPIC] || [])
+      .push({id: this.probeId, cb: () => { this.foreign++; }});
     this.send({op: 'subscribe', topic: TELEOP_TOPIC, type: TELEOP_TYPE,
-               throttle_rate: 100, queue_length: 1, id: 'kennel-probe'});
+               throttle_rate: 100, queue_length: 1, id: this.probeId});
     this.probeT = setTimeout(() => {
       this.probeT = null;
-      this.send({op: 'unsubscribe', topic: TELEOP_TOPIC, id: 'kennel-probe'});
+      this.link.unsubscribe(TELEOP_TOPIC, this.probeId);
+      this.probeId = null;
       if (this.foreign > 0) {
         this.state = 'refused';
         this.say('another publisher is holding ' + TELEOP_TOPIC + ' (' + this.foreign
                  + ' msgs in ' + (PROBE_MS / 1000) + ' s) — a walk or a verify is still running.'
                  + '  Stop it:  kennel-demo.sh teleop', true);
-        this.close();
+        // The SOCKET stays open (#62). Refusing to drive is not a reason to stop
+        // watching: a verify walk or somebody else's browser is exactly the run
+        // an operator wants the Dashboard to narrate. #58 closed here because
+        // the socket was the joystick's alone.
         return;
       }
       this.drive();
@@ -1510,9 +1738,14 @@ class RosbridgeTarget {
   // during unload, where a render is neither wanted nor guaranteed.
   leave() {
     this.panic();
-    if (this.open()) this.send({op: 'unadvertise', topic: TELEOP_TOPIC, id: 'kennel-teleop'});
+    // Only if we ever advertised: since #62 the socket is shared, and a stray
+    // unadvertise from a target that refused to drive would be a lie on the wire.
+    if (this.driving() && this.open()) {
+      this.send({op: 'unadvertise', topic: TELEOP_TOPIC, id: 'kennel-teleop'});
+    }
     this.stopTimer();
-    if (this.ws) { try { this.ws.close(); } catch (e) {} this.ws = null; }
+    this.state = 'idle';
+    this.link.close();
   }
 
   // The operator is gone, or asked for a stop: zero the ramp state too and put
@@ -1525,9 +1758,10 @@ class RosbridgeTarget {
 
   call(service, type, args, okMsg) {
     if (!this.open()) { this.say('not connected — nothing was sent', true); return; }
-    const id = 'kennel-call-' + (++this.callSeq);
-    this.pending[id] = okMsg;
-    this.send({op: 'call_service', service: service, type: type, args: args, id: id});
+    this.link.call(service, type, args, m => {
+      if (m.result === false) this.say('the stack refused the call: ' + JSON.stringify(m.values || ''), true);
+      else this.say(okMsg, false);
+    });
   }
 
   // `ros2 param set` reports success for a gait the node then rejects
@@ -1543,37 +1777,64 @@ class RosbridgeTarget {
     this.call(ESTOP_SRV, ESTOP_TYPE, {}, 'emergency damping requested — target zeroed');
   }
 
-  onMessage(e) {
-    let m;
-    try { m = JSON.parse(e.data); } catch (err) { return; }
-    if (m.op === 'publish' && m.topic === TELEOP_TOPIC) { this.foreign++; return; }
-    if (m.op === 'service_response') {
-      const okMsg = this.pending[m.id];
-      delete this.pending[m.id];
-      if (m.result === false) this.say('the stack refused the call: ' + JSON.stringify(m.values || ''), true);
-      else if (okMsg) this.say(okMsg, false);
-      return;
-    }
-    if (m.op === 'status' && (m.level === 'error' || m.level === 'warning')) {
-      this.say('bridge: ' + m.msg, m.level === 'error');
-    }
-  }
-
-  send(obj) { if (this.open()) { try { this.ws.send(JSON.stringify(obj)); } catch (e) {} } }
   stopTimer() {
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
     if (this.probeT) { clearTimeout(this.probeT); this.probeT = null; }
   }
   close() {
     this.stopTimer();
-    if (this.ws) { try { this.ws.close(); } catch (e) {} this.ws = null; }
+    if (this.probeId) { this.link.unsubscribe(TELEOP_TOPIC, this.probeId); this.probeId = null; }
+    this.state = 'idle';
   }
   disconnect() {
     this.panic();
-    if (this.open()) this.send({op: 'unadvertise', topic: TELEOP_TOPIC, id: 'kennel-teleop'});
-    this.state = 'idle';
+    if (this.driving() && this.open()) {
+      this.send({op: 'unadvertise', topic: TELEOP_TOPIC, id: 'kennel-teleop'});
+    }
     this.close();
     this.say('disconnected — the target was zeroed on the way out', false);
+  }
+}
+
+// ---- The event feed's grammar (#63) ----------------------------------------
+//
+// s007.bridge step 6: the harness compares the two sources and requires the
+// "same event-feed grammar". So there is exactly ONE function that turns a
+// signal into a sentence, and both sources call it. A demo whose wording drifts
+// from the live console's is a demo of something else.
+function narrate(kind, d) {
+  switch (kind) {
+    // The COUNT and the SOLVE TIME are different observables and this says so.
+    // Live, the violation is a heartbeat counter increment; the solve time is
+    // the worst one SAMPLED, at 50 Hz, from a WBC running at 500 Hz -- so it is
+    // routinely not the offending cycle. Measured on the live stack, the first
+    // draft of this line read `WBC exceeded 2 ms deadline (0.5 ms)`, which is a
+    // contradiction on its face.
+    case 'deadline':
+      return d.stage + ' missed its ' + d.deadline + ' ms deadline'
+             + (d.n > 1 ? ' ×' + d.n : '')
+             + ' — worst solve sampled ' + d.ms.toFixed(1) + ' ms'
+             + (d.iters ? ', ' + d.iters + ' iters' : '')
+             + '; ' + (d.stage === 'MPC' ? 'previous solution held' : 'torque command late');
+    case 'solverFail':
+      return d.stage + ' solver failed (' + d.detail + ') — falling back to the last feasible plan';
+    case 'contact':
+      return (d.ms < 0 ? 'Early' : 'Late') + ' contact ' + d.leg + ' '
+             + (d.ms < 0 ? '−' : '+') + Math.abs(d.ms).toFixed(0) + ' ms vs planned touchdown';
+    case 'fall':
+      return 'FALL: ' + d.trigger + ' — ' + d.values + ' — controller latched to damping mode';
+    case 'mode':
+      return 'data source: ' + d.source + (d.url ? ' (' + d.url + ')' : '')
+             + (d.why ? ' — ' + d.why : '');
+    case 'reset':
+      return 'sim clock restarted at ' + d.sim.toFixed(1) + ' s — windows cleared';
+    case 'disturb':
+      return 'Disturbance: ' + d.mag.toFixed(0) + ' N for ' + d.duration.toFixed(2)
+             + ' s at body CoM (' + d.fx + ', ' + d.fy + ', ' + d.fz + ')';
+    case 'stale':
+      return d.topic + ' stale for ' + d.s.toFixed(2) + ' s';
+    default:
+      return String(kind);
   }
 }
 
@@ -1584,8 +1845,14 @@ class MockDataSource {
   }
   reset() {
     this.t = 0; this.seed = 20260724; this.buf = []; this.events = [];
-    this.counters = {mpcOvertime:0, wbcOvertime:0, solverFail:0, contactMiss:0, imuStale:0};
+    this.counters = {earlyContacts:0, mpcOvertime:0, wbcOvertime:0, mpcFail:0, wbcFail:0};
     this.lastInc = {}; this.cool = {}; this.fallen = false; this.fallText = ''; this.halted = false; this.fallAt = undefined;
+    // `collapsed` is the SCRIPT (the demo topples the robot at T_FALL);
+    // `fallen` is the RULE's verdict on the samples that follow. They are two
+    // different things and the demo is worth more for keeping them apart: what
+    // it demonstrates is the same fallRule() the live source runs, on data the
+    // script produced, rather than a banner the script raised by fiat (#63).
+    this.collapsed = false; this.fallWin = [];
     this.jit = [0,0,0,0]; this.prevActual = [false,false,false,false];
     this.dist = null; this.cmd = {vx:0.6, vy:0, wz:0.0};
   }
@@ -1601,12 +1868,8 @@ class MockDataSource {
   advance() {
     if (this.fallen && this.t > this.fallAt + 1.2) { this.stop(); this.halted = true; return; }
     const t = this.t, d = this.deg(t);
-    if (!this.fallen && t >= T_FALL) {
-      this.fallen = true; this.fallText = 'belly contact, pitch −38°, body height 0.09 m';
-      this.emit('fall', 'fatal', 'FALL: belly contact, pitch −38°, height 0.09 m — controller latched to damping mode', 0);
-      this.fallAt = t;
-    }
-    const fallen = this.fallen;
+    if (!this.collapsed && t >= T_FALL) this.collapsed = true;
+    const fallen = this.collapsed;
     let mpcMs = fallen ? 0.3 : 4.6 + 6.2 * d + this.rnd() * (1.4 + 5.5 * d);
     if (!fallen && d > 0.4 && this.rnd() > 0.35) mpcMs += 2.4 * d;
     mpcMs = Math.max(0.2, mpcMs);
@@ -1617,19 +1880,21 @@ class MockDataSource {
 
     if (!fallen && mpcMs > MPC_DEADLINE) {
       this.bump('mpcOvertime');
-      this.emit('mpcOver', 'warn', 'MPC exceeded 10 ms deadline (' + mpcMs.toFixed(1) + ' ms, ' + mpcIters + ' iters) — previous solution held', 1.2);
+      this.emit('mpcOver', 'warn', narrate('deadline',
+        {stage: 'MPC', deadline: MPC_DEADLINE, n: 1, ms: mpcMs, iters: mpcIters}), 1.2);
     }
     if (!fallen && wbcMs > WBC_DEADLINE) {
       this.bump('wbcOvertime');
-      this.emit('wbcOver', 'warn', 'WBC exceeded 2 ms deadline (' + wbcMs.toFixed(2) + ' ms) — torque command late to /wbc/torque_cmd', 1.5);
+      this.emit('wbcOver', 'warn', narrate('deadline',
+        {stage: 'WBC', deadline: WBC_DEADLINE, n: 1, ms: wbcMs}), 1.5);
     }
     if (solverFail) {
-      this.bump('solverFail');
-      this.emit('solverFail', 'error', 'MPC solver failed to converge (HPIPM status 2, ' + mpcIters + ' iters) — falling back to last feasible plan', 0.9);
+      this.bump('mpcFail');
+      this.emit('mpcFail', 'error', narrate('solverFail', {stage: 'MPC', detail: 'acados return 2, ' + mpcIters + ' iters'}), 0.9);
     }
     if (!fallen && d > 0.3 && (this.rnd() + 0.5) > 0.988) {
-      this.bump('imuStale');
-      this.emit('imuStale', 'warn', '/imu/data stale for 0.41 s — state estimate coasting on kinematics', 2.0);
+      this.bump('wbcFail');
+      this.emit('wbcFail', 'error', narrate('solverFail', {stage: 'WBC', detail: 'WBCReturn.success false'}), 2.0);
     }
 
     const planned = [], actual = [], miss = [false,false,false,false];
@@ -1643,8 +1908,12 @@ class MockDataSource {
       if (!fallen && a && !this.prevActual[i]) {
         const ms = this.jit[i] * 1000;
         if (Math.abs(ms) > 25) {
-          miss[i] = true; this.bump('contactMiss');
-          this.emit('td' + i, 'warn', (ms > 0 ? 'Early' : 'Late') + ' contact ' + LEGS[i] + ' ' + (ms > 0 ? '+' : '−') + Math.abs(ms).toFixed(0) + ' ms vs planned touchdown', 0.6);
+          miss[i] = true; this.bump('earlyContacts');
+          // The mock's jitter is signed the other way round from a phase
+          // reading -- a positive jitter here means the foot came down EARLY --
+          // so it is negated on the way into the shared grammar rather than the
+          // grammar carrying two conventions.
+          this.emit('td' + i, 'warn', narrate('contact', {leg: LEGS[i], ms: -ms}), 0.6);
         }
       }
       this.prevActual[i] = a;
@@ -1661,9 +1930,28 @@ class MockDataSource {
     const rtf = fallen ? 1.0 : 1.0 - 0.11 * d + this.rnd() * 0.03;
     const hb = 0.101 + this.rnd() * 0.03;
 
-    this.buf.push({t, mpcMs, mpcIters, wbcMs, solverFail, planned, actual, miss, height, pitch, roll,
+    // Measured forces per foot, as /contact_state carries them: four scalars,
+    // not four vectors. Loaded while in stance, zero in swing.
+    const forces = [0, 0, 0, 0];
+    for (let i = 0; i < 4; i++) forces[i] = actual[i] ? 60 + 90 * Math.abs(this.rnd()) : 0;
+    this.buf.push({t, mpcMs, mpcIters, wbcMs, solverFail, planned, actual, miss, forces, height, pitch, roll,
       vx, vy, wz, cvx:this.cmd.vx, cvy:this.cmd.vy, cwz:this.cmd.wz, rtf, hb, c:Object.assign({}, this.counters)});
     if (this.buf.length > 900) this.buf.splice(0, 200);
+
+    // The SAME rule the live source runs (fallRule, stack/verify.md §4), on the
+    // samples the script just produced. roll/pitch are degrees here and the rule
+    // wants radians; belly_contact is false because at this pin it always is.
+    if (!this.fallen) {
+      this.fallWin.push({sim: t, z: height,
+                         tilt: Math.max(Math.abs(roll), Math.abs(pitch)) / DEG, belly: false});
+      while (this.fallWin.length && this.fallWin[0].sim < t - FALL_WINDOW_S) this.fallWin.shift();
+      const hit = fallRule(this.fallWin);
+      if (hit) {
+        this.fallen = true; this.fallAt = t;
+        this.fallText = hit.trigger + ' — ' + hit.values;
+        this.emit('fall', 'fatal', narrate('fall', hit), 0);
+      }
+    }
     this.t = Math.round((this.t + 0.1) * 10) / 10;
   }
   seedDemo(seconds) { const n = Math.round(seconds * 10); for (let i = 0; i < n; i++) this.advance(); }
@@ -1673,7 +1961,313 @@ class MockDataSource {
   inject(f) {
     const mag = Math.hypot(f.fx, f.fy, f.fz) || f.mag;
     this.dist = {until: this.t + f.duration, mag};
-    this.emit('dist' + this.t, 'info', 'Disturbance injected: ' + mag.toFixed(0) + ' N for ' + f.duration.toFixed(2) + ' s at body CoM (' + f.fx + ', ' + f.fy + ', ' + f.fz + ')', 0);
+    this.emit('dist' + this.t, 'info',
+              narrate('disturb', {mag: mag, duration: f.duration, fx: f.fx, fy: f.fy, fz: f.fz}), 0);
+  }
+}
+
+// ---- RosbridgeDataSource (#62, #63) ----------------------------------------
+//
+// design.md §7 build step 3. It implements exactly the interface MockDataSource
+// exposes -- `buf` of 10 Hz samples, `counters`, `lastInc`, `events`, `t`, the
+// fall state, start/stop/reset -- so that swapping it changes NO caller. The
+// Component makes 33 `ds.<member>` references and this issue changed none of
+// them; that is what "the seam holds" means, and it is checkable by grep.
+//
+// THE ONE DESIGN DECISION worth reading: the live source BINS what arrives into
+// the same 10 Hz sim-time samples the mock emits, rather than pushing every
+// arriving message into `buf`. The panels' drawing code assumes that cadence
+// (bar widths, the 10-sample sparkline delta, the 900-sample ring), and s007
+// requires the two sources to behave identically -- which is a property of the
+// code, not a hope about it. Windowed statistics are computed from what arrives
+// at <= 50 Hz; keeping full-rate /quad_state as the spec suggests would be
+// 1.5 MB/s of JSON through a browser tab (measured: 2.6 kB per message at
+// 1000 Hz). Recorded as a limit in dashboard.md with its retirement path.
+//
+// Sim time from /clock drives everything, so every window is a sim-time window
+// and the whole source is invariant to simulator_realtime_rate -- the rule
+// verify.md §1.1 established for the CLI recipe, applied to the browser.
+const LIVE_TOPICS = [
+  // throttle_rate is a MINIMUM GAP in ms. 20 ms is the spec's "downsample to
+  // <= 60 Hz for plots"; measured against the real bridge it yields ~49.5 Hz.
+  {topic: '/clock',                type: 'rosgraph_msgs/msg/Clock',          throttle: 100},
+  {topic: '/quad_state',           type: 'interfaces/msg/QuadState',          throttle: 20},
+  {topic: '/solve_time',           type: 'interfaces/msg/MPCDiagnostics',     throttle: 20},
+  {topic: '/wbc_solve_time',       type: 'interfaces/msg/WBCReturn',          throttle: 20},
+  {topic: '/gait_state',           type: 'interfaces/msg/GaitState',          throttle: 20},
+  {topic: '/contact_state',        type: 'interfaces/msg/ContactState',       throttle: 20},
+  // Already slow: 2 Hz in sim time, and every counter delta matters.
+  {topic: '/controller_heartbeat', type: 'interfaces/msg/ControllerInfo',     throttle: 0},
+  {topic: '/quad_control_target',  type: 'interfaces/msg/QuadControlTarget',  throttle: 0}
+];
+const LIVE_HZ = 10;                 // the sample cadence, in SIM seconds
+const HB_STALE_S = 1.5;             // three missed 0.5 s heartbeats, in wall time
+const DEG = 180 / Math.PI;
+
+// ControllerInfo's field names, and what this console calls each one.
+const HB_COUNTERS = [
+  ['num_early_contacts',       'earlyContacts'],
+  ['num_mpc_solver_overtime',  'mpcOvertime'],
+  ['num_wbc_overtime',         'wbcOvertime'],
+  ['num_mpc_solver_fail',      'mpcFail'],
+  ['num_wbc_solver_fail',      'wbcFail']
+];
+
+function rollPitchDeg(q) {
+  // The same formula kennel-verify.sh's check.py uses, so the console and the
+  // recipe cannot disagree about what "tilt" is (verify.md §4.3).
+  if (!q) return [0, 0];
+  const roll = Math.atan2(2 * (q.w * q.x + q.y * q.z), 1 - 2 * (q.x * q.x + q.y * q.y));
+  const sinp = Math.max(-1, Math.min(1, 2 * (q.w * q.y - q.z * q.x)));
+  return [roll * DEG, Math.asin(sinp) * DEG];
+}
+
+class RosbridgeDataSource {
+  constructor(link, sink) {
+    this.link = link; this.sink = sink;
+    this.reset();
+  }
+  reset() {
+    this.buf = []; this.events = [];
+    this.counters = {earlyContacts:0, mpcOvertime:0, wbcOvertime:0, mpcFail:0, wbcFail:0};
+    this.lastInc = {}; this.cool = {};
+    this.t = 0; this.epoch = null; this.sim = null;
+    this.fallen = false; this.fallText = ''; this.fallAt = undefined; this.halted = false;
+    this.timer = null;
+    this.latest = {}; this.seen = {}; this.subs = [];
+    this.bin = this.newBin(); this.simWall = [];
+    this.hb = null; this.hbWall = 0;
+    this.fallWin = []; this.plannedEdge = [null, null, null, null];
+    this.prevPlanned = [false, false, false, false];
+    this.prevActual = [false, false, false, false];
+    // The live source does not own a velocity command -- the robot's target is
+    // whatever is on /quad_control_target, and the joystick that puts it there
+    // is RosbridgeTarget's. Kept so the Interventions fields have somewhere to
+    // write when no bridge target exists.
+    this.cmd = {vx: 0, vy: 0, wz: 0};
+  }
+  newBin() { return {mpcMs: 0, mpcIters: 0, wbcMs: 0, solverFail: false}; }
+  last() { return this.buf.length ? this.buf[this.buf.length - 1] : null; }
+
+  start() {
+    if (this.timer) return;
+    this.timer = true;                     // "running": the clock is /clock's, not ours
+    LIVE_TOPICS.forEach(s => {
+      this.subs.push([s.topic, this.link.subscribe(s.topic, s.type, s.throttle,
+                                                   m => this.on(s.topic, m))]);
+    });
+  }
+  stop() {
+    this.subs.forEach(([topic, id]) => this.link.unsubscribe(topic, id));
+    this.subs = []; this.timer = null;
+  }
+  // The mock's scripted interventions have no live counterpart yet: /reset_sim
+  // is #66 and the disturbance service is #68. Saying so in the feed is better
+  // than a button that silently does nothing.
+  advance() { this.emit('nolive', 'info', 'stepping the sim is a service call the bridge does not carry yet (#66)', 5); }
+  seedDemo() {}
+  inject() { this.emit('nolive', 'info', 'the disturbance service is not wired to the bridge yet (#68)', 5); }
+
+  emit(key, sev, text, cd) {
+    if (cd && this.cool[key] !== undefined && this.t - this.cool[key] < cd) return;
+    this.cool[key] = this.t;
+    this.events.push({t: this.t, sev: sev, text: text});
+    if (this.events.length > 500) this.events.splice(0, 100);
+  }
+  bump(k) { this.counters[k]++; this.lastInc[k] = this.t; }
+  // Has this topic said anything lately? Wall seconds, because a topic that has
+  // stopped stops advancing sim time too.
+  fresh(topic, s) {
+    const w = this.seen[topic];
+    return w !== undefined && (performance.now() - w) / 1000 < (s || 1.0);
+  }
+  rtf() {
+    const a = this.simWall[0], b = this.simWall[this.simWall.length - 1];
+    return (a && b && b[1] > a[1] + 0.2) ? (b[0] - a[0]) / (b[1] - a[1]) : 0;
+  }
+  hbAge() { return this.hbWall ? (performance.now() - this.hbWall) / 1000 : 9.99; }
+
+  on(topic, m) {
+    this.seen[topic] = performance.now();
+    this.latest[topic] = m;
+    if (topic === '/clock') return this.tick((m.clock.sec || 0) + (m.clock.nanosec || 0) / 1e9);
+    if (topic === '/controller_heartbeat') return this.onHeartbeat(m);
+    if (topic === '/solve_time') {
+      const ms = (m.solve_time || 0) * 1000;
+      if (ms > this.bin.mpcMs) { this.bin.mpcMs = ms; this.bin.mpcIters = m.acados_num_iter || 0; }
+      if (m.acados_return) this.bin.solverFail = true;
+      return;
+    }
+    if (topic === '/wbc_solve_time') {
+      this.bin.wbcMs = Math.max(this.bin.wbcMs, (m.total_time || 0) * 1000);
+      if (m.success === false) this.bin.solverFail = true;
+      return;
+    }
+    if (topic === '/quad_state') return this.onState(m);
+  }
+
+  // /clock is the tick. A sim clock that goes BACKWARDS is a real event -- a
+  // relaunch, #66's /reset_sim, a replay that looped -- and the honest response
+  // is to clear the windows rather than draw a plot across the discontinuity.
+  tick(sim) {
+    this.sim = sim;
+    if (this.epoch === null) this.epoch = sim;
+    if (sim < this.epoch + this.t - 1.0) return this.restart(sim);
+    this.simWall.push([sim, performance.now() / 1000]);
+    while (this.simWall.length > 20) this.simWall.shift();
+    let closed = 0;
+    while (sim - this.epoch >= this.t + 1 / LIVE_HZ && closed < 50) { this.closeBin(); closed++; }
+    if (closed) this.sink();
+  }
+  restart(sim) {
+    const events = this.events;
+    this.reset();
+    this.events = events;
+    this.epoch = sim; this.sim = sim;
+    this.timer = true;
+    this.emit('reset' + sim, 'info', narrate('reset', {sim: sim}), 0);
+    this.sink();
+  }
+
+  closeBin() {
+    const q = this.latest['/quad_state'], c = this.latest['/quad_control_target'];
+    const g = this.latest['/gait_state'], f = this.latest['/contact_state'];
+    const rp = q ? rollPitchDeg(q.pose && q.pose.pose && q.pose.pose.orientation) : [0, 0];
+    const lin = q && q.twist && q.twist.twist ? q.twist.twist.linear : null;
+    const ang = q && q.twist && q.twist.twist ? q.twist.twist.angular : null;
+    const s = {
+      t: this.t,
+      mpcMs: this.bin.mpcMs, mpcIters: this.bin.mpcIters, wbcMs: this.bin.wbcMs,
+      solverFail: this.bin.solverFail,
+      // Planned stance is the sequencer's own `contact`; actual is the
+      // simulator's foot_contact. Two different messages, one row each leg.
+      planned: g && g.contact ? g.contact.slice(0, 4) : [false, false, false, false],
+      actual: q && q.foot_contact ? q.foot_contact.slice(0, 4) : [false, false, false, false],
+      miss: this.binMiss ? this.binMiss.slice() : [false, false, false, false],
+      forces: f && f.ground_contact_force ? f.ground_contact_force.slice(0, 4) : [0, 0, 0, 0],
+      height: q && q.pose && q.pose.pose ? q.pose.pose.position.z : 0,
+      roll: rp[0], pitch: rp[1],
+      vx: lin ? lin.x : 0, vy: lin ? lin.y : 0, wz: ang ? ang.z : 0,
+      cvx: c ? c.body_x_dot : 0, cvy: c ? c.body_y_dot : 0, cwz: c ? c.hybrid_theta_dot : 0,
+      rtf: this.rtf(), hb: this.hbAge(),
+      c: Object.assign({}, this.counters)
+    };
+    this.binMiss = [false, false, false, false];
+    this.buf.push(s);
+    if (this.buf.length > 900) this.buf.splice(0, 200);
+    this.bin = this.newBin();
+    this.t = Math.round((this.t + 1 / LIVE_HZ) * 10) / 10;
+  }
+
+  // ControllerInfo's counters are cumulative since the CONTROLLER started, and
+  // that is what is shown: the totals are the message's own values, not a count
+  // kept since the console connected. Two reasons. The panel is a window onto
+  // the stack, and a number that disagrees with `ros2 topic echo
+  // /controller_heartbeat` at the same instant is a number an operator cannot
+  // check. And the informative half is the RATE, which the sparklines draw from
+  // the deltas either way (the spec's "rate-of-change sparklines, not just
+  // totals"; verify.md check 7 asserts the same deltas).
+  //
+  // An INCREMENT is the event: the counter is authoritative about how many, and
+  // the sample carries the worst solve time seen since the previous heartbeat,
+  // which is how bad.
+  onHeartbeat(m) {
+    this.hbWall = performance.now();
+    const prev = this.hb;
+    this.hb = m;
+    HB_COUNTERS.forEach(([field, key]) => { this.counters[key] = m[field] || 0; });
+    if (!prev) return;
+    HB_COUNTERS.forEach(([field, key]) => {
+      const d = (m[field] || 0) - (prev[field] || 0);
+      if (d <= 0) return;
+      this.lastInc[key] = this.t;
+      if (key === 'mpcOvertime') {
+        this.emit('mpcOver', 'warn', narrate('deadline',
+          {stage: 'MPC', deadline: MPC_DEADLINE, n: d,
+           ms: Math.max(this.bin.mpcMs, this.last() ? this.last().mpcMs : 0),
+           iters: this.bin.mpcIters}), 1.2);
+      } else if (key === 'wbcOvertime') {
+        this.emit('wbcOver', 'warn', narrate('deadline',
+          {stage: 'WBC', deadline: WBC_DEADLINE, n: d,
+           ms: Math.max(this.bin.wbcMs, this.last() ? this.last().wbcMs : 0)}), 1.5);
+      } else if (key === 'mpcFail') {
+        this.emit('mpcFail', 'error', narrate('solverFail',
+          {stage: 'MPC', detail: d + ' since the last heartbeat'}), 0.9);
+      } else if (key === 'wbcFail') {
+        this.emit('wbcFail', 'error', narrate('solverFail',
+          {stage: 'WBC', detail: d + ' since the last heartbeat'}), 0.9);
+      }
+    });
+  }
+
+  onState(m) {
+    const p = m.pose && m.pose.pose ? m.pose.pose : null;
+    if (!p) return;
+    const rp = rollPitchDeg(p.orientation);
+    const tilt = Math.max(Math.abs(rp[0]), Math.abs(rp[1])) / DEG;
+    // The window the fall rule reads: the last FALL_WINDOW_S of SIM seconds, at
+    // the rate messages arrive rather than at the sample cadence, so a fall is
+    // seen when it happens and not on the next tenth of a second.
+    if (this.sim !== null) {
+      this.fallWin.push({sim: this.sim, z: p.position.z, tilt: tilt, belly: !!m.belly_contact});
+      while (this.fallWin.length && this.fallWin[0].sim < this.sim - FALL_WINDOW_S) this.fallWin.shift();
+    }
+    this.contactEdges(m);
+    this.checkFall();
+  }
+
+  // Touchdown timing, read from the SEQUENCER'S OWN PHASE.
+  //
+  // The obvious implementation -- pair a planned contact edge (/gait_state
+  // `contact` false->true) with the actual one (/quad_state `foot_contact`
+  // false->true) and subtract -- is wrong, and measurably so: on the recorded
+  // fixtures it produced offsets of up to 5.5 SECONDS. The reason is that
+  // `contact[i]` is not an independent signal at all. Measured over the
+  // fixtures, for every sample and every leg:
+  //
+  //     gait_state.contact[i] === (gait_state.phase[i] < duty_factor[i])
+  //
+  // so during STAND (duty 1.0) every leg is planned-in-contact forever, there
+  // is no planned edge to pair with, and the first touchdown of the following
+  // trot pairs with an edge seconds old.
+  //
+  // What a touchdown's offset actually IS: the leg's phase at the moment the
+  // foot lands. Planned touchdown is phase 0, so the distance to it, wrapped
+  // into (-0.5, +0.5] and scaled by the period, is the offset in ms -- negative
+  // early, positive late. Measured on the healthy fixture: 82 touchdowns,
+  // offsets -40 to +10 ms, two of them past the 25 ms threshold. On the fall
+  // fixture: 63 touchdowns, -191 to +250 ms, thirteen past it.
+  //
+  // Quantisation is the arrival interval (~20 ms at throttle_rate 20), which is
+  // why the threshold is 25 ms and not less.
+  contactEdges(m) {
+    const g = this.latest['/gait_state'];
+    if (!g || !g.phase || !m.foot_contact || !g.period) return;
+    if (!this.binMiss) this.binMiss = [false, false, false, false];
+    for (let i = 0; i < 4; i++) {
+      const actual = !!m.foot_contact[i];
+      if (actual && !this.prevActual[i]) {
+        let d = g.phase[i];
+        if (d > 0.5) d -= 1.0;
+        const ms = d * g.period * 1000;
+        if (Math.abs(ms) > CONTACT_MISMATCH_MS) {
+          this.binMiss[i] = true;
+          this.emit('td' + i, 'warn', narrate('contact', {leg: LEGS[i], ms: ms}), 0.6);
+        }
+      }
+      this.prevActual[i] = actual;
+    }
+  }
+
+  checkFall() {
+    if (this.fallen) return;
+    const hit = fallRule(this.fallWin);
+    if (!hit) return;
+    this.fallen = true;
+    this.fallAt = this.t;
+    this.fallText = hit.trigger + ' — ' + hit.values;
+    this.emit('fall', 'fatal', narrate('fall', hit), 0);
+    this.sink();
   }
 }
 
@@ -1716,6 +2310,10 @@ class Component extends DCLogic {
       // state: served by plain http.server there is no such endpoint, and the
       // console must then be exactly what it was before serve.py existed.
       kennel: null, sendMsg: '', sendErr: false,
+      // The runs the HOST has (#64), from GET /api/runs -- null until asked,
+      // which is also the state under plain http.server, where the view falls
+      // back to the seeded demo history it has always shown.
+      serverRuns: null, yamlDiff: null,
       // Teleop (#58). bridgeUrl is prefilled from /api/health when the driver
       // has written one, and stays editable -- a lab that knows its own URL
       // should not have to run a verb to type it.
@@ -1733,9 +2331,13 @@ class Component extends DCLogic {
     this.refFeed = el => this._feed = el;
   }
   componentDidMount() {
-    this.ds = new MockDataSource(() => this.setState(s => ({tick: s.tick + 1})));
-    this.ds.seedDemo(30);
-    this.ds.start();
+    // Two sources, one seam (#62). `this.mock` is always the MockDataSource;
+    // `this.ds` is whichever one the panels are reading right now, and every
+    // panel goes through `this.ds` and knows nothing else about it.
+    this.mock = new MockDataSource(() => this.setState(s => ({tick: s.tick + 1})));
+    this.ds = this.mock;
+    this.mock.seedDemo(30);
+    this.mock.start();
     try {
       const raw = localStorage.getItem('kennel.presets');
       if (raw) this.setState({presets: JSON.parse(raw)});
@@ -1747,7 +2349,7 @@ class Component extends DCLogic {
     // events is guaranteed to fire -- a killed renderer fires nothing, and that
     // case is `kennel-demo.sh teleop stop`, not JavaScript.
     this.onHide = () => { if (this.tp) this.tp.panic(); };
-    this.onGone = () => { if (this.tp) this.tp.leave(); };
+    this.onGone = () => { if (this.tp) this.tp.leave(); else if (this.link) this.link.close(); };
     this.onVis = () => { if (document.hidden) this.onHide(); };
     window.addEventListener('pagehide', this.onGone);
     window.addEventListener('beforeunload', this.onGone);
@@ -1773,19 +2375,73 @@ class Component extends DCLogic {
           // socket: connecting stays a click. With no teleop verb run, bridge is
           // null and the field is empty with its placeholder saying so.
           this.setState(s2 => ({kennel: h, bridgeUrl: s2.bridgeUrl || h.bridge || ''}));
+          this.fetchRuns();
         })
         .catch(() => {});
     } catch (e) {}
   }
+  // What the host has on disk. Called when the probe finds a kennel server, on
+  // entering the Runs view, after a send, and from `refresh` -- never on a timer:
+  // a run folder changes when the operator runs something, not at 10 Hz.
+  fetchRuns() {
+    try {
+      fetch('/api/runs', {cache: 'no-store'})
+        .then(r => (r.ok ? r.json() : null))
+        .then(j => { if (j && j.runs) this.setState({serverRuns: j.runs}); })
+        .catch(() => {});
+    } catch (e) {}
+  }
+
+  // The two generated YAML pairs, compared line by line (s005.compare step 5).
+  // Positional comparison is exact here and only here: both files are emitted
+  // from the same stock template with only composed fields substituted, so they
+  // have the same lines in the same order by construction (generate.md §4
+  // group 5). If a future pin makes that untrue the lengths differ, and this
+  // says so rather than guessing at an alignment.
+  loadYamlDiff(a, b) {
+    if (!a || !b) return;
+    const files = ['simulator_params_go2.yaml', 'mit_controller_sim_go2.yaml'];
+    const get = (run, f) => fetch('/api/runs/' + run + '/' + f, {cache: 'no-store'})
+      .then(r => (r.ok ? r.text() : null)).catch(() => null);
+    Promise.all([get(a, files[0]), get(b, files[0]), get(a, files[1]), get(b, files[1])])
+      .then(([sa, sb, ca, cb]) => {
+        const rows = [];
+        let lengthMismatch = false;
+        [[files[0], sa, sb], [files[1], ca, cb]].forEach(([name, ta, tb]) => {
+          if (ta === null || tb === null) return;
+          const la = ta.split('\n'), lb = tb.split('\n');
+          if (la.length !== lb.length) lengthMismatch = true;
+          const n = Math.min(la.length, lb.length);
+          for (let i = 0; i < n; i++) {
+            if (la[i] !== lb[i]) rows.push({where: name + ':' + (i + 1), a: la[i], b: lb[i]});
+          }
+        });
+        this.setState({yamlDiff: {a: a, b: b, rows: rows, lengthMismatch: lengthMismatch,
+                                  fetched: sa !== null && sb !== null}});
+      });
+  }
+
   componentWillUnmount() {
-    if (this.ds) this.ds.stop();
+    if (this.mock) this.mock.stop();
+    if (this.ds && this.ds !== this.mock) this.ds.stop();
     if (this.tp) { this.tp.leave(); this.tp = null; }
+    if (this.link) { this.link.close(); this.link = null; }
     window.removeEventListener('pagehide', this.onGone);
     window.removeEventListener('beforeunload', this.onGone);
     document.removeEventListener('visibilitychange', this.onVis);
   }
   componentDidUpdate() {
     this.draw();
+    // A fall PINS the feed to the five seconds before it (#63; s003.diagnose
+    // step 6). The banner has always said "event feed pinned to last 5 s before
+    // fall" and nothing ever pinned it -- the post-mortem scrolled away with
+    // everything else. Once per fall, keyed on its timestamp, so `unpin feed`
+    // stays unpinned and a second fall pins again.
+    const ds = this.ds;
+    if (ds && ds.fallen && ds.fallAt !== undefined && this._pinnedAt !== ds.fallAt) {
+      this._pinnedAt = ds.fallAt;
+      if (!this.state.pinFall) this.setState({pinFall: true});
+    }
     if (this._feed && !this.state.pinFall) this._feed.scrollTop = this._feed.scrollHeight;
   }
   fit(cv) {
@@ -1820,6 +2476,8 @@ class Component extends DCLogic {
     const barH = Math.max(2, Math.min(7, bandH * 0.4));
     const X = t => padL + (t - t0) / win * iw;
     const bw = Math.max(1.2, iw / win * 0.1 + 0.4);
+    let fmax = 0;
+    buf.forEach(s => { if (s.t >= t0 && s.forces) s.forces.forEach(f => { if (f > fmax) fmax = f; }); });
     ctx.font = Math.max(8, Math.min(10, rowH * 0.5)) + 'px "IBM Plex Mono", monospace';
     for (let i = 0; i < 4; i++) {
       const y = padT + i * rowH;
@@ -1828,6 +2486,14 @@ class Component extends DCLogic {
         const s = buf[j]; if (s.t < t0) continue;
         if (s.planned[i]) { ctx.fillStyle = 'rgba(63,191,127,0.22)'; ctx.fillRect(X(s.t), y, bw, bandH); }
         if (s.actual[i]) { ctx.fillStyle = '#3fbf7f'; ctx.fillRect(X(s.t), y + bandH - barH, bw, barH); }
+        // Measured normal force from /contact_state, drawn above the contact bar
+        // and scaled to the window's own peak -- the loads differ by an order of
+        // magnitude between a stand and a trot, so a fixed scale shows nothing.
+        if (s.forces && s.forces[i] > 0 && fmax > 0) {
+          const fh = Math.max(1, Math.min(bandH - barH, (s.forces[i] / fmax) * (bandH - barH)));
+          ctx.fillStyle = 'rgba(63,191,127,0.45)';
+          ctx.fillRect(X(s.t), y + bandH - barH - fh, bw, fh);
+        }
         if (s.miss[i]) { ctx.fillStyle = '#e0a63c'; ctx.fillRect(X(s.t) - 1, y, 2, bandH); }
       }
       ctx.fillStyle = '#78838f'; ctx.fillText(LEGS[i], 4, y + bandH / 2 + 3);
@@ -1845,11 +2511,11 @@ class Component extends DCLogic {
     const f = this.fit(this._spark); if (!f) return;
     const {ctx, w, h} = f; const buf = this.ds.buf;
     const rows = [
-      {k:'mpcOvertime', label:'mpc_deadline_missed', color:'#e0a63c'},
-      {k:'wbcOvertime', label:'wbc_deadline_missed', color:'#e0a63c'},
-      {k:'solverFail', label:'mpc_solver_failures', color:'#e2564d'},
-      {k:'contactMiss', label:'touchdown_mismatch', color:'#e0a63c'},
-      {k:'imuStale', label:'imu_stale_windows', color:'#4aa8d8'}
+      {k:'earlyContacts', label:'num_early_contacts', color:'#e0a63c'},
+      {k:'mpcOvertime', label:'num_mpc_solver_overtime', color:'#e0a63c'},
+      {k:'wbcOvertime', label:'num_wbc_overtime', color:'#e0a63c'},
+      {k:'mpcFail', label:'num_mpc_solver_fail', color:'#e2564d'},
+      {k:'wbcFail', label:'num_wbc_solver_fail', color:'#e2564d'}
     ];
     const rowH = h / rows.length;
     const fs = Math.max(7, Math.min(10, rowH * 0.32));
@@ -1932,12 +2598,12 @@ class Component extends DCLogic {
     const {ctx, w, h} = f; const {buf, w: win, t0} = this.win();
     const gap = 5, ph = (h - gap * 2 - 8) / 3, x = 6, ww = w - 12;
     this.plot(ctx, x, 4, ww, ph, buf, t0, win,
-      [{label:'z', color:'#4aa8d8', get:d => d.height}], 'body height', 'm', '/odom → pose.position.z', 3);
+      [{label:'z', color:'#4aa8d8', get:d => d.height}], 'body height', 'm', '/quad_state → pose.position.z', 3);
     this.plot(ctx, x, 4 + ph + gap, ww, ph, buf, t0, win,
-      [{label:'roll', color:'#8b7fd4', get:d => d.roll}, {label:'pitch', color:'#e0a63c', get:d => d.pitch}], 'attitude', 'deg', '/imu/data → orientation', 1);
+      [{label:'roll', color:'#8b7fd4', get:d => d.roll}, {label:'pitch', color:'#e0a63c', get:d => d.pitch}], 'attitude', 'deg', '/quad_state → pose.orientation', 1);
     this.plot(ctx, x, 4 + (ph + gap) * 2, ww, ph, buf, t0, win,
       [{label:'cmd vx', color:'#5d6875', dash:true, get:d => d.cvx}, {label:'vx', color:'#3fbf7f', get:d => d.vx}, {label:'vy', color:'#4aa8d8', get:d => d.vy}],
-      'velocity', 'm·s⁻¹', '/cmd_vel vs /odom → twist.linear', 2);
+      'velocity', 'm·s⁻¹', '/quad_control_target vs /quad_state → twist.linear', 2);
   }
   drawDetail() {
     const f = this.fit(this._det); if (!f) return;
@@ -1948,13 +2614,13 @@ class Component extends DCLogic {
       const key = id === 'mpc' ? 'mpcMs' : 'wbcMs';
       this.plot(ctx, 6, 6, w - 12, h - 12, buf, t0, win,
         [{label:'solve', color:'#4aa8d8', get:d => d[key]}, {label:'deadline', color:'#e2564d', dash:true, get:() => dl}],
-        id.toUpperCase() + ' solve time', 'ms', id === 'mpc' ? '/mpc/diagnostics' : '/wbc/diagnostics', 2);
+        id.toUpperCase() + ' solve time', 'ms', id === 'mpc' ? '/solve_time' : '/wbc_solve_time', 2);
     } else if (id === 'gait' || id === 'swing' || id === 'contact') {
       this.plot(ctx, 6, 6, w - 12, h - 12, buf, t0, win,
-        [{label:'td mismatch rate', color:'#e0a63c', get:d => d.c.contactMiss}], 'touchdown mismatches (cumulative)', 'count', '/contact_state', 0);
+        [{label:'early contacts', color:'#e0a63c', get:d => d.c.earlyContacts}], 'early contacts (cumulative)', 'count', '/controller_heartbeat', 0);
     } else {
       this.plot(ctx, 6, 6, w - 12, h - 12, buf, t0, win,
-        [{label:'pitch', color:'#e0a63c', get:d => d.pitch}, {label:'roll', color:'#8b7fd4', get:d => d.roll}], 'model adaptation residual proxy', 'deg', '/model/estimate', 1);
+        [{label:'pitch', color:'#e0a63c', get:d => d.pitch}, {label:'roll', color:'#8b7fd4', get:d => d.roll}], 'body attitude (no adaptation at the pin)', 'deg', '/quad_state → pose.orientation', 1);
     }
   }
 
@@ -2016,6 +2682,9 @@ class Component extends DCLogic {
           sendMsg: 'saved ' + res.body.path,
           sendErr: false
         }));
+        // It is on the host now, so the Runs view can read it from there rather
+        // than from a copy this page kept (#64).
+        this.fetchRuns();
       })
       .catch(e => show('could not reach the host server: ' + e, true));
   }
@@ -2046,16 +2715,29 @@ class Component extends DCLogic {
   renderVals() {
     const st = this.state, cfg = st.cfg;
     const ds = this.ds;
-    // The teleop target, when one exists. `tpBusy` is "the operator has asked
-    // for a connection" (any state that owns a socket), which is what the
-    // connect/disconnect button toggles on. `cmdOwner` is whichever of the two
-    // the velocity fields should be editing right now.
+    // `cmdOwner` is whichever target the velocity fields should be editing right
+    // now: the bridge when it is driving the real robot, the mock otherwise.
     const tp = this.tp;
-    const tpBusy = !!tp && (tp.state === 'driving' || tp.state === 'probing' || tp.state === 'connecting');
+    const link = this.link;
+    // "The operator has asked for a connection" -- which is now a property of
+    // the LINK, not of the teleop half. A target that refused to drive (another
+    // publisher is holding the topic) still leaves a live socket carrying the
+    // Dashboard, and the button has to offer to close that.
+    const linkBusy = !!link && (link.state === 'connecting' || link.state === 'open');
     const cmdOwner = (tp && tp.driving()) ? tp : ds;
     const buf = ds ? ds.buf : [];
     const last = buf.length ? buf[buf.length - 1] : null;
-    const live = st.conn === 'connected';
+    // "The panels have something to draw." For the mock that is its own
+    // start/stop; for the live source it is whether any sample has arrived yet,
+    // which is what makes panels come alive one by one as their topics appear
+    // (s007.bridge step 5) rather than all at once on connect.
+    const isLive = !!(this.mock && ds && ds !== this.mock);
+    const live = isLive ? buf.length > 0 : st.conn === 'connected';
+    // s007.bridge step 3: "the scripted run is never presentable as live data",
+    // so the mode label is wired to the SOURCE IN USE and never to the bridge --
+    // a connected bridge that is only carrying the joystick (#58) would still be
+    // a mock dashboard.
+    const meshcatUrl = (st.kennel && st.kennel.meshcat) ? st.kennel.meshcat : '';
     const runId = this.runId();
     const simText = emitSimYaml(cfg), pipeText = emitCtrlYaml(cfg);
 
@@ -2063,7 +2745,11 @@ class Component extends DCLogic {
       {id:'compose', label:'Compose'}, {id:'dashboard', label:'Dashboard'}, {id:'runs', label:'Runs'}
     ].map(n => {
       const on = st.view === n.id;
-      return {label:n.label, onClick:() => this.setState({view:n.id, detail:null}),
+      return {label:n.label,
+        // Entering Runs re-reads the host's folders: a `kennel-demo.sh run` may
+        // have finished since the page was opened, and its verdict is the whole
+        // point of the view (#64).
+        onClick:() => { if (n.id === 'runs') this.fetchRuns(); this.setState({view:n.id, detail:null, sel:[], yamlDiff:null}); },
         bg: on ? '#141a23' : 'transparent', mark: on ? '#4aa8d8' : 'transparent',
         fg: on ? '#dbe2ea' : '#7c8794', dot: on ? '#4aa8d8' : '#39465a', dotFill: on ? '#1c3648' : 'transparent'};
     });
@@ -2133,7 +2819,7 @@ class Component extends DCLogic {
         activeParams(openId, cfg).map(p => '    ' + p.k + ': ' + yamlVal(c.params[p.k])).join('\n') + '\n';
     }
 
-    const cnt = ds ? ds.counters : {mpcOvertime:0, wbcOvertime:0, solverFail:0, contactMiss:0, imuStale:0};
+    const cnt = ds ? ds.counters : {earlyContacts:0, mpcOvertime:0, wbcOvertime:0, mpcFail:0, wbcFail:0};
     const now = ds ? ds.t : 0;
     const recent = k => ds && ds.lastInc[k] !== undefined && now - ds.lastInc[k] < 0.8;
     const tint = (lvl) => lvl === 'red' ? {dot:'#e2564d', bg:'#1b1113', border:'#5c2622'}
@@ -2141,19 +2827,35 @@ class Component extends DCLogic {
       : lvl === 'off' ? {dot:'#5d6875', bg:'#0d1219', border:'#232b36'}
       : {dot:'#3fbf7f', bg:'#0e1714', border:'#1f4534'};
     const mpcMs = last ? last.mpcMs : 0, wbcMs = last ? last.wbcMs : 0;
+    // The newest /gait_state, when a live source is the one holding it.
+    const gaitLive = (isLive && ds && ds.latest) ? ds.latest['/gait_state'] : null;
     const health = [
-      {id:'gait', sub:'/gait/plan · 0.10 s old', metric: (cfg.blocks.gait.impl) + ' @ ' + cfg.blocks.gait.params.step_frequency + ' Hz',
-       lvl: recent('contactMiss') ? 'amber' : 'green', flash: recent('contactMiss')},
-      {id:'mpc', sub:'/mpc/solution · ' + (last ? last.mpcIters : 0) + ' iters · deadline 10 ms',
-       metric: mpcMs.toFixed(1) + ' / 10.0 ms', lvl: mpcMs >= 10 || recent('solverFail') ? 'red' : mpcMs > 7 ? 'amber' : 'green',
-       flash: recent('mpcOvertime') || recent('solverFail')},
-      {id:'wbc', sub:'/wbc/torque_cmd · deadline 2 ms', metric: wbcMs.toFixed(2) + ' / 2.00 ms',
-       lvl: wbcMs >= 2 ? 'red' : wbcMs > 1.5 ? 'amber' : 'green', flash: recent('wbcOvertime')},
-      {id:'swing', sub:'/swing/foot_target · 0.10 s old', metric: 'clearance ' + cfg.blocks.swing.params.clearance + ' m',
-       lvl: recent('contactMiss') ? 'amber' : 'green', flash: recent('contactMiss')},
-      {id:'contact', sub:'/contact_state · td mismatches ' + cnt.contactMiss, metric: cnt.contactMiss + ' mismatch',
-       lvl: cnt.contactMiss > 20 ? 'amber' : 'green', flash: recent('contactMiss')},
-      {id:'adapt', sub:'/model/estimate · ' + cfg.blocks.adapt.params.update_rate + ' Hz',
+      // Live, the gait block reports what the SEQUENCER says it is doing, not
+      // what the composer asked for: period, duty factor and the sequencer id,
+      // which is exactly the signature kennel-verify.sh check 6 asserts against
+      // (verify.md §4.4 -- a gait parameter can be set and not followed).
+      {id:'gait',
+       sub: gaitLive
+         ? '/gait_state · period ' + gaitLive.period.toFixed(3) + ' s · duty '
+           + (gaitLive.duty_factor && gaitLive.duty_factor.length ? gaitLive.duty_factor[0].toFixed(2) : '—')
+         : '/gait_state · ' + cfg.blocks.gait.impl,
+       metric: gaitLive
+         ? 'seq ' + gaitLive.gait_sequencer + ' · offsets ' + (gaitLive.phase_offset || []).map(o => o.toFixed(1)).join('/')
+         : (cfg.blocks.gait.impl) + ' @ ' + cfg.blocks.gait.params.step_frequency + ' Hz',
+       lvl: (isLive && !ds.fresh('/gait_state', 1.0)) ? 'off'
+            : (recent('earlyContacts') ? 'amber' : 'green'),
+       flash: recent('earlyContacts')},
+      {id:'mpc', sub:'/solve_time · ' + (last ? last.mpcIters : 0) + ' iters · deadline 10 ms',
+       metric: mpcMs.toFixed(1) + ' / 10.0 ms', lvl: mpcMs >= 10 || recent('mpcFail') ? 'red' : mpcMs > 7 ? 'amber' : 'green',
+       flash: recent('mpcOvertime') || recent('mpcFail')},
+      {id:'wbc', sub:'/wbc_solve_time · deadline 2 ms', metric: wbcMs.toFixed(2) + ' / 2.00 ms',
+       lvl: wbcMs >= 2 || recent('wbcFail') ? 'red' : wbcMs > 1.5 ? 'amber' : 'green',
+       flash: recent('wbcOvertime') || recent('wbcFail')},
+      {id:'swing', sub:'/quad_state.foot_contact · touchdown timing', metric: 'clearance ' + cfg.blocks.swing.params.clearance + ' m',
+       lvl: recent('earlyContacts') ? 'amber' : 'green', flash: recent('earlyContacts')},
+      {id:'contact', sub:'/contact_state · early contacts ' + cnt.earlyContacts, metric: cnt.earlyContacts + ' early',
+       lvl: recent('earlyContacts') ? 'amber' : 'green', flash: recent('earlyContacts')},
+      {id:'adapt', sub:'/controller_heartbeat.num_model_updates · ' + cfg.blocks.adapt.impl,
        metric: cfg.blocks.adapt.impl === 'off' ? 'disabled' : 'converged', lvl: cfg.blocks.adapt.impl === 'off' ? 'off' : 'green', flash:false}
     ].map(h => {
       const down = !!(ds && ds.fallen);
@@ -2171,36 +2873,139 @@ class Component extends DCLogic {
       fg: e.sev === 'fatal' ? '#f0a19b' : e.sev === 'error' ? '#e59a94' : e.sev === 'warn' ? '#dcc08a' : '#8b93a0'
     }));
 
-    const runs = st.runs.map((r, i) => {
+    // ---- Runs (#64) --------------------------------------------------------
+    //
+    // Two sources, and which one is showing is stated on the page. With a kennel
+    // server the table is the HOST'S OWN run folders, with verdicts and counters
+    // read out of the verify report `kennel-demo.sh verify` filed there. Without
+    // one -- plain http.server, Devon's demo -- it is the seeded history the
+    // prototype has always carried, and every one of those rows now says `demo`.
+    //
+    // The seeded rows are not deleted: s007.bridge's mock half is a console with
+    // no stack at all, and a Runs view that were empty there would demonstrate
+    // nothing. What was wrong was showing invented runs UNLABELLED beside real
+    // ones.
+    const hasServer = !!st.kennel;
+    const server = st.serverRuns || [];
+    const VERDICT_COLOURS = {
+      completed: {fg:'#3fbf7f', bg:'#0e1714', b:'#1f4534'},
+      fell: {fg:'#e2564d', bg:'#1b1113', b:'#5c2622'},
+      'solver-failed': {fg:'#e0a63c', bg:'#191510', b:'#4a3a1c'},
+      unhealthy: {fg:'#e0a63c', bg:'#191510', b:'#4a3a1c'},
+      staged: {fg:'#8fc9ea', bg:'#101a24', b:'#2f5d78'}
+    };
+    const headline = h => h
+      ? ['early ' + (h.early_contacts || 0), 'mpc_over ' + (h.mpc_overtime || 0),
+         'wbc_over ' + (h.wbc_overtime || 0),
+         'fail ' + ((h.mpc_fail || 0) + (h.wbc_fail || 0))].join(' · ')
+      : 'not yet run';
+
+    // One row model, whichever source it came from.
+    const rowsIn = hasServer
+      ? server.map(r => {
+          const cfg = cfgFromChoices(r.choices);
+          const v = r.verify;
+          return {key: r.run, id: r.run, cfg: cfg, isDemo: false,
+                  verdict: v && v.verdict ? v.verdict : 'staged',
+                  dur: v && v.sim_window ? v.sim_window.toFixed(1) + ' s' : '—',
+                  counters: headline(v && v.headline), verify: v,
+                  hasVerify: !!v, verifyHref: '/api/runs/' + r.run + '/verify.txt'};
+        })
+      : st.runs.map((r, i) => ({key: 'seed' + i, id: r.id, cfg: r.cfg, isDemo: r.verdict !== 'staged',
+                                verdict: r.verdict, dur: r.dur, counters: r.counters,
+                                verify: null, hasVerify: false, verifyHref: ''}));
+
+    const runs = rowsIn.map((r, i) => {
       const on = st.sel.indexOf(i) >= 0;
       const stages = BLOCKS.map(b => (BY_ID[b.id].impls.find(x => x[0] === r.cfg.blocks[b.id].impl) || [0, r.cfg.blocks[b.id].impl])[1]).join(' → ');
-      const v = r.verdict;
-      const vc = v === 'completed' ? {fg:'#3fbf7f', bg:'#0e1714', b:'#1f4534'} : v === 'fell' ? {fg:'#e2564d', bg:'#1b1113', b:'#5c2622'}
-        : v === 'staged' ? {fg:'#8fc9ea', bg:'#101a24', b:'#2f5d78'} : {fg:'#e0a63c', bg:'#191510', b:'#4a3a1c'};
-      return {id:r.id, map:(MAPS.find(m => m.id === r.cfg.map) || {name:r.cfg.map}).name, stages, dur:r.dur, verdict:v,
-        counters:r.counters, vFg:vc.fg, vBg:vc.bg, vBorder:vc.b, bg: on ? '#111721' : 'transparent',
+      const vc = VERDICT_COLOURS[r.verdict] || VERDICT_COLOURS.unhealthy;
+      return {id:r.id, isDemo:r.isDemo, hasVerify:r.hasVerify, verifyHref:r.verifyHref,
+        map:(MAPS.find(m => m.id === r.cfg.map) || {name:r.cfg.map}).name, stages, dur:r.dur,
+        verdict:r.verdict, counters:r.counters,
+        vFg:vc.fg, vBg:vc.bg, vBorder:vc.b, bg: on ? '#111721' : 'transparent',
         cbBorder: on ? '#4aa8d8' : '#39465a', cbBg: on ? '#4aa8d8' : 'transparent',
         onSelect: () => this.setState(s => {
           const sel = s.sel.slice(); const k = sel.indexOf(i);
           if (k >= 0) sel.splice(k, 1); else { sel.push(i); if (sel.length > 2) sel.shift(); }
-          return {sel};
+          return {sel: sel, yamlDiff: null};
         }),
         onLoad: () => this.setState({cfg: normalizeCfg(r.cfg), view:'compose'})};
     });
-    let diffRows = [], diffA = '', diffB = '';
-    const hasDiff = st.sel.length === 2;
+
+    let diffRows = [], diffA = '', diffB = '', verdictRows = [];
+    const hasDiff = st.sel.length === 2 && st.sel.every(i => i < rowsIn.length);
     if (hasDiff) {
-      const A = st.runs[st.sel[0]], B = st.runs[st.sel[1]];
+      const A = rowsIn[st.sel[0]], B = rowsIn[st.sel[1]];
       diffA = A.id; diffB = B.id;
+      // The composed choices, not flatten(cfg): flatten carries the out-of-scope
+      // stages too, and a diff row for a stage nobody can select is noise about
+      // a value nobody set (composer-scope.md §2 removed exactly that dishonesty
+      // from the composer).
       const fa = flatten(A.cfg), fb = flatten(B.cfg);
-      Object.keys(fa).forEach(k => { if (String(fa[k]) !== String(fb[k])) diffRows.push({key:k, a:String(fa[k]), b:String(fb[k])}); });
+      const scope = ['sim.map', 'sim.real_time_rate', 'sim.ground_truth_state',
+                     'mpc.implementation', 'mpc.mpc_hpipm_mode', 'mpc.mpc_condensed_size'];
+      scope.forEach(k => {
+        if (String(fa[k]) === String(fb[k])) return;
+        diffRows.push({key: k, a: String(fa[k]), b: String(fb[k])});
+      });
+      // When the solver differs, its two dependent keys are shown with WHICH
+      // side actually reads them -- the 2x2 of composer-scope.md §2. A value
+      // that differs on a solver that ignores it is not a difference in the run.
+      if (fa['mpc.implementation'] !== fb['mpc.implementation']) {
+        PARAMS.mpc.forEach(p => {
+          if (!p.appliesTo) return;
+          const inA = p.appliesTo(A.cfg.blocks.mpc.impl), inB = p.appliesTo(B.cfg.blocks.mpc.impl);
+          const already = diffRows.some(d => d.key === 'mpc.' + p.k);
+          const note = inA && inB ? 'read by both' : inA ? 'read by ' + diffA + ' only'
+                     : inB ? 'read by ' + diffB + ' only' : 'read by neither';
+          if (already) {
+            diffRows.filter(d => d.key === 'mpc.' + p.k).forEach(d => { d.key = d.key + '  (' + note + ')'; });
+          } else {
+            diffRows.push({key: 'mpc.' + p.k + '  (' + note + ')',
+                           a: String(A.cfg.blocks.mpc.params[p.k]), b: String(B.cfg.blocks.mpc.params[p.k])});
+          }
+        });
+      }
+      if (A.verify && B.verify) {
+        const vrow = (key, a, b, colour) => verdictRows.push({
+          key: key, a: String(a), b: String(b),
+          aFg: colour ? (VERDICT_COLOURS[a] || VERDICT_COLOURS.unhealthy).fg : '#c3ccd6',
+          bFg: colour ? (VERDICT_COLOURS[b] || VERDICT_COLOURS.unhealthy).fg : '#c3ccd6'});
+        vrow('verdict', A.verify.verdict, B.verify.verdict, true);
+        vrow('active_solver', A.verify.active_solver, B.verify.active_solver, false);
+        Object.keys(A.verify.headline || {}).forEach(k =>
+          vrow('headline.' + k, (A.verify.headline || {})[k], (B.verify.headline || {})[k], false));
+      }
     }
 
     const rt = st.roundTrip;
+    const newestRun = (hasServer && server.length) ? server[0].run : '';
+    // The YAML pair is fetched once per selection, from render, because that is
+    // where the selection is known. Guarded on the pair it was fetched for, so
+    // this cannot loop: a render triggers a fetch only when the selection has
+    // moved since the last one.
+    let yd = st.yamlDiff && hasDiff && st.yamlDiff.a === diffA && st.yamlDiff.b === diffB
+      ? st.yamlDiff : null;
+    if (hasServer && hasDiff && !yd && this._yamlFor !== diffA + '|' + diffB) {
+      this._yamlFor = diffA + '|' + diffB;
+      setTimeout(() => this.loadYamlDiff(diffA, diffB), 0);
+    }
     return {
       nav, stop: this.stop,
       isCompose: st.view === 'compose', isDash: st.view === 'dashboard', isRuns: st.view === 'runs',
       live, offline: !live,
+
+      // The 3D pane (#61). The URL is the one the driver discovered and serve.py
+      // reported in /api/health -- the page never composes one, and under plain
+      // http.server there is no /api/, so there is no iframe and the pane is what
+      // it always was. Independent of `live`: the viewer is the simulator's, and
+      // it is real whether or not the DataSource is producing samples.
+      hasScene: !!meshcatUrl, noScene: !meshcatUrl, meshcatUrl: meshcatUrl,
+      // Every empty state offers the mock hint only while the mock is the source
+      // (#61). Live, a silent topic is a stack problem, not a paused demo.
+      isMock: !isLive,
+      sourceName: isLive ? 'RosbridgeDataSource' : 'MockDataSource',
+      sourceRate: isLive ? (st.bridgeUrl || '') + ' · <= 50 Hz' : '10 Hz · scripted',
 
       maps: MAPS.map(m => ({name:m.name, desc:m.desc, tag:m.tag,
         tagFg: cfg.map === m.id ? '#8fc9ea' : '#5d6875',
@@ -2316,7 +3121,12 @@ class Component extends DCLogic {
       onResetParams: () => this.setCfg(c => { if (openId) c.blocks[openId].params = defaultParams(openId); }),
 
       health, events,
-      feedLabel: st.pinFall ? 'pinned · last 5 s before fall' : '/rosout · auto-scroll',
+      // The same five totals the sparklines draw, in the DOM. A canvas cannot be
+      // read by a verification suite, and a number nobody can check is a number
+      // nobody should believe -- verify-dashboard.sh reads this line and compares
+      // it against the fixture's own last /controller_heartbeat.
+      counterTotals: HB_COUNTERS.map(([field, key]) => field + ' ' + cnt[key]).join(' · '),
+      feedLabel: st.pinFall ? 'pinned · last 5 s before fall' : 'narrated · auto-scroll',
       fallBanner: live && !!(ds && ds.fallen), fallText: ds ? ds.fallText : '',
       onUnpin: () => this.setState(s => ({pinFall: !s.pinFall})),
       poseText: last ? 'z=' + last.height.toFixed(3) + ' m · pitch=' + last.pitch.toFixed(1) + '°' : '—',
@@ -2333,9 +3143,11 @@ class Component extends DCLogic {
       onCloseDetail: () => this.setState({detail:null}),
       detailStats: st.detail ? [
         {label:'implementation', value: cfg.blocks[st.detail].impl, color:'#dbe2ea'},
-        {label:'deadline misses', value: String(st.detail === 'wbc' ? cnt.wbcOvertime : cnt.mpcOvertime), color:'#e0a63c'},
-        {label:'solver failures', value: String(cnt.solverFail), color:'#e2564d'},
-        {label:'touchdown mismatches', value: String(cnt.contactMiss), color:'#e0a63c'},
+        {label:'num_' + (st.detail === 'wbc' ? 'wbc' : 'mpc_solver') + '_overtime',
+         value: String(st.detail === 'wbc' ? cnt.wbcOvertime : cnt.mpcOvertime), color:'#e0a63c'},
+        {label:'num_mpc_solver_fail', value: String(cnt.mpcFail), color:'#e2564d'},
+        {label:'num_wbc_solver_fail', value: String(cnt.wbcFail), color:'#e2564d'},
+        {label:'num_early_contacts', value: String(cnt.earlyContacts), color:'#e0a63c'},
         {label:'topic age', value: last ? last.hb.toFixed(3) + ' s' : '—', color:'#9aa5b1'}
       ] : [],
 
@@ -2373,11 +3185,11 @@ class Component extends DCLogic {
       bridgeUrl: st.bridgeUrl,
       bridgePlaceholder: 'ws://<guest>:9090/  —  kennel-demo.sh teleop',
       onBridgeUrl: e => this.setState({bridgeUrl: e.target.value}),
-      bridgeBtn: tpBusy ? 'disconnect bridge' : 'connect bridge',
-      bridgeBtnFg: tpBusy ? '#e0a63c' : '#8fc9ea',
-      bridgeBtnBd: tpBusy ? '#4a3a1c' : '#2f5d78',
-      bridgeBtnBg: tpBusy ? '#231b0e' : '#14283a',
-      onToggleBridge: () => this.teleopToggle(),
+      bridgeBtn: linkBusy ? 'disconnect bridge' : 'connect bridge',
+      bridgeBtnFg: linkBusy ? '#e0a63c' : '#8fc9ea',
+      bridgeBtnBd: linkBusy ? '#4a3a1c' : '#2f5d78',
+      bridgeBtnBg: linkBusy ? '#231b0e' : '#14283a',
+      onToggleBridge: () => this.linkToggle(),
       gaits: GAITS.map(g => ({v: g, label: g})),
       gaitSel: st.gaitSel,
       onGait: e => { const g = e.target.value; this.setState({gaitSel: g}); if (tp) tp.setGait(g); },
@@ -2395,22 +3207,43 @@ class Component extends DCLogic {
       teleopFg: (tp && tp.err) || (!tp && st.teleopHint) ? '#d98a84' : '#8fc9ea',
 
       status: [
-        {label:'conn', value: live ? 'MockDataSource · connected' : 'disconnected', color: live ? '#3fbf7f' : '#e2564d'},
+        // The honesty item (#61). s007.bridge step 3. It reads the DataSource in
+        // use, not the bridge: `mock` while the panels narrate the scripted demo,
+        // however much else on the page is talking to the real stack.
+        {label:'mode', value: isLive ? 'live' : 'mock (scripted demo)',
+         color: isLive ? '#3fbf7f' : '#e0a63c'},
+        {label:'conn', value: isLive ? ('RosbridgeDataSource · ' + (link ? link.state : 'closed'))
+                                     : (live ? 'MockDataSource · connected' : 'disconnected'),
+         color: (isLive ? (link && link.state === 'open') : live) ? '#3fbf7f' : '#e2564d'},
         // Only when a kennel server is answering: under plain http.server the
         // status bar must be exactly the row it has always been.
         ...(st.kennel ? [{label:'bridge',
           value: tp && tp.driving() ? 'driving · ' + TELEOP_HZ + ' Hz · ' + tp.sent + ' msgs'
-                                    : (tp && tpBusy ? tp.state : 'off'),
+                                    : (tp && linkBusy ? tp.state : 'off'),
           color: tp && tp.driving() ? '#3fbf7f' : (tp && tp.err ? '#e2564d' : '#5d6875')}] : []),
 
         {label:'rtf', value: live && last ? last.rtf.toFixed(2) + '×' : '—', color: live && last && last.rtf < 0.9 ? '#e0a63c' : '#9aa5b1'},
-        {label:'heartbeat', value: live && last ? (last.hb * 1000).toFixed(0) + ' ms' : '—', color: live && last && last.hb > 0.2 ? '#e0a63c' : '#9aa5b1'},
+        // Live, the heartbeat is 0.5 s apart in SIM time and this is its age in
+        // wall time, so the amber line is three missed beats -- not the mock's
+        // 0.2 s, which was a property of a 10 Hz script.
+        {label:'heartbeat', value: live && last ? (last.hb * 1000).toFixed(0) + ' ms' : '—',
+         color: live && last && last.hb > (isLive ? HB_STALE_S : 0.2) ? '#e0a63c' : '#9aa5b1'},
         {label:'sim t', value: live ? now.toFixed(1) + ' s' + (ds && ds.halted ? ' · frozen at fall' : '') : '—',
          color: ds && ds.halted ? '#e0a63c' : '#9aa5b1'},
-        {label:'run', value: runId, color:'#8fc9ea'}
+        // The run being watched, not the one the composer would generate next
+        // (#62: "run id = newest of /api/runs"). With a host to ask, that is the
+        // newest run folder it holds; without one it stays the composer's next
+        // id, which is what run.json will carry (export.md §3).
+        {label:'run', value: newestRun || runId, color:'#8fc9ea'}
       ],
-      connBtn: live ? 'disconnect' : 'connect',
+      // The status bar's toggle owns the DataSource, which since #62 means it
+      // owns the bridge when there is one to own. With no URL to dial it is
+      // exactly what it always was: the mock's start/stop.
+      connBtn: (st.kennel && (st.bridgeUrl || '').trim())
+        ? (linkBusy ? 'disconnect bridge' : 'connect bridge')
+        : (live ? 'disconnect' : 'connect'),
       onToggleConn: () => {
+        if (st.kennel && (st.bridgeUrl || '').trim()) { this.linkToggle(); return; }
         if (!this.ds) return;
         if (st.conn === 'connected') { this.ds.stop(); this.setState({conn:'disconnected'}); }
         else { this.ds.start(); this.setState({conn:'connected'}); }
@@ -2418,19 +3251,41 @@ class Component extends DCLogic {
 
       runs, hasDiff, noDiff: hasDiff && diffRows.length === 0, diffRows, diffA, diffB,
       diffTitle: hasDiff ? diffRows.length + ' differing keys' : '',
-      runsSub: st.runs.length + ' manifests · configs stored, never executed',
-      diffHint: st.sel.length === 2 ? 'comparing 2 runs' : 'select two runs to diff (' + st.sel.length + '/2)'
+      hasServer,
+      onRefreshRuns: () => this.fetchRuns(),
+      runsSub: hasServer
+        ? runs.length + ' runs in ' + shortPath(st.kennel.out)
+          + ' · verdicts and counters from each run\u2019s verify.json'
+        : st.runs.length + ' manifests · seeded demo history, no host to read runs from',
+      diffHint: st.sel.length === 2 ? 'comparing 2 runs' : 'select two runs to diff (' + st.sel.length + '/2)',
+
+      hasVerdictDiff: verdictRows.length > 0, verdictRows,
+      // The generated YAML pair, fetched from the server for the two selected
+      // runs. Only with a server: the seeded demo rows have no files.
+      hasYamlDiff: hasServer && hasDiff,
+      yamlDiffTitle: yd
+        ? (yd.rows.length + ' differing lines' + (yd.lengthMismatch ? ' · the two files differ in length' : ''))
+        : 'reading …',
+      yamlDiffRows: yd ? yd.rows.slice(0, 40) : [],
+      yamlDiffNone: !!(yd && yd.rows.length === 0),
+      yamlDiffNoneLabel: yd && !yd.fetched
+        ? 'these runs have no generated YAML on the host'
+        : 'the generated files are identical'
     };
   }
-  // One instance, created on the first connect and reused: the pointer
-  // handlers and the fields all write into it, so it has to outlive a render.
-  teleopToggle() {
-    // Every path below ends in a render: connect() and disconnect() both report
-    // through the sink, which is a setState. Only the early return needs one of
-    // its own, and it needs one because silence is the worst answer to a click.
-    if (this.tp && (this.tp.state === 'driving' || this.tp.state === 'probing'
-                    || this.tp.state === 'connecting')) {
-      this.tp.disconnect();
+  // The bridge, both halves of it (#62). One click opens ONE socket and both
+  // clients ride it: RosbridgeTarget publishes the joystick's target, and
+  // RosbridgeDataSource takes over the panels. They are connected together
+  // because they are one connection -- an operator who has a bridge open has no
+  // reason to be shown a recording, and s007.bridge step 3 says the scripted run
+  // is never presentable as live data.
+  //
+  // Every path below ends in a render: the link's sink and both clients' sinks
+  // are setState. Only the early return needs one of its own, and it needs one
+  // because silence is the worst answer to a click.
+  linkToggle() {
+    if (this.link && (this.link.state === 'connecting' || this.link.state === 'open')) {
+      this.goMock('disconnected by the operator');
       return;
     }
     const url = (this.state.bridgeUrl || '').trim();
@@ -2439,12 +3294,44 @@ class Component extends DCLogic {
                                  + ' or type it here if you know it'});
       return;
     }
-    if (this.tp) this.tp.close();
     this.setState({teleopHint: ''});
-    this.tp = new RosbridgeTarget(url, () => this.setState(s => ({tick: s.tick + 1})));
+    const render = () => this.setState(s => ({tick: s.tick + 1}));
+    this.link = new RosbridgeLink(url, (msg, err) => {
+      if (this.tp) this.tp.say(msg, err); else this.setState({teleopHint: msg});
+    });
+    // ORDER: the target registers first, so its probe subscribe is the first op
+    // on the wire. What that window counts has to be another publisher, not our
+    // own DataSource subscribing a millisecond earlier.
+    this.tp = new RosbridgeTarget(this.link, render);
     this.tp.z = Number(this.state.teleopZ) || TELEOP_Z;
     this.tp.maxv = Number(this.state.teleopV) || TELEOP_VMAX;
-    this.tp.connect();
+    this.link.onOpen.push(() => this.tp.probe());
+    const live = new RosbridgeDataSource(this.link, render);
+    this.link.onOpen.push(() => {
+      this.mock.stop();
+      this.ds = live;
+      live.start();
+      live.emit('mode', 'info', narrate('mode', {source: 'live', url: url}), 0);
+      this.setState({detail: null, pinFall: false});
+    });
+    this.link.onClose.push(() => this.goMock('the bridge closed the connection'));
+    this.tp.say('connecting to ' + url + ' …', false);
+    this.link.connect();
+  }
+
+  // Back to the recording, and said out loud. The mock keeps its position: it
+  // was paused, not reset, so Devon's demo resumes where it left off.
+  goMock(why) {
+    if (this.ds && this.ds !== this.mock) {
+      this.ds.stop();
+      this.ds = this.mock;
+      this.mock.start();
+      this.mock.events.push({t: this.mock.t, sev: 'info',
+                             text: narrate('mode', {source: 'mock', why: why})});
+    }
+    if (this.tp) { this.tp.disconnect(); this.tp = null; }
+    if (this.link) { this.link.close(); this.link = null; }
+    this.setState({detail: null});
   }
   joySet(e) {
     const r = e.currentTarget.getBoundingClientRect();

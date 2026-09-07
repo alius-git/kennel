@@ -1,0 +1,46 @@
+=== the console on the live stack, 60 s ===
+2026-09-07T15:47:17Z
+bridge: ws://192.168.122.32:9090/
+
+  t(wall)  mode   conn                             rtf     heartbeat  sim t
+     0.0   mock (scripted demo)  RosbridgeDataSource · open       —       —          —
+    10.0   live   RosbridgeDataSource · open       0.50×   548 ms     4.9 s
+    20.0   live   RosbridgeDataSource · open       0.50×   526 ms     9.9 s
+    30.0   live   RosbridgeDataSource · open       0.50×   536 ms     14.9 s
+    40.0   live   RosbridgeDataSource · open       0.50×   545 ms     19.9 s
+    50.0   live   RosbridgeDataSource · open       0.50×   530 ms     24.9 s
+
+--- health strip:
+PIPELINE HEALTH
+/solve_time + /wbc_solve_time vs deadline · ms
+GAIT SEQUENCER
+/gait_state · period 0.500 s · duty 1.00
+seq 0 · offsets 0.0/0.0/0.0/0.0
+MPC
+/solve_time · 5 iters · deadline 10 ms
+2.7 / 10.0 ms
+WBC
+/wbc_solve_time · deadline 2 ms
+0.28 / 2.00 ms
+SWING LEG CTRL
+/quad_state.foot_contact · touchdown timing
+clearance 0.09 m
+CONTACT LOGIC
+/contact_state · early contacts 0
+0 early
+MODEL ADAPTATION
+/controller_heartbeat.num_model_updates · off
+disabled
+
+--- health counters:
+HEALTH COUNTERS
+/controller_heartbeat · Δ per s
+num_early_contacts 0 · num_mpc_solver_overtime 0 · num_wbc_overtime 12 · num_mpc_solver_fail 0 · num_wbc_solver_fail 0
+
+--- state plots header:
+/quad_state + /quad_control_target · m, deg, m·s⁻¹
+
+--- 3D scene:
+3D SCENE
+meshcat · 20 Hz (visualisation_update_rate 0.05 s)
+http://192.168.122.32:7000/ · pose z=0.314 m · pitch=-0.3°

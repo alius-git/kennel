@@ -13,8 +13,8 @@ record before deviating from the rule.
 
 | Path | |
 |---|---|
-| [`plan/`](plan/) | the corpus — PRFAQ, personas, applications, scenarios, [`plan/design.md`](plan/design.md) and its `design/` diagrams — plus the implementation plans: A–C [`plan/next-goals.md`](plan/next-goals.md), D [`plan/teleop-joystick.md`](plan/teleop-joystick.md), E [`plan/reliability.md`](plan/reliability.md) |
-| [`kennel_console/`](kennel_console/) | the single-file React console, [`kennel_console/serve.py`](kennel_console/serve.py), and six `verify-*.sh` suites (serve, scope, generate, export, send, teleop) |
+| [`plan/`](plan/) | the corpus — PRFAQ, personas, applications, scenarios, [`plan/design.md`](plan/design.md) and its `design/` diagrams — plus the implementation plans: A–C [`plan/next-goals.md`](plan/next-goals.md), D [`plan/teleop-joystick.md`](plan/teleop-joystick.md), E [`plan/reliability.md`](plan/reliability.md), F [`plan/console-live.md`](plan/console-live.md) |
+| [`kennel_console/`](kennel_console/) | the single-file React console, [`kennel_console/serve.py`](kennel_console/serve.py), eight `verify-*.sh` suites (serve, scope, generate, export, send, teleop, dashboard, runs), and the recorded-stack fixtures they replay |
 | [`stack/`](stack/) | running the pinned stack: [`stack/launch.md`](stack/launch.md), `transfer/`, `verify/`, `composed-run/tools/` (the `p21-*` tools), `bridge/`, `known-good/` |
 | [`vm/`](vm/) | the appliance: [`vm/host-baseline.md`](vm/host-baseline.md), [`vm/provisioning.md`](vm/provisioning.md), [`vm/snapshot.md`](vm/snapshot.md), and the Yuruna sequences under `vm/test/` |
 | [`demo/`](demo/) | the driver [`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh), the [runbook](demo/runbook.md), the [dry run](demo/dry-run.md) |
@@ -95,6 +95,19 @@ never on the PASS/WARN totals, which drift with upstream
 requests and would catch a regression ([`kennel_console/serve.md`](kennel_console/serve.md),
 [`kennel_console/export.md`](kennel_console/export.md) §4). Its exported bytes
 come from the emitters, never from the DOM.
+
+**The console names only commands that exist**, and only topics the pin
+publishes. A panel may name a `kennel-demo.sh` verb or one of the three
+`ros2 launch` lines its own `commands.txt` generates — nothing else. Five panels
+once named four `kennel_*` packages that never existed
+([`kennel_console/dashboard.md`](kennel_console/dashboard.md) §1.2;
+[`kennel_console/verify-dashboard.sh`](kennel_console/verify-dashboard.sh) group 3 is the check).
+
+**A number a suite cannot read is a number nobody should believe.** Canvas
+panels carry a DOM strip with the same values, and every live assertion is made
+against what a server recorded — a viewer's access log, a bridge's op log — not
+against a variable read back out of the page under test
+([`kennel_console/dashboard.md`](kennel_console/dashboard.md) §4).
 
 **Append, never reorder, in the console.** The suites click by text order, so
 inserting a control ahead of an existing one breaks them

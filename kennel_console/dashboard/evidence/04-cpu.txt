@@ -1,0 +1,32 @@
+=== what the live console costs, at simulator_realtime_rate 0.5 ===
+2026-09-07T15:48:17Z
+
+--- guest: the bridge's own processes (top -b -c, 2 samples 5 s apart)
+%Cpu(s): 22.1 us,  2.3 sy,  0.0 ni, 68.6 id,  0.0 wa,  0.0 hi,  1.2 si,  5.8 st 
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+  77369 root      20   0 1704040  77744  34880 S  70.0   0.5   0:48.68 python3 /opt/ros/humble/lib/rosbridge_server/rosbridge_websocket --ros-args -r __node:=rosbridge_websocket --params-file /tmp/l+
+  77352 root      20   0  206740  41488  18332 S   0.0   0.3   0:00.27 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=9090
+  77371 root      20   0  954608  64448  30036 S   0.0   0.4   0:00.47 python3 /opt/ros/humble/lib/rosapi/rosapi_node --ros-args -r __node:=rosapi --params-file /tmp/launch_params_wlshephq --params-+
+  77601 yuuser24  20   0    7340   3652   3404 S   0.0   0.0   0:00.00 bash -c top -b -c -d 5 -n 2 -w 200 -p "$(pgrep -d, -f 'rosbridge_websocket|rosapi_node')" | grep -E 'rosbridge|rosapi|^ *PID|Cp+
+%Cpu(s): 20.2 us,  2.3 sy,  0.0 ni, 68.0 id,  0.0 wa,  0.0 hi,  2.0 si,  7.5 st 
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+  77369 root      20   0 1704040  77748  34880 R  76.0   0.5   0:52.48 python3 /opt/ros/humble/lib/rosbridge_server/rosbridge_websocket --ros-args -r __node:=rosbridge_websocket --params-file /tmp/l+
+  77352 root      20   0  206740  41488  18332 S   0.0   0.3   0:00.27 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=9090
+  77371 root      20   0  954608  64448  30036 S   0.0   0.4   0:00.47 python3 /opt/ros/humble/lib/rosapi/rosapi_node --ros-args -r __node:=rosapi --params-file /tmp/launch_params_wlshephq --params-+
+  77601 yuuser24  20   0    7340   3652   3404 S   0.0   0.0   0:00.00 bash -c top -b -c -d 5 -n 2 -w 200 -p "$(pgrep -d, -f 'rosbridge_websocket|rosapi_node')" | grep -E 'rosbridge|rosapi|^ *PID|Cp+
+
+--- guest: the whole guest
+ 15:56:18 up 18:14,  1 user,  load average: 2.21, 1.83, 1.92
+               total        used        free      shared  buff/cache   available
+Mem:           15972        1072       13501          10        1748       14899
+
+--- host: this browser's renderer processes
+ 991643 thales    20   0 1448.4g 190356 124924 S   8.3   0.6   0:05.55 /opt/google/chrome/chrome    --noerrdialogs  -+
+ 991759 thales    20   0 1448.4g 302836 118468 S   0.0   1.0   0:05.01 /opt/google/chrome/chrome    --noerrdialogs  -+
+ 991788 thales    20   0 1448.2g  75712  55160 S   0.0   0.3   0:00.01 /opt/google/chrome/chrome    --noerrdialogs  -+
+ 992103 thales    20   0    2816   1992   1876 S   0.0   0.0   0:00.00 /bin/sh -c top -b -d 5 -n 2 -w 220 -c | grep -E 'type=renderer' | sed 's/--[a-z-]*=[^ ]*//g' | head -8
+ 992105 thales    20   0    9288   2456   2296 S   0.0   0.0   0:00.00 grep -E type=renderer
+ 991643 thales    20   0 1448.4g 189404 124924 S   7.8   0.6   0:05.94 /opt/google/chrome/chrome    --noerrdialogs  -+
+ 991759 thales    20   0 1448.4g 306624 118468 S   4.8   1.0   0:05.25 /opt/google/chrome/chrome    --noerrdialogs  -+
+ 991788 thales    20   0 1448.2g  75712  55160 S   0.0   0.3   0:00.01 /opt/google/chrome/chrome    --noerrdialogs  -+
+

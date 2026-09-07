@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version: 2026.08.30
+# Version: 2026.09.07
 # Kennel -- demo driver: the demo-script phases behind single verbs, so an
 # operator types a handful of commands instead of ~20 (follow-up to issue #22,
 # feeding #27's quickstart; snapshot/reset/up from #51; setup/console/run and
@@ -26,7 +26,8 @@
 #   compose    demo/tools/p22-console-demo.sh      (console UI, scripted clicks)
 #   transfer   stack/transfer/kennel-transfer.sh apply   (run folder OR .zip)
 #   launch     stack/composed-run/tools/p21-launch-from-commands.sh  (on guest)
-#   verify     stack/verify/kennel-verify.sh                         (on guest)
+#   verify     stack/verify/kennel-verify.sh                         (on guest),
+#              then files its report in the applied run's folder as verify.json
 #   walk       vm/test/verify-meshcat-host.sh + p21-trot-hold.sh
 #   teleop     stack/bridge/kennel-bridge.sh (on guest) + verify-bridge-host.sh,
 #              then the console: drive the robot from the browser joystick
@@ -421,6 +422,26 @@ solver_of_run() {   # $1 = run folder
          "$1/run.json" | head -1)"
     [ -n "$v" ] || return 1
     echo "$v"
+}
+
+# The stack pin, read the way kennel-transfer.sh and serve.py read it. Recorded
+# in a verify report so a report says which revision it is a report OF (#64).
+pin_sha() { sed -n 's/^commit:[[:space:]]*//p' "$REPO_ROOT/stack/pin.lock" | head -1; }
+
+# The run folder a verify report belongs to (#64).
+#
+# In-process first: `run` and `all` set APPLIED_RUN, and that is the run the
+# stack was just launched on. Standalone `verify` has no such memory, so it asks
+# the GUEST what is applied -- ~/kennel-staging/current-run is the marker
+# guest-apply-config.sh writes, and it is the same question `status` answers.
+# Silent failure is deliberate: a verify with nothing applied is a legitimate
+# thing to do, and do_verify says so rather than inventing a folder.
+applied_run_dir() {
+    if [ -n "$APPLIED_RUN" ] && [ -d "$APPLIED_RUN" ]; then echo "$APPLIED_RUN"; return 0; fi
+    local name
+    name="$(ssh "${SSH_OPTS[@]}" "$TARGET" 'cat ~/kennel-staging/current-run 2>/dev/null' 2>/dev/null | tr -d '\r')"
+    [ -n "$name" ] && [ -d "$OUT/$name" ] && { echo "$OUT/$name"; return 0; }
+    return 1
 }
 
 # Install the kennel sequences + guest scripts into the framework clone
@@ -1200,9 +1221,37 @@ do_verify() {
         warn "checks 6-9 command their own trot: DISCONNECT the console first, or the"
         warn "two publishers fight and the walking checks measure the argument."
     fi
+    local folder run_name=""
+    folder="$(applied_run_dir)" && run_name="$(basename "$folder")"
     guest_stage stack/verify/kennel-verify.sh
     ssh "${SSH_OPTS[@]}" "$TARGET" \
-        "KENNEL_EXPECT_BRIDGE=$expect_bridge /tmp/kennel-verify.sh --expect-solver '$expect' --controller-log /tmp/p21-ctrl.log"
+        "KENNEL_EXPECT_BRIDGE=$expect_bridge KENNEL_RUN='$run_name' KENNEL_PIN='$(pin_sha)' \
+         /tmp/kennel-verify.sh --expect-solver '$expect' --controller-log /tmp/p21-ctrl.log"
+    local rc=$?
+    # The report belongs WITH the run it is of (#64). kennel-verify.sh has always
+    # written a full report to /tmp/kennel-verify on the guest and this driver has
+    # always read only the exit code, so the Runs view had nothing real to show
+    # and listed five invented runs instead.
+    #
+    # Exit 2 is "could not even look": there is no verdict to file, and an old
+    # verify.json left in place would be a lie about a run that never ran. Say so
+    # instead.
+    if [ "$rc" = 2 ]; then
+        warn "verify could not look (exit 2) -- no report filed."
+    elif [ -z "$folder" ]; then
+        warn "no applied run to file the report against -- it stays on the guest at"
+        warn "  /tmp/kennel-verify/report.json  (transfer a run first, or check ~/kennel-staging/current-run)"
+    else
+        local verdict=""
+        if scp "${SSH_OPTS[@]}" -q "$TARGET:/tmp/kennel-verify/report.json" "$folder/verify.json" 2>/dev/null; then
+            scp "${SSH_OPTS[@]}" -q "$TARGET:/tmp/kennel-verify/report.txt" "$folder/verify.txt" 2>/dev/null
+            verdict="$(sed -n 's/.*"verdict"[[:space:]]*:[[:space:]]*"\([a-z-]*\)".*/\1/p' "$folder/verify.json" | head -1)"
+            say "verify report    $folder/verify.json (verdict ${verdict:-unknown})"
+        else
+            warn "the guest wrote no report.json -- is stack/verify/kennel-verify.sh current there?"
+        fi
+    fi
+    return $rc
 }
 
 do_walk() {

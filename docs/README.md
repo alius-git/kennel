@@ -85,6 +85,13 @@ The in-depth documentation lives next to what it describes — the plan corpus i
   the run folder where the driver reads, through `serve.py`.
 - [`kennel_console/teleop.md`](../kennel_console/teleop.md) — driving the robot
   from the console's Interventions joystick, over rosbridge.
+- [`kennel_console/dashboard.md`](../kennel_console/dashboard.md) — the
+  Dashboard live: the real Meshcat viewer in the 3D pane, every panel on the
+  running stack across the `DataSource` seam, and fall detection by the
+  verification recipe's own rule.
+- [`kennel_console/runs.md`](../kennel_console/runs.md) — real run records: the
+  verify report lands in the run folder, `/api/runs` serves it, and the Runs
+  view shows real verdicts, counters and a config diff.
 
 ## Upstream
 
