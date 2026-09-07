@@ -26,6 +26,10 @@
 #   KENNEL_LIVE_CDP         9293   the Chrome it drives
 #   KENNEL_LIVE_DRIVE_SIM_S 20     the driving window, in SIM seconds
 #   KENNEL_LIVE_QUICK       0      1 skips the `verify` group (it costs ~2 min)
+#   KENNEL_WATCHDOG         1      #67's guest-side dead man's switch. 0 runs the
+#                                  suite against the pre-#67 behaviour, which is
+#                                  what group 6 was written to measure.
+#   KENNEL_WATCHDOG_STALE   1.0    seconds of silence before it intervenes
 #   KENNEL_DEMO_OUT         ~/kennel-runs   the REAL out dir: .kennel-bridge has
 #                                  to reach the page the way it does in use
 #   plus the guest knobs of verify-bridge-host.sh (KENNEL_GUEST_HOSTNAME,
@@ -45,6 +49,11 @@ PORT="${KENNEL_LIVE_PORT:-8093}"
 CDP_PORT="${KENNEL_LIVE_CDP:-9293}"
 DRIVE_SIM_S="${KENNEL_LIVE_DRIVE_SIM_S:-20}"
 QUICK="${KENNEL_LIVE_QUICK:-0}"
+# #67. The suite is written to measure the watchdog AND to measure what happens
+# without it, because the second is what justifies the first. Both paths are
+# asserted; neither is a comment.
+export KENNEL_WATCHDOG="${KENNEL_WATCHDOG:-1}"
+export KENNEL_WATCHDOG_STALE="${KENNEL_WATCHDOG_STALE:-1.0}"
 OUT="${KENNEL_DEMO_OUT:-$HOME/kennel-runs}"
 CONTAINER="${KENNEL_CONTAINER:-dfki_quad}"
 PAGE="Kennel%20Console.dc.html"
@@ -163,6 +172,13 @@ observe_bg() {   # $1 = label, $2 = sim seconds, $3.. = extra args
     return 1
 }
 
+# --- what the watchdog itself says. Read from the guest, never inferred.
+wd_log() { ssh "${SSH_OPTS[@]}" "$TARGET" \
+    "sudo docker exec $CONTAINER cat /tmp/k13-watchdog.log 2>/dev/null" 2>/dev/null; }
+wd_interventions() { wd_log | grep -c 'INTERVENTION' | tr -d '[:space:]'; }
+wd_state() { ssh "${SSH_OPTS[@]}" "$TARGET" \
+    "sudo docker exec $CONTAINER cat /tmp/k13-watchdog.state 2>/dev/null" 2>/dev/null | tr -d '\r'; }
+
 observe() {   # $1 = label, $2 = sim seconds, $3.. = extra args -> file path on stdout
     local label="$1" secs="$2"; shift 2
     local f="$tmp/observe-$label.txt"
@@ -258,17 +274,28 @@ check $? "the guest sees 20 Hz on /quad_control_target" \
       "$hzw Hz wall (the page's timer is a wall-clock timer); $hzs per SIM second"
 dv="$(jget "$f" target.distinct_vx)"
 [ "$dv" = "[0.0]" ]; check $? "and every message is a zero before the stick moves" "$dv"
+if [ "$KENNEL_WATCHDOG" != 0 ]; then
+    # #67 asks for this explicitly: the watchdog is a publisher on the same
+    # topic, so it has to be silent during a normal connect or the page's
+    # one-second probe would count it and refuse to drive.
+    n="$(wd_interventions)"
+    [ "$n" = 0 ]; check $? "the watchdog has said nothing at all" \
+          "$n interventions -- a page that meets one refuses to drive (teleop.md §3)"
+fi
 
 echo "2. the stick drives the real robot"
 page gait WALKING_TROT; page stick-down
 f="$(observe drive "$DRIVE_SIM_S")"
-hzw="$(jget "$f" target.hz_wall)"; vx="$(jget "$f" vx_mean)"; dx="$(jget "$f" x_travel)"
+# speed and distance, not world-axis vx: a robot that has been turned is still
+# walking, and vx says otherwise. Measured, in this suite: -0.44 m/s for a robot
+# driving forward after an earlier session had turned it round.
+hzw="$(jget "$f" target.hz_wall)"; vx="$(jget "$f" speed_mean)"; dx="$(jget "$f" dist_xy)"
 zm="$(jget "$f" z_median)"; tf="$(jget "$f" tilt_over_frac)"; gn="$(jget "$f" gait.name)"
 gs="$(jget "$f" target.gap_std_ms)"; gx="$(jget "$f" target.gap_max_ms)"; rtf="$(jget "$f" rtf)"
 tx="$(jget "$f" tilt_max)"
 num_ok "$hzw" 18 22;     check $? "still 20 Hz while driving" "$hzw Hz wall, rtf $rtf"
-num_ok "$vx" 0.15 10;    check $? "the robot is walking" "vx_mean $vx m/s, required >= 0.15"
-num_ok "$dx" 0.01 1000;  check $? "and travelling" "x_travel $dx m in $DRIVE_SIM_S sim-s"
+num_ok "$vx" 0.15 10;    check $? "the robot is walking" "speed $vx m/s, required >= 0.15"
+num_ok "$dx" 0.01 1000;  check $? "and travelling" "$dx m in $DRIVE_SIM_S sim-s"
 num_ok "$zm" 0.20 0.45;  check $? "at a standing height" "z median $zm m"
 num_ok "$tf" 0 0.02;     check $? "and upright" "max tilt $tx rad, over 0.5 rad in $tf of samples"
 [ "$gn" = WALKING_TROT ]; check $? "the gait the picker asked for is the one running" "/gait_state says $gn"
@@ -276,20 +303,26 @@ say "    D.3 §6 lag: gap_std ${gs} ms, gap_max ${gx} ms at rtf $rtf"
 page status
 
 echo "3. releasing the stick stops the robot"
-observe_bg release 8
+observe_bg release 12
 check $? "the monitor is watching before the stick is released"
 page stick-up
 wait "$OBS_PID"
 f="$OBS_FILE"
 fz="$(jget "$f" target.first_zero_after_nonzero_sim)"
 rest="$(jget "$f" vx_below_0_05_since_sim)"
-[ -n "$fz" ]; check $? "a zero goes on the wire after the release" "at sim $fz"
-if [ -n "$fz" ] && [ -n "$rest" ]; then
-    awk -v a="$rest" -v b="$fz" 'BEGIN{exit !(a-b<=3.0 && a-b>=-0.5)}'; check $? \
-        "and the robot is at rest within 3 sim-s of it" "$(awk -v a="$rest" -v b="$fz" 'BEGIN{printf "%.2f", a-b}') sim-s"
-else
-    check 1 "and the robot is at rest within 3 sim-s of it" "zero=$fz rest=$rest"
-fi
+lv="$(jget "$f" target.last_msg.body_x_dot)"
+dxr="$(jget "$f" dist_xy)"; swr="$(jget "$f" sim_window)"
+rate="$(awk -v d="$dxr" -v t="$swr" 'BEGIN{printf "%.3f", (t>0? (d<0?-d:d)/t : 0)}')"
+[ "$lv" = "0.0" ]; check $? "the wire carries zeros once the stick is released" "body_x_dot $lv"
+# "IT STOPPED" IS A DISTANCE, not a speed. A robot released in WALKING_TROT keeps
+# trotting in place, and its BODY SPEED stays high while it does -- measured:
+# 0.355 m/s mean over twelve seconds in which it covered 1.13 m, i.e. 0.09 m/s of
+# actual travel. Speed says it is moving; distance says it is going nowhere, and
+# going nowhere is what the operator who let go of the stick asked for.
+num_ok "$rate" 0 0.25
+check $? "and the robot stops going anywhere" "$rate m/s of travel over $swr sim-s, against 0.47 m/s driving"
+say "    the zero reached the wire at sim ${fz:-<before this window opened>}; the robot's"
+say "    net motion settled at ${rest:-it was still drifting when the window closed}."
 
 echo "4. STAND"
 page stand
@@ -302,22 +335,52 @@ echo "5. a second publisher is refused, not joined"
 page disconnect
 "$DEMO" walk >"$tmp/walk.log" 2>&1
 check $? "a held trot is running (kennel-demo.sh walk)" "the driver warns about the bridge -- expected"
+if [ "$KENNEL_WATCHDOG" != 0 ]; then
+    n0="$(wd_interventions)"
+    f="$(observe heldtrot 10)"
+    vx="$(jget "$f" speed_mean)"; n1="$(wd_interventions)"
+    num_ok "$vx" 0.15 10; check $? "the held trot walks the robot" "speed $vx m/s at 10 Hz"
+    [ "$n0" = "$n1" ]; check $? "and the watchdog leaves it alone" \
+          "$n0 -> $n1 interventions; a publisher that is still publishing is never stale"
+fi
 page connect-expect-refused
+n_ws0="$(wd_interventions)"
 "$DEMO" walk stop >"$tmp/walkstop.log" 2>&1
+if [ "$KENNEL_WATCHDOG" != 0 ]; then
+    sleep 3
+    n_ws1="$(wd_interventions)"
+    say "    NOTE: walk stop took the watchdog from $n_ws0 to $n_ws1 interventions."
+    say "    That is p21-trot-hold.sh stop's own gap, not a defect here: it kills the"
+    say "    10 Hz publisher, then checks the controller is alive (seconds, via"
+    say "    \`ros2 topic echo --once\`) before publishing its zeros -- and in between,"
+    say "    the last target on the topic is 0.3 m/s with nobody publishing it."
+    say "    Before #67 nothing noticed. The watchdog zeroing it there is correct."
+fi
 page disconnect
 page connect          # its own checks say whether it drove again
 
 echo "6. the killed renderer -- what a dead man's switch has to catch"
 page gait WALKING_TROT; page stick-down
 f="$(observe prekill 4)"
-vx="$(jget "$f" vx_mean)"; tv="$(jget "$f" target.last_msg.body_x_dot)"
+vx="$(jget "$f" speed_mean)"; tv="$(jget "$f" target.last_msg.body_x_dot)"
 num_ok "$tv" 0.4 0.6
 check $? "a non-zero target is in force when the tab dies" "commanding $tv m/s; the robot is at $vx m/s"
+wd_before="$(wd_interventions)"
 renderers="$(pgrep -P "$chrome" -f -- '--type=renderer' | tr '\n' ' ')"
 n_rend="$(printf '%s' "$renderers" | wc -w)"
 [ "$n_rend" -ge 1 ]; check $? "the renderer processes are children of this browser" "$n_rend of them (--no-zygote)"
 observe_bg kill 30
 check $? "the monitor is watching before the tab dies"
+# THE HAND IS STILL ON THE STICK when the window opens. Everything between the
+# last observation and the kill -- an ssh, a docker cp, rclpy starting up -- is
+# seconds, and a headless page left driving for minutes can have its publish
+# timer throttled by the browser in exactly that gap. When that happened, the
+# watchdog correctly zeroed the stale target BEFORE the kill, and the kill window
+# then opened onto a topic carrying nothing but zeros: the measurement lost the
+# event, not the mechanism. (That throttling is itself a case for #67 -- a
+# browser quietly stopping is the failure mode, whatever stopped it.)
+page stick-down
+sleep 2
 for p in $renderers; do kill -9 "$p" 2>/dev/null; done
 dead=1
 for _ in $(seq 12); do
@@ -329,29 +392,103 @@ check $dead "kill -9 took: no renderer process is left" "$renderers"
 page expect-dead
 wait "$OBS_PID"
 f="$OBS_FILE"
-vx="$(jget "$f" vx_mean)"; dx="$(jget "$f" x_travel)"; sw="$(jget "$f" sim_window)"
+vx="$(jget "$f" speed_mean)"; dx="$(jget "$f" dist_xy)"; sw="$(jget "$f" sim_window)"
 rest="$(jget "$f" vx_below_0_05_since_sim)"
 fz="$(jget "$f" target.first_zero_after_nonzero_sim)"
 tv="$(jget "$f" target.last_msg.body_x_dot)"
 lw="$(jget "$f" target.last_wall)"; lnw="$(jget "$f" target.last_nonzero_wall)"
-# WHAT IS ASSERTED HERE IS THAT NOTHING INTERVENES -- not what the abandoned
-# robot then does. Measured over two consecutive runs of this suite: once it
-# walked 13.6 m and was still going at the end of the window; once it destabilised
-# after 3.8 m and came to a stop of its own accord. Both are an uncommanded robot
-# carrying a stale order, which is the whole finding; asserting the first
-# outcome would have made this group a coin toss (it did, before this comment).
-[ -z "$fz" ];         check $? "no zero is ever published for the abandoned robot" "zero=${fz:-none}"
-num_ok "$tv" 0.4 0.6; check $? "the stack is still holding the target the dead page sent" "$tv m/s"
-awk -v v="$dx" 'BEGIN{exit !(v>0.5 || v<-0.5)}'
-check $? "and it carried the robot somewhere with nobody watching" "$dx m in $sw sim-s"
-say "    D.3 §5 MEASURED: $dx m travelled in $sw sim-s after the tab died"
-say "    (mean $vx m/s; came to rest on its own: ${rest:-never})."
+fzw="$(jget "$f" target.first_zero_after_nonzero_wall)"
+fzs="$(jget "$f" target.first_zero_after_nonzero_sim)"
+lns="$(jget "$f" target.last_nonzero_sim)"
+if [ "$KENNEL_WATCHDOG" = 0 ]; then
+    # THE PRE-#67 BEHAVIOUR, and what is asserted is that NOTHING INTERVENES --
+    # not what the abandoned robot then does. Measured over two consecutive runs:
+    # once it walked 13.6 m and was still going at the end of the window; once it
+    # destabilised after 3.8 m and stopped of its own accord. Both are an
+    # uncommanded robot carrying a stale order, which is the finding; asserting
+    # the first outcome made this group a coin toss until it was written this way.
+    [ -z "$fz" ];         check $? "no zero is ever published for the abandoned robot" "zero=${fz:-none}"
+    num_ok "$tv" 0.4 0.6; check $? "the stack is still holding the target the dead page sent" "$tv m/s"
+    num_ok "$dx" 0.5 1000
+    check $? "and it carried the robot somewhere with nobody watching" "$dx m in $sw sim-s"
+    say "    D.3 §5 MEASURED, WITHOUT THE WATCHDOG: $dx m travelled in $sw sim-s"
+    say "    (mean $vx m/s; came to rest on its own: ${rest:-never})."
+    say "    Nothing but 'kennel-demo.sh teleop stop' ends this -- which is #67."
+else
+    # WITH #67. The zero is the watchdog's, and both clocks matter: the staleness
+    # is a WALL-time fact about publishers, the stopping is a SIM-time fact about
+    # the robot.
+    [ -n "$fz" ]; check $? "a zero IS published for the abandoned robot" "at sim ${fz:-never}"
+    if [ -n "$fzw" ] && [ -n "$lnw" ]; then
+        awk -v a="$fzw" -v b="$lnw" -v s="$KENNEL_WATCHDOG_STALE" 'BEGIN{exit !(a-b <= s+0.5 && a-b >= 0)}'
+        check $? "within the staleness window, measured in wall time" \
+              "$(awk -v a="$fzw" -v b="$lnw" 'BEGIN{printf "%.2f", a-b}') s after the last one the page sent (stale $KENNEL_WATCHDOG_STALE s)"
+    else
+        check 1 "within the staleness window, measured in wall time" "zero=$fzw last=$lnw"
+    fi
+    [ -n "$rest" ]; check $? "and the robot comes to rest without anyone doing anything" "at sim ${rest:-never}"
+    if [ -n "$rest" ] && [ -n "$fzs" ]; then
+        # THE MECHANISM IS ASSERTED ABOVE; the physics is measured here. The
+        # watchdog commands a hard zero -- there is nothing stronger it could
+        # send -- and the robot then decelerates at the controller's own rate,
+        # measured between 2 and 5 sim-s from 0.4-0.5 m/s. Bounding that would be
+        # asserting a property of the controller, in a test of a watchdog, and it
+        # would be flaky because the number genuinely varies.
+        say "    END TO END, from the kill to a robot at rest:  $(awk -v z="$fzw" -v l="$lnw" -v a="$rest" -v b="$fzs" 'BEGIN{printf "%.2f", (z-l)+(a-b)}') s"
+        say "    ($(awk -v z="$fzw" -v l="$lnw" 'BEGIN{printf "%.2f", z-l}') s for the watchdog to notice, then"
+        say "    $(awk -v a="$rest" -v b="$fzs" 'BEGIN{printf "%.2f", a-b}') sim-s of the robot's own deceleration)."
+        say "    #67 estimated <= 2 s for the whole thing. The INTERVENTION is inside"
+        say "    that, every time; the stopping distance is not, and no watchdog can"
+        say "    shorten it -- it already sends a hard zero. See bridge.md §11."
+    fi
+    # The DELTA around the kill, never the session total: by this point in the
+    # suite the watchdog has legitimately fired at least once already -- see the
+    # note after `walk stop` in group 5.
+    # The bound is set against the OTHER measurement, not against a guess: a robot
+    # nobody stopped travels at 0.44 m/s and keeps going (04a). One the watchdog
+    # stopped drifts at 0.08-0.15 m/s while it settles, and the spread is the
+    # controller's deceleration, which varies with how fast it was going.
+    dr="$(awk -v d="$dx" -v t="$sw" 'BEGIN{printf "%.3f", (t>0? (d<0?-d:d)/t : 0)}')"
+    num_ok "$dr" 0 0.25
+    check $? "and it stops going anywhere" "$dr m/s of travel over $sw sim-s, against 0.44 m/s with no watchdog"
+    n="$(wd_interventions)"
+    d=$((n - wd_before))
+    [ "$d" = 1 ]; check $? "the watchdog intervened exactly once for this kill" \
+          "$wd_before -> $n; the burst is repeats of one intervention, not more of them"
+    st="$(wd_state)"
+    case "$st" in idle*) check 0 "and went quiet again" "$st" ;;
+                  *)     check 1 "and went quiet again" "${st:-<no state file>}" ;; esac
+    say "    #67 MEASURED: the tab died and the robot was stopped in $dx m / $sw sim-s"
+    say "    of window, with nobody at the controls and nothing else running."
+fi
 say "    The last target the stack received was at wall $lw (last non-zero $lnw)."
-say "    Nothing but 'kennel-demo.sh teleop stop' ends this -- which is #67."
+if [ "$KENNEL_WATCHDOG" != 0 ]; then
+    echo "6b. and the next page can still drive -- the watchdog is not a publisher"
+    # The burst is BOUNDED for exactly this reason. A watchdog that kept
+    # publishing zeros "until a fresh message arrives" would be a foreign
+    # publisher, and the console's one-second probe would refuse to drive against
+    # it -- the reconciliation #67 asks for, made mechanical.
+    start_chrome
+    page boot
+    page connect
+fi
 "$DEMO" teleop stop >"$tmp/teleopstop.log" 2>&1
 f="$(observe afterstop 5)"
-rest="$(jget "$f" vx_below_0_05_since_sim)"
-[ -n "$rest" ]; check $? "teleop stop is what stops it" "at rest from sim $rest"
+dxa="$(jget "$f" dist_xy)"; swa="$(jget "$f" sim_window)"
+ratea="$(awk -v d="$dxa" -v t="$swa" 'BEGIN{printf "%.3f", (t>0? (d<0?-d:d)/t : 0)}')"
+# A distance again, not a velocity: a robot at STAND is not motionless. It
+# shuffles 5-22 cm/s laterally under the MPC (composed-run.md §9.2), which is
+# right on top of any "is it at rest" velocity threshold and made this check
+# flake. What matters is that it is not going anywhere.
+# `$?` has to be CAPTURED before the `if`, which sets it itself. Reading it
+# inside the branch reads the exit status of `[`, and the check then passes or
+# fails on the wrong thing entirely -- it reported 0.008 m/s as a failure.
+num_ok "$ratea" 0 0.25; rc_a=$?
+if [ "$KENNEL_WATCHDOG" = 0 ]; then
+    check $rc_a "teleop stop is what stops it" "$ratea m/s of travel afterwards"
+else
+    check $rc_a "and it is still going nowhere after teleop stop" "$ratea m/s of travel afterwards"
+fi
 
 echo "7. E-STOP, and a stack that can be handed back"
 "$DEMO" teleop >"$tmp/teleop2.log" 2>&1
@@ -359,8 +496,8 @@ check $? "the bridge comes back up"
 WS="$("$REPO_ROOT/vm/test/verify-bridge-host.sh" --quiet 2>/dev/null)"
 start_chrome
 page boot; page connect; page gait WALKING_TROT; page stick-down
-f="$(observe predrive 3)" ; vx="$(jget "$f" vx_mean)"
-num_ok "$vx" 0.05 10; check $? "driving again in a fresh browser" "vx_mean $vx m/s"
+f="$(observe predrive 3)" ; vx="$(jget "$f" speed_mean)"
+num_ok "$vx" 0.05 10; check $? "driving again in a fresh browser" "speed $vx m/s"
 page estop
 f="$(observe estop 4)"
 zm="$(jget "$f" z_median)"; lv="$(jget "$f" target.last_msg.body_x_dot)"
@@ -371,6 +508,44 @@ check $? "kennel-bridge.sh recover puts it back on its feet -- no relaunch" \
       "$(grep -o 'standing at [0-9.]* m' "$tmp/recover.txt" | tail -1)"
 grep -q 'leaving EMERGENCY_DAMPING' "$tmp/recover.txt"
 check $? "by leaving EMERGENCY_DAMPING, which nothing had ever done before #65"
+
+if [ "$KENNEL_WATCHDOG" != 0 ]; then
+    # The watchdog is on the topic while all of that happens. E-STOP zeroes the
+    # target, so there is nothing stale and non-zero for it to act on -- it must
+    # not add a publish of its own to a robot that is already being recovered.
+    st="$(wd_state)"
+    case "$st" in idle*|"") check 0 "the watchdog stayed idle through the E-STOP and the recovery" "$st" ;;
+                  *)        check 1 "the watchdog stayed idle through the E-STOP and the recovery" "$st" ;; esac
+fi
+
+if [ "$QUICK" = 0 ]; then
+    echo "7b. the verification recipe still passes with a teleop session running"
+    page disconnect
+    # The recipe commands its own trot and measures it, so it needs a robot that
+    # can walk -- and by this point the suite has driven this one for several
+    # minutes, E-STOPped it and stood it back up. This guest's robot sags over a
+    # long session (measured to 0.133 m here, and recorded in dashboard.md §5),
+    # and check 9 fails a robot below 0.20 m whatever the bridge is doing. Same
+    # argument as group 0: give the measurement a defined starting state.
+    ssh "${SSH_OPTS[@]}" "$TARGET" "/tmp/kennel-bridge.sh recover" >"$tmp/recover7b.txt" 2>/dev/null
+    check $? "the robot is stood back up before the recipe measures it" \
+          "$(grep -o 'standing at [0-9.]* m' "$tmp/recover7b.txt" | tail -1)"
+    n0="$(wd_interventions)"
+    "$DEMO" verify >"$tmp/verify.log" 2>&1
+    check $? "kennel-demo.sh verify exits 0 with the bridge and the watchdog up" \
+          "$(grep -E '^\[FAIL\]' "$tmp/verify.log" | head -2 | cut -c1-90 | tr '\n' ' ')"
+    grep -q "pass=10 fail=0" "$tmp/verify.log"
+    check $? "pass=10 fail=0" "$(grep -o 'pass=[0-9]* fail=[0-9]*' "$tmp/verify.log" | tail -1)"
+    grep -q "one target watchdog" "$tmp/verify.log"
+    check $? "check 1 names the four nodes a teleop session adds" \
+          "$(grep -o 'the six healthy-session nodes plus[^,]*' "$tmp/verify.log" | tail -1)"
+    if [ "$KENNEL_WATCHDOG" != 0 ]; then
+        n1="$(wd_interventions)"
+        [ "$n0" = "$n1" ]; check $? "and the watchdog never touched the recipe's own 20 Hz walk" "$n0 -> $n1"
+    fi
+else
+    say "7b. skipped (KENNEL_LIVE_QUICK=1): the verify group costs about two minutes"
+fi
 
 echo "8. teardown leaves nothing"
 "$DEMO" teleop stop >"$tmp/teleopstop2.log" 2>&1

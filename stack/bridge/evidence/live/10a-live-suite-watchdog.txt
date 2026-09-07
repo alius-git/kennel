@@ -1,10 +1,10 @@
-=== verify-teleop-live.sh WITHOUT the watchdog, run 1 of 2 ===
-2026-09-07T23:09:28Z
+=== verify-teleop-live.sh WITH the watchdog, run 1 of 2 (#67) ===
+2026-09-07T22:52:17Z
 guest kennel-vm; applied run run-20260907T202843Z (OSQP, flat plane, simulator_realtime_rate 1.0)
-KENNEL_WATCHDOG=0: the same suite, the same code, one knob. This is the
-behaviour #67 replaces, and group 6 is why it needed replacing -- the tab
-dies, nothing intervenes, and the robot carries a stale order wherever it
-happens to go. The pair with the watchdog on is 10a / 10b.
+The same suite as 04a/04b with KENNEL_WATCHDOG at its default of 1. Group 6 now
+asserts the opposite of what it asserted there: a zero DOES arrive and the robot
+stops. 5b, 6b and 7b are the non-interference groups -- a held trot, a reconnect,
+and the verification recipe's own 20 Hz walk.
 
 === verify-teleop-live -- the teleop path against the real stack (#65) ===
 guest      kennel-vm at 192.168.122.32
@@ -12,9 +12,9 @@ repo       /home/thales/kennel
 windows    drive 20 sim-s
 
 0. a known starting state, then the teleop verb
-  [PASS] the robot starts standing, at the origin, at STAND -- standing at 0.30092 m
+  [PASS] the robot starts standing, at the origin, at STAND -- standing at 0.31385 m
    the teleop verb brings the bridge up and hands the page its URL
-  [PASS] kennel-demo.sh teleop exits 0 -- 18 lines
+  [PASS] kennel-demo.sh teleop exits 0 -- 22 lines
   [PASS] the bridge answers a WebSocket handshake from this host -- ws://192.168.122.32:9090/
   [PASS] /api/health carries that exact URL -- ws://192.168.122.32:9090/
   [PASS] and the viewer's URL
@@ -25,26 +25,27 @@ windows    drive 20 sim-s
   [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
   [PASS] every socket this page has opened is the configured bridge, and there is one -- ['ws://192.168.122.32:9090/']
   [PASS] the panels are on the live stack, and the page says so
-  [PASS] the guest sees 20 Hz on /quad_control_target -- 20.234 Hz wall (the page's timer is a wall-clock timer); 20.196 per SIM second
+  [PASS] the guest sees 20 Hz on /quad_control_target -- 20.005 Hz wall (the page's timer is a wall-clock timer); 20.0 per SIM second
   [PASS] and every message is a zero before the stick moves -- [0.0]
+  [PASS] the watchdog has said nothing at all -- 0 interventions -- a page that meets one refuses to drive (teleop.md §3)
 2. the stick drives the real robot
   [PASS] the gait picker sent WALKING_TROT
   [PASS] the stick is pushed fully forward
-  [PASS] still 20 Hz while driving -- 19.998 Hz wall, rtf 1.0024
-  [PASS] the robot is walking -- speed 0.4596 m/s, required >= 0.15
-  [PASS] and travelling -- 9.175 m in 20 sim-s
-  [PASS] at a standing height -- z median 0.24381 m
-  [PASS] and upright -- max tilt 0.0432 rad, over 0.5 rad in 0.0 of samples
+  [PASS] still 20 Hz while driving -- 19.975 Hz wall, rtf 1.0012
+  [PASS] the robot is walking -- speed 0.473 m/s, required >= 0.15
+  [PASS] and travelling -- 9.4465 m in 20 sim-s
+  [PASS] at a standing height -- z median 0.28818 m
+  [PASS] and upright -- max tilt 0.0262 rad, over 0.5 rad in 0.0 of samples
   [PASS] the gait the picker asked for is the one running -- /gait_state says WALKING_TROT
-[live]     D.3 §6 lag: gap_std 9.42 ms, gap_max 88.35 ms at rtf 1.0024
-  [PASS] the status bar counts the messages it has sent, and the count grows -- 670 -> 701
+[live]     D.3 §6 lag: gap_std 11.18 ms, gap_max 98.97 ms at rtf 1.0012
+  [PASS] the status bar counts the messages it has sent, and the count grows -- 644 -> 674
 3. releasing the stick stops the robot
   [PASS] the monitor is watching before the stick is released
   [PASS] the stick is released
   [PASS] the wire carries zeros once the stick is released -- body_x_dot 0.0
-  [PASS] and the robot stops going anywhere -- 0.024 m/s of travel over 12.001 sim-s, against 0.47 m/s driving
-[live]     the zero reached the wire at sim 64.435; the robot's
-[live]     net motion settled at 66.796.
+  [PASS] and the robot stops going anywhere -- 0.020 m/s of travel over 12.0 sim-s, against 0.47 m/s driving
+[live]     the zero reached the wire at sim 61.578; the robot's
+[live]     net motion settled at 63.625.
 4. STAND
   [PASS] STAND clicked
   [PASS] the sequencer is standing -- /gait_state says STAND
@@ -52,8 +53,16 @@ windows    drive 20 sim-s
 5. a second publisher is refused, not joined
   [PASS] disconnected
   [PASS] a held trot is running (kennel-demo.sh walk) -- the driver warns about the bridge -- expected
+  [PASS] the held trot walks the robot -- speed 0.1994 m/s at 10 Hz
+  [PASS] and the watchdog leaves it alone -- 0 -> 0 interventions; a publisher that is still publishing is never stale
   [PASS] a held trot is refused, not joined
   [PASS] and the page names the fix
+[live]     NOTE: walk stop took the watchdog from 0 to 1 interventions.
+[live]     That is p21-trot-hold.sh stop's own gap, not a defect here: it kills the
+[live]     10 Hz publisher, then checks the controller is alive (seconds, via
+[live]     `ros2 topic echo --once`) before publishing its zeros -- and in between,
+[live]     the last target on the topic is 0.3 m/s with nobody publishing it.
+[live]     Before #67 nothing noticed. The watchdog zeroing it there is correct.
   [PASS] disconnected
   [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
   [PASS] every socket this page has opened is the configured bridge, and there is one -- ['ws://192.168.122.32:9090/', 'ws://192.168.122.32:9090/', 'ws://192.168.122.32:9090/']
@@ -61,20 +70,35 @@ windows    drive 20 sim-s
 6. the killed renderer -- what a dead man's switch has to catch
   [PASS] the gait picker sent WALKING_TROT
   [PASS] the stick is pushed fully forward
-  [PASS] a non-zero target is in force when the tab dies -- commanding 0.5 m/s; the robot is at 0.4673 m/s
+  [PASS] a non-zero target is in force when the tab dies -- commanding 0.5 m/s; the robot is at 0.3965 m/s
   [PASS] the renderer processes are children of this browser -- 3 of them (--no-zygote)
   [PASS] the monitor is watching before the tab dies
   [PASS] the stick is pushed fully forward
-  [PASS] kill -9 took: no renderer process is left -- 1070717 1070744 1070815 
+  [PASS] kill -9 took: no renderer process is left -- 1067645 1067671 1067742 
   [PASS] the page is gone -- nothing in the browser can zero the target now
-  [PASS] no zero is ever published for the abandoned robot -- zero=none
-  [PASS] the stack is still holding the target the dead page sent -- 0.5 m/s
-  [PASS] and it carried the robot somewhere with nobody watching -- 13.9456 m in 30.0 sim-s
-[live]     D.3 §5 MEASURED, WITHOUT THE WATCHDOG: 13.9456 m travelled in 30.0 sim-s
-[live]     (mean 0.4654 m/s; came to rest on its own: never).
-[live]     Nothing but 'kennel-demo.sh teleop stop' ends this -- which is #67.
-[live]     The last target the stack received was at wall 1788823167.933 (last non-zero 1788823167.933).
-  [PASS] teleop stop is what stops it -- 0.021 m/s of travel afterwards
+  [PASS] a zero IS published for the abandoned robot -- at sim 134.603
+  [PASS] within the staleness window, measured in wall time -- 1.10 s after the last one the page sent (stale 1.0 s)
+  [PASS] and the robot comes to rest without anyone doing anything -- at sim 137.291
+[live]     END TO END, from the kill to a robot at rest:  3.79 s
+[live]     (1.10 s for the watchdog to notice, then
+[live]     2.69 sim-s of the robot's own deceleration).
+[live]     #67 estimated <= 2 s for the whole thing. The INTERVENTION is inside
+[live]     that, every time; the stopping distance is not, and no watchdog can
+[live]     shorten it -- it already sends a hard zero. See bridge.md §11.
+  [PASS] and it stops going anywhere -- 0.035 m/s of travel over 30.0 sim-s, against 0.44 m/s with no watchdog
+  [PASS] the watchdog intervened exactly once for this kill -- 1 -> 2; the burst is repeats of one intervention, not more of them
+  [PASS] and went quiet again -- idle 1788822156.618 0.0000 0.0000 0.3000 interventions=2
+[live]     #67 MEASURED: the tab died and the robot was stopped in 1.0533 m / 30.0 sim-s
+[live]     of window, with nobody at the controls and nothing else running.
+[live]     The last target the stack received was at wall 1788822158.719 (last non-zero 1788822155.521).
+6b. and the next page can still drive -- the watchdog is not a publisher
+  [PASS] the console booted against the suite's own serve.py
+  [PASS] the bridge URL was prefilled from /api/health -- ws://192.168.122.32:9090/
+  [PASS] nothing is dialled before the operator asks -- []
+  [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
+  [PASS] every socket this page has opened is the configured bridge, and there is one -- ['ws://192.168.122.32:9090/']
+  [PASS] the panels are on the live stack, and the page says so
+  [PASS] and it is still going nowhere after teleop stop -- 0.002 m/s of travel afterwards
 7. E-STOP, and a stack that can be handed back
   [PASS] the bridge comes back up
   [PASS] the console booted against the suite's own serve.py
@@ -85,18 +109,20 @@ windows    drive 20 sim-s
   [PASS] the panels are on the live stack, and the page says so
   [PASS] the gait picker sent WALKING_TROT
   [PASS] the stick is pushed fully forward
-  [PASS] driving again in a fresh browser -- speed 0.4902 m/s
+  [PASS] driving again in a fresh browser -- speed 0.394 m/s
   [PASS] E-STOP asks for emergency damping
-  [PASS] the robot is on the floor -- z median 0.09885 m
+  [PASS] the robot is on the floor -- z median 0.11451 m
   [PASS] and the target was zeroed on the way -- body_x_dot 0.0
-  [PASS] kennel-bridge.sh recover puts it back on its feet -- no relaunch -- standing at 0.3129 m
+  [PASS] kennel-bridge.sh recover puts it back on its feet -- no relaunch -- standing at 0.3128 m
   [PASS] by leaving EMERGENCY_DAMPING, which nothing had ever done before #65
+  [PASS] the watchdog stayed idle through the E-STOP and the recovery -- idle 1788822253.099 0.0000 0.0000 0.3000 interventions=0
 7b. the verification recipe still passes with a teleop session running
   [PASS] disconnected
   [PASS] the robot is stood back up before the recipe measures it -- standing at 0.31395 m
   [PASS] kennel-demo.sh verify exits 0 with the bridge and the watchdog up
   [PASS] pass=10 fail=0 -- pass=10 fail=0
   [PASS] check 1 names the four nodes a teleop session adds -- the six healthy-session nodes plus the four a teleop session adds -- three rosbridge
+  [PASS] and the watchdog never touched the recipe's own 20 Hz walk -- 0 -> 0
 8. teardown leaves nothing
   [PASS] teleop stop exits 0
   [PASS] the port is closed
@@ -107,7 +133,7 @@ windows    drive 20 sim-s
   [PASS] nothing was fetched from anywhere but localhost and the guest -- []
   [PASS] the viewer really is framed from the guest -- ['http://192.168.122.32:7000/']
 
-pass=76 fail=0
+pass=90 fail=0
 ALL CHECKS PASSED
 
 [live] leaving the stack as it was found: zero, STAND, bridge down

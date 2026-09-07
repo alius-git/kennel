@@ -119,8 +119,10 @@ class Monitor(Node):
         # Counters and series, all filled only while `measuring`.
         self.n_state = self.n_hb = self.n_target = 0
         self.vx = []
+        self.vy = []
         self.z = []
         self.x_first = self.x_last = None
+        self.y_first = self.y_last = None
         self.n_tilt_over = 0
         self.tilt_max = 0.0
         self.belly_hits = 0
@@ -165,10 +167,11 @@ class Monitor(Node):
         v = m.twist.twist.linear
         self.wz = m.twist.twist.angular.z
         self.vx.append(v.x)
+        self.vy.append(v.y)
         self.z.append(p.z)
-        self.x_last = p.x
+        self.x_last, self.y_last = p.x, p.y
         if self.x_first is None:
-            self.x_first = p.x
+            self.x_first, self.y_first = p.x, p.y
         r, pi = roll_pitch(m.pose.pose.orientation)
         tilt = max(abs(r), abs(pi))
         self.tilt_max = max(self.tilt_max, tilt)
@@ -180,7 +183,7 @@ class Monitor(Node):
         if self.sim is not None and (self.series_last is None
                                      or self.sim - self.series_last >= SERIES_MIN_DT):
             self.series_last = self.sim
-            self.series.append((self.sim, v.x))
+            self.series.append((self.sim, v.x, v.y))
 
     def cb_gait(self, m):
         self.gait = m
@@ -253,13 +256,20 @@ def rest_since(series, sim_now, first=True):
     0.15 m. So "is it at rest at the end of the window" answers `no` about a
     robot that plainly did stop when it was asked to.
 
-    "At rest" is |NET velocity| over SMOOTH_SIM seconds, which is displacement
-    per second -- not mean speed, and certainly not a per-sample bound. A robot
-    released in WALKING_TROT trots in place: it goes nowhere while its body
-    velocity swings about +/- 0.09 m/s several times a second, so mean SPEED
-    reads 0.057 m/s and a per-sample test never settles at all. Going nowhere is
-    what "it stopped" means to the operator who let go of the stick, and it is
-    what PR #59 recorded as "holds station".
+    "At rest" is the magnitude of the NET velocity over SMOOTH_SIM seconds, in
+    the HORIZONTAL PLANE: displacement per second, not mean speed, not a
+    per-sample bound, and not the world x axis alone.
+
+    Not mean speed: a robot released in WALKING_TROT trots in place, going
+    nowhere while its body velocity swings about +/- 0.09 m/s several times a
+    second, so mean speed reads 0.057 m/s and a per-sample test never settles.
+    Going nowhere is what "it stopped" means to the operator who let go, and it
+    is what PR #59 recorded as "holds station".
+
+    Not world x alone: /quad_state twist is in the WORLD frame, and a robot that
+    has been driven around no longer points along it. Measured: a robot driving
+    forward under the joystick after an earlier session read vx_mean = -0.44 m/s
+    because it had turned. The plane is yaw-invariant; one axis of it is not.
 
     What comes back is the start of the run of rest the window ENDS in -- a robot
     that stopped and was then driven off again has not come to rest.
@@ -267,11 +277,14 @@ def rest_since(series, sim_now, first=True):
     if not series or sim_now is None:
         return None
     smooth, i = [], 0
-    for j, (t, _) in enumerate(series):
+    for j, row in enumerate(series):
+        t = row[0]
         while series[i][0] < t - SMOOTH_SIM:
             i += 1
-        vals = [v for _, v in series[i:j + 1]]
-        smooth.append((t, abs(sum(vals) / len(vals))))
+        win = series[i:j + 1]
+        mx = sum(r[1] for r in win) / len(win)
+        my = sum(r[2] for r in win) / len(win)
+        smooth.append((t, math.hypot(mx, my)))
     start, done = None, None
     for t, mean_vx in smooth:
         if mean_vx < STOPPED_VX:
@@ -355,8 +368,17 @@ def summarise(n, label, sim_window, wall_window):
                  if g else None),
     }
     if n.vx:
+        # speed_mean and dist_xy are the YAW-INVARIANT pair, and they are what
+        # "is it walking" should be asserted against: vx and x_travel are
+        # world-AXIS readings and mean what they say only while the robot still
+        # points along that axis, which stops being true the moment anyone turns it.
+        speeds = [math.hypot(a, b) for a, b in zip(n.vx, n.vy)]
         out.update(vx_mean=round(sum(n.vx) / len(n.vx), 4),
                    vx_min=round(min(n.vx), 4), vx_max=round(max(n.vx), 4),
+                   vy_mean=round(sum(n.vy) / len(n.vy), 4),
+                   speed_mean=round(sum(speeds) / len(speeds), 4),
+                   dist_xy=round(math.hypot((n.x_last or 0) - (n.x_first or 0),
+                                            (n.y_last or 0) - (n.y_first or 0)), 4),
                    x_travel=round((n.x_last or 0) - (n.x_first or 0), 4),
                    z_median=round(q(n.z, 0.5), 5), z_min=round(min(n.z), 5),
                    z_max=round(max(n.z), 5), z_p01=round(q(n.z, 0.01), 5),

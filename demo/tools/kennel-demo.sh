@@ -68,6 +68,12 @@
 #                                            writes them through serve.py
 #   KENNEL_DOWNLOADS      ~/Downloads        where the browser saves run-*.zip
 #   KENNEL_CONSOLE_PORT   8000               port compose/console serve on
+#   KENNEL_WATCHDOG       1                  start the guest-side target
+#                                            watchdog with the bridge (#67);
+#                                            0 leaves a killed tab's target in
+#                                            force, which is what it is for
+#   KENNEL_WATCHDOG_STALE 1.0                seconds without a target before the
+#                                            watchdog zeroes it
 #   KENNEL_SOLVER         PARTIAL_CONDENSING_OSQP   composed solver, and the
 #                                            expected one when no run.json says
 #   KENNEL_RATE           0.75               composed simulator_realtime_rate
@@ -115,6 +121,11 @@ SSH_KEY="${KENNEL_SSH_KEY:-$HOME/git/yuruna/test/status/ssh/yuruna_ed25519}"
 GUEST_IP="${KENNEL_GUEST_IP:-}"
 CONTAINER="${KENNEL_CONTAINER:-dfki_quad}"
 BRIDGE_PORT="${KENNEL_BRIDGE_PORT:-9090}"
+# The guest-side dead man's switch (#67), started and stopped with the bridge.
+# Knobs, not flags: they are passed through to the tool that defines them
+# (stack/bridge/tools/k13-target-watchdog.py), as every other knob here is.
+WATCHDOG="${KENNEL_WATCHDOG:-1}"
+WATCHDOG_STALE="${KENNEL_WATCHDOG_STALE:-1.0}"
 # The one topic two publishers can fight over (stack/launch.md §4.2).
 TARGET_TOPIC=/quad_control_target
 
@@ -1211,13 +1222,14 @@ do_verify() {
         fi
     fi
     say "expect solver    $expect  (from $src)"
-    # Check 1 asserts EXACTLY the six healthy-session nodes. A running bridge
-    # adds three more, so with one up the check is told to tolerate them --
-    # otherwise a correct stack reports `extra:` (verify.md check 1).
+    # Check 1 asserts EXACTLY the six healthy-session nodes. A teleop session adds
+    # four more -- three rosbridge, and since #67 the target watchdog -- so with
+    # one up the check is told to tolerate them; otherwise a correct stack
+    # reports `extra:` (verify.md check 1).
     local expect_bridge=0
     if bridge_up; then
         expect_bridge=1
-        say "bridge is up     check 1 will tolerate the three rosbridge nodes"
+        say "bridge is up     check 1 will tolerate the four nodes a teleop session adds"
         warn "checks 6-9 command their own trot: DISCONNECT the console first, or the"
         warn "two publishers fight and the walking checks measure the argument."
     fi
@@ -1317,7 +1329,14 @@ do_teleop() {
         && say "stopped the held trot (the console is the publisher now)"
 
     guest_stage stack/bridge/kennel-bridge.sh
-    ssh "${SSH_OPTS[@]}" "$TARGET" "KENNEL_BRIDGE_PORT=$BRIDGE_PORT /tmp/kennel-bridge.sh start" || {
+    # The bridge script starts the watchdog and observes the stack, and both of
+    # those live in tools it copies into the container -- so they have to be on
+    # the guest first. Staged here rather than assumed present.
+    guest_stage stack/bridge/tools/k13-target-watchdog.py
+    guest_stage stack/bridge/tools/k13-target-monitor.py
+    ssh "${SSH_OPTS[@]}" "$TARGET" \
+        "KENNEL_BRIDGE_PORT=$BRIDGE_PORT KENNEL_WATCHDOG=$WATCHDOG \
+         KENNEL_WATCHDOG_STALE=$WATCHDOG_STALE /tmp/kennel-bridge.sh start" || {
         local rc=$?
         fail "the bridge did not start on the guest (exit $rc)."
         [ "$rc" = 2 ] && say "The stack has to be running first:  $0 launch"
@@ -1355,6 +1374,14 @@ do_teleop() {
     say "In the console: Dashboard -> Interventions -> connect, pick a gait, push the stick."
     say "The velocity target is published while the page is connected; releasing the"
     say "stick ramps it back to zero. STAND and E-STOP are beside the gait picker."
+    if [ "$WATCHDOG" != 0 ]; then
+        say "A guest-side watchdog is running: if this page dies without warning, the"
+        say "robot's target is zeroed ${WATCHDOG_STALE}s later. It is the only thing that"
+        say "catches a killed tab -- JavaScript cannot (kennel_console/teleop.md §5)."
+    else
+        say "KENNEL_WATCHDOG=0: nothing will stop the robot if this page dies. Use"
+        say "$0 teleop stop."
+    fi
     say "When you are done:  $0 teleop stop"
 }
 
@@ -1408,6 +1435,11 @@ do_status() {
     local ws
     if ws="$("$REPO_ROOT/vm/test/verify-bridge-host.sh" --quiet 2>/dev/null)"; then
         say "bridge reachable:   $ws"
+        # Only when there is a bridge to ask about: the watchdog lives beside it.
+        guest_stage stack/bridge/kennel-bridge.sh >/dev/null 2>&1 \
+            && ssh "${SSH_OPTS[@]}" "$TARGET" \
+                 "KENNEL_WATCHDOG=$WATCHDOG /tmp/kennel-bridge.sh status" 2>/dev/null \
+               | grep watchdog | sed 's/^\[kennel-bridge\] /[kennel-demo] /'
     else
         say "bridge not up (start it with:  $0 teleop)"
     fi
