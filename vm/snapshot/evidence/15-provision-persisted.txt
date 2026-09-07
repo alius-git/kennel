@@ -1,5 +1,6 @@
 === provision #2: with the persisted VM 'kennel-vm-baseline' AND its snapshot present beforehand ===
 === (this is the run the F3 sweep defect turned into a silent no-op; see vm/snapshot.md 6) ===
+=== NB on the tail of this file: the five shell errors after the baseline block (conds.: command not found ... YURUNA_TAG: unbound variable) and the EXIT=1 are NOT a provision failure. The driver was being edited on disk while bash was still reading it (2026-08-30); bash re-reads a script by byte offset, so the running shell fell into the middle of a rewritten function. The provision itself COMPLETED: 45 steps across 5 sequences, 38m44s, and the kennel-vm-baseline snapshot was taken (see the block above and the domain/snapshot listings below). The script as committed passes bash -n. See vm/snapshot.md 6. ===
 2026-08-30T18:16:47Z
 --- domains before ---
  Id   Name                 State
@@ -284,3 +285,97 @@ Running steps 1 to 45...
        8 s [3/9] PASS waitForSeconds: Pause before retry
        0 s [4/9] PASS pressKey: Blind-dismiss the GRUB boot menu (retry)
       29 s [5/9] PASS waitForAndEnter: OCR: Continue with autoinstall?
+     398 s [6/9] PASS sshWaitReady: Wait for SSH after autoinstall (fast-fail on subiquity crash)
+       0 s [7/9] PASS sshExec: Smoke test: whoami/hostname
+      73 s [8/9] PASS sshFetchAndExecute: ubuntu.server.24.update.sh
+       0 s [9/9] PASS sshExec: Reboot the VM
+     514 s [All 9 steps completed in 9 min and 34 s]
+
+--- workload.guest.ubuntu.server.24.kennel.ssh: local steps 1-8 of 8 (global 10-17) ---
+    Sequence: Kennel (SSH): assert the kennel-vm guest booted at the documented size (8 vCPU / 16 GiB / 64 G disk) and record its resource footprint.
+      12 s [1/8] PASS sshWaitReady: Wait for sshd after reboot
+       0 s [2/8] PASS sshExec: Smoke test: whoami/hostname
+       0 s [3/8] PASS sshExec: Record the guest's CPU / memory / disk footprint
+       0 s [4/8] PASS sshExec: Assert 8 vCPU
+       0 s [5/8] PASS sshExec: Assert >= 15 GiB RAM (16 GiB configured)
+       0 s [6/8] PASS sshExec: Assert >= 50 GiB root filesystem
+       0 s [7/8] PASS sshExec: Assert the guest hostname is kennel-vm
+       0 s [8/8] PASS sshExec: Record the pre-build headroom baseline for #10
+      13 s [All 8 steps completed in 0 min and 13 s]
+
+--- workload.guest.ubuntu.server.24.kennel.stack.ssh: local steps 1-11 of 11 (global 18-28) ---
+    Sequence: Kennel (SSH): provision Docker CE + the pinned dfki-quad stack in the guest, prove the go2 simulator is launchable in-container, and prove Meshcat is bound where the host can reach it.
+       0 s [1/11] PASS sshWaitReady: Wait for sshd
+       0 s [2/11] PASS sshExec: Smoke test: whoami/hostname
+[33;1mWARNING: fetch-and-execute fallback: 'guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh' differs from HEAD, so the GitHub fallback cannot match its digest. Harmless while the host status service is reachable (the guest fetches the working tree); if it is not, commit and push -- or bring the status service back up.[0m
+    1555 s [3/11] PASS sshFetchAndExecute: Provision Docker + the pinned dfki-quad stack
+[33;1mWARNING: fetch-and-execute fallback: 'guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh' differs from HEAD, so the GitHub fallback cannot match its digest. Harmless while the host status service is reachable (the guest fetches the working tree); if it is not, commit and push -- or bring the status service back up.[0m
+      57 s [4/11] PASS sshFetchAndExecute: Re-run to prove idempotency (must be a no-op refresh)
+       0 s [5/11] PASS sshExec: Assert the dfki-quad image exists
+       0 s [6/11] PASS sshExec: Assert the dfki_quad container is running
+       0 s [7/11] PASS sshExec: Assert the go2 workspace is built
+       0 s [8/11] PASS sshExec: Assert the clone sits at the stack pin
+      56 s [9/11] PASS sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+       2 s [10/11] PASS sshExec: Assert Meshcat binds a host-reachable address in the guest (#11 hop 1)
+       0 s [11/11] PASS sshExec: Record the build's footprint (feeds #9 §5.4)
+    1672 s [All 11 steps completed in 28 min and 52 s]
+
+--- workload.guest.ubuntu.server.24.kennel.baseline.ssh: local steps 1-5 of 5 (global 29-33) ---
+    Sequence: Kennel (SSH): make the provisioned kennel-vm guest a clean baseline -- stack stopped, no composed run, clone stock at the pin, workspace built -- and freeze it as disk snapshot 'kennel-vm-baseline'.
+       0 s [1/5] PASS sshWaitReady: Wait for sshd
+       0 s [2/5] PASS sshExec: Smoke test: whoami/hostname
+[33;1mWARNING: fetch-and-execute fallback: 'guest/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh' differs from HEAD, so the GitHub fallback cannot match its digest. Harmless while the host status service is reachable (the guest fetches the working tree); if it is not, commit and push -- or bring the status service back up.[0m
+      31 s [3/5] PASS sshFetchAndExecute: Clean the guest to a baseline (stop stack, assert stock + built, clear staging)
+       0 s [4/5] PASS sshExec: Assert the baseline record carries the stack pin
+      saveDiskSnapshot: VM renamed 'test-guest.ubuntu.server.24-01' -> 'kennel-vm-baseline'; subsequent steps will target 'kennel-vm-baseline'.
+       5 s [5/5] PASS saveDiskSnapshot: Freeze the baseline as disk snapshot 'kennel-vm-baseline' (renames the domain; leaves it stopped)
+      36 s [All 5 steps completed in 1 min and 36 s]
+VM renamed mid-chain: 'test-guest.ubuntu.server.24-01' -> 'kennel-vm-baseline'; subsequent entries will target 'kennel-vm-baseline'.
+
+--- workload.guest.ubuntu.server.24.kennel.reset.ssh: local steps 1-12 of 12 (global 34-45) ---
+    Sequence: Kennel (SSH): revert the kennel-vm guest to the 'kennel-vm-baseline' disk snapshot and prove what came back is the appliance -- stock at the pin, container running, workspace built, simulator launchable.
+       2 s [1/12] PASS loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+      11 s [2/12] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+       0 s [3/12] PASS sshExec: Smoke test: whoami/hostname
+       0 s [4/12] PASS sshExec: Assert the guest that came back is kennel-vm
+       0 s [5/12] PASS sshExec: Assert the restored guest carries the baseline record at the stack pin
+       0 s [6/12] PASS sshExec: Assert the clone sits at the stack pin
+       0 s [7/12] PASS sshExec: Assert no tracked file differs from the pin (configs are stock)
+       1 s [8/12] PASS sshExec: Start the dfki_quad container and assert it is running
+       0 s [9/12] PASS sshExec: Assert the go2 workspace survived the revert
+      56 s [10/12] PASS sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+       0 s [11/12] PASS sshExec: Assert no composed run is applied (a baseline is stock)
+       0 s [12/12] PASS sshExec: Record what the reset returned (feeds vm/snapshot.md)
+      72 s [All 12 steps completed in 1 min and 12 s]
+
+Chain completed successfully (45 step(s) across 5 sequence(s)).
+[kennel-demo] provisioned in 38m44s
+
+==== baseline ====
+[kennel-demo]  Name                 Creation Time               State
+[kennel-demo] -----------------------------------------------------------
+[kennel-demo]  kennel-vm-baseline   2026-08-30 15:54:23 -0300   shutoff
+[kennel-demo] 
+[kennel-demo] the guest can now be returned to this state in seconds:  demo/tools/kennel-demo.sh reset
+demo/tools/kennel-demo.sh: line 602: conds.: command not found
+demo/tools/kennel-demo.sh: line 603: local: can only be used in a function
+demo/tools/kennel-demo.sh: line 605: patch_state: command not found
+demo/tools/kennel-demo.sh: line 615: setup_item: command not found
+demo/tools/kennel-demo.sh: line 616: YURUNA_TAG: unbound variable
+
+real	38m48.255s
+user	3m8.211s
+sys	0m14.007s
+EXIT=1
+--- domains after ---
+ Id   Name                 State
+-------------------------------------
+ 10   kennel-vm-baseline   running
+ -    ub26_guest           shut off
+
+--- snapshot after ---
+ Name                 Creation Time               State
+-----------------------------------------------------------
+ kennel-vm-baseline   2026-08-30 15:54:23 -0300   shutoff
+
+2026-08-30T18:55:36Z

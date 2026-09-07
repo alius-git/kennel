@@ -1,0 +1,35 @@
+=== #45 row 6 -- p21-meshcat-shot.sh: its four preconditions, on a trotting robot ===
+2026-09-06T21:41:56Z
+
+$ demo/tools/kennel-demo.sh walk
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-trot] env              /tmp/p21-env.sh (written by p21-launch-from-commands.sh)
+[p21-trot] commanding WALKING_TROT at body_x_dot=0.3 world_z=0.30
+Set parameter successful
+[p21-trot] holding -- the robot is trotting (publisher pid 2557). Stop it with: /tmp/p21-trot-hold.sh stop
+
+[kennel-demo] the robot is trotting. Watch it here:
+[kennel-demo]     http://192.168.122.32:7000/
+[kennel-demo] return it to STAND with:  demo/tools/kennel-demo.sh walk stop
+[kennel-demo] or drive it yourself:      demo/tools/kennel-demo.sh teleop
+EXIT=0
+
+$ stack/composed-run/tools/p21-meshcat-shot.sh stack/composed-run/evidence/14-45-meshcat-shot.png
+[p21-shot] meshcat          http://192.168.122.32:7000/
+[p21-shot] scene ready     base_link is in the scene
+[p21-shot] scene motion    62.4 cm in 2 s
+[p21-shot] base_link at    {"x":5.815,"y":0.305,"z":0.392}
+[p21-shot] wrote            stack/composed-run/evidence/14-45-meshcat-shot.png (166150 bytes)
+EXIT=0
+
+--- precondition 3: run it from OUTSIDE a checkout (want exit 2 naming cdp.py) ---
+NONZERO SCRIPT EXIT: run this from a kennel checkout -- it imports the console's CDP client.
+  Expected: //kennel_console/cdp.py
+  This script cannot be copied to /tmp and run there (the guest-side p21 tools can).
+EXIT=2
+
+$ demo/tools/kennel-demo.sh walk stop
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-trot] stopping the velocity target
+[p21-trot] gait returned to STAND, target zeroed
+EXIT=0

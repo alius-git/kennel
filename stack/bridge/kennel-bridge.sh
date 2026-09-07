@@ -60,7 +60,40 @@ INT_GRACE="${KENNEL_BRIDGE_INT_GRACE:-3}"
 say()  { echo "[kennel-bridge] $*"; }
 fail() { echo "NONZERO SCRIPT EXIT: $1" >&2; shift; for l in "$@"; do echo "  $l" >&2; done; }
 
-in_ctr() { sudo docker exec "$CONTAINER" bash -c "source /tmp/p21-env.sh >/dev/null 2>&1; $1" 2>/dev/null; }
+# --- REGION: the container source chain (#45)
+# The block between the CHAIN markers is IDENTICAL to
+# stack/known-good/tools/prelude.sh, which is also what shell 1 of the console's
+# commands.txt emits (launch.md 2). The markers are load-bearing: the check in
+# stack/composed-run.md 9.2 diffs between them against prelude.sh, so the copies
+# are proven identical rather than assumed to be. Sourcing the WRONG workspace
+# setup silently partitions the ROS graph (launch.md 2.1).
+#
+# It is never written back to /tmp/p21-env.sh: the launcher stays the only writer
+# of that file, so its presence keeps meaning "the launcher ran".
+# --- CHAIN BEGIN (identical to stack/known-good/tools/prelude.sh)
+ENV_CHAIN='source /opt/ros/humble/setup.bash
+[ -f /root/unitree_ros2/install/setup.bash ] && source /root/unitree_ros2/install/setup.bash
+source /root/ros2_ws/install/setup.bash
+export PATH="/opt/drake/bin:${PATH}"
+export PYTHONPATH="/opt/drake/lib/python3.10/site-packages:${PYTHONPATH}"
+export LD_LIBRARY_PATH="/opt/drake/lib:${LD_LIBRARY_PATH}"
+export ROS_PACKAGE_PATH="/root/ros2_ws/src"
+source /root/setup_ulab_workspace.bash
+cd /root/ros2_ws'
+# --- CHAIN END
+# ${...} inside ENV_CHAIN stays literal: bash does not re-expand a variable's
+# value, so these reach the container's shell unexpanded, as they do in
+# commands.txt.
+ENV_PRELUDE="if [ -f /tmp/p21-env.sh ]; then source /tmp/p21-env.sh; else $ENV_CHAIN; fi >/dev/null 2>&1"
+
+in_ctr() { sudo docker exec "$CONTAINER" bash -c "$ENV_PRELUDE; $1" 2>/dev/null; }
+
+env_source() {
+    if sudo docker exec "$CONTAINER" test -f /tmp/p21-env.sh 2>/dev/null
+    then echo "/tmp/p21-env.sh (written by p21-launch-from-commands.sh)"
+    else echo "built-in chain (no /tmp/p21-env.sh -- the stack was launched some other way)"
+    fi
+}
 
 # The container runs --network host, so a socket it opens IS a socket in the
 # guest (meshcat-exposure.md §2.1) -- ss on the guest sees it, no docker exec
@@ -100,19 +133,24 @@ start)
         say "container is '$container_state' -- starting it"
         sudo docker start "$CONTAINER" >/dev/null || { fail "could not start '$CONTAINER'."; exit 2; }
     }
-    # The env file is the launcher's output, and without it nothing below can
-    # even find ros2. Naming the fix here is the whole of #45's lesson.
-    sudo docker exec "$CONTAINER" test -f /tmp/p21-env.sh 2>/dev/null || {
-        fail "no /tmp/p21-env.sh in the container -- the stack has not been launched." \
+    say "env              $(env_source)"
+    # "Is there a stack to bridge?" used to be asked as "does /tmp/p21-env.sh
+    # exist?", which conflated two different facts: how the stack was launched,
+    # and whether it is running at all. Since #45 the env file is no longer
+    # required -- so ask the real question, of the ROS graph.
+    [ "$(in_ctr "timeout 15 ros2 node list 2>/dev/null | grep -c '^/mit_controller_node\$'")" = 1 ] || {
+        fail "no /mit_controller_node in the ROS graph -- there is no stack to bridge." \
              "rosbridge resolves interfaces/msg/QuadControlTarget out of the sourced" \
-             "workspace, so there is nothing to bridge yet." \
-             "Launch first:  demo/tools/kennel-demo.sh launch"
+             "workspace, and has nothing to serve until the stack is up." \
+             "Launch first:  demo/tools/kennel-demo.sh launch" \
+             "If the stack IS running, the graph is not visible from this shell:" \
+             "  sudo docker exec $CONTAINER bash -c '$ENV_PRELUDE; ros2 node list'"
         exit 2
     }
     [ -n "$(in_ctr "timeout 15 ros2 pkg prefix rosbridge_server 2>/dev/null")" ] || {
         fail "rosbridge_server is not installed in the image." \
              "It is expected at the pin (docker/Dockerfile:15). Check the image:" \
-             "  sudo docker exec $CONTAINER bash -c 'source /tmp/p21-env.sh; ros2 pkg list | grep rosbridge'"
+             "  sudo docker exec $CONTAINER bash -c '$ENV_PRELUDE; ros2 pkg list | grep rosbridge'"
         exit 2
     }
 
@@ -133,7 +171,7 @@ start)
     # Binding loopback-only would make the guest->host hop impossible, which is
     # the failure verify-bridge-host.sh reports as exit 5.
     sudo docker exec -d "$CONTAINER" bash -c \
-        "source /tmp/p21-env.sh >/dev/null 2>&1
+        "$ENV_PRELUDE
          ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=$PORT > $LOG 2>&1 &
          echo \$! > $PIDFILE"
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version: 2026.08.06
+# Version: 2026.09.06
 # Kennel -- issue #21: photograph the walking robot in Meshcat, from the host.
 #
 # Runs on the HOST. Issue #21's acceptance evidence includes "Meshcat screenshot
@@ -24,12 +24,42 @@
 # (--use-gl=swiftshader). Without it the canvas renders empty, and the failure
 # looks exactly like "the robot is not in the scene".
 #
+# PRECONDITIONS, all five checked rather than assumed (#45). The issue asked for
+# the same review as p21-trot-hold.sh; this tool turned out NOT to share that
+# tool's defect -- it runs on the host and never touches /tmp/p21-env.sh -- but
+# it had undeclared preconditions of its own:
+#
+#   1. google-chrome on the host                     -- checked, exit 2
+#   2. Meshcat reachable from the host               -- checked, exit 2
+#   3. RUN FROM A REPO CHECKOUT: it imports the console's CDP client from
+#      kennel_console/cdp.py. Copied to /tmp and run there it used to die as
+#      "the capture failed (rc=1)", naming nothing -- checked, exit 2
+#   4. the Drake scene tree has ARRIVED over the websocket -- waited for by
+#      polling for base_link, never by sleeping (was `sleep 6`)
+#   5. the scene is LIVE. base_link's displacement is measured over 2 s and
+#      always reported, and a frozen scene (under 1 cm) is warned about -- a
+#      paused or dead simulator otherwise renders a perfectly valid-looking
+#      PNG. Never fatal: an unlabelled still is the problem, not a still.
+#
+#      This is deliberately NOT a "is it walking?" test, which is what it was
+#      first written as. Measured on this stack, a robot standing at STAND
+#      still shuffles 5-22 cm/s laterally under the MPC, so no threshold
+#      separates standing from trotting without also depending on the composed
+#      simulator_realtime_rate. Telling those apart needs the gait from ROS,
+#      which is the guest's to read, not this host-side tool's. See
+#      stack/composed-run.md 9.2.
+#
 # Usage:
 #   p21-meshcat-shot.sh <output.png> [distance-m] [height-m]
 #
+# Knobs (environment variables):
+#   KENNEL_CDP_PORT     9281   the headless Chrome debugging port
+#   KENNEL_SCENE_WAIT   30     seconds to wait for the scene tree to arrive
+#
 # Exit codes:
 #   0  a screenshot was written and it is not a blank frame
-#   2  Meshcat unreachable, or the robot is not in the scene
+#   2  could not even look: no google-chrome, Meshcat unreachable, not run from
+#      a repo checkout, or the scene never carried a robot
 #   3  the capture came out blank (see the SwiftShader note above)
 
 set -uo pipefail
@@ -41,11 +71,23 @@ HEIGHT="${3:-0.9}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
 CDP_PORT="${KENNEL_CDP_PORT:-9281}"
+SCENE_WAIT="${KENNEL_SCENE_WAIT:-30}"
 
 say()  { echo "[p21-shot] $*"; }
 fail() { echo "NONZERO SCRIPT EXIT: $1" >&2; shift; for l in "$@"; do echo "  $l" >&2; done; }
 
 command -v google-chrome >/dev/null || { fail "google-chrome is required to capture the view."; exit 2; }
+
+# Precondition 3. The python below imports the console's CDP client out of the
+# repo, so this script cannot be staged to /tmp and run from there the way the
+# GUEST-side tools can. Without this check that mistake surfaced as an opaque
+# "the capture failed (rc=1)".
+[ -f "$REPO_ROOT/kennel_console/cdp.py" ] || {
+    fail "run this from a kennel checkout -- it imports the console's CDP client." \
+         "Expected: $REPO_ROOT/kennel_console/cdp.py" \
+         "This script cannot be copied to /tmp and run there (the guest-side p21 tools can)."
+    exit 2
+}
 
 # Reuse #11's discovery rather than restating the two hops.
 URL="$("$REPO_ROOT/vm/test/verify-meshcat-host.sh" --quiet 2>/dev/null | tail -1)"
@@ -65,18 +107,58 @@ google-chrome --headless --disable-gpu --no-sandbox --user-data-dir="$profile" \
   --remote-debugging-port="$CDP_PORT" "$URL" >/dev/null 2>&1 &
 ch=$!
 for _ in $(seq 60); do curl -sf -o /dev/null "http://127.0.0.1:$CDP_PORT/json" && break || sleep 0.25; done
-sleep 6   # let the scene tree arrive over the websocket before touching the camera
 
-OUT="$OUT" DIST="$DIST" HEIGHT="$HEIGHT" CDP_PORT="$CDP_PORT" REPO_ROOT="$REPO_ROOT" python3 - <<'PY'
-import base64, os, sys, time
+OUT="$OUT" DIST="$DIST" HEIGHT="$HEIGHT" CDP_PORT="$CDP_PORT" REPO_ROOT="$REPO_ROOT" \
+SCENE_WAIT="$SCENE_WAIT" python3 - <<'PY'
+import base64, json, math, os, sys, time
 sys.path.insert(0, os.path.join(os.environ["REPO_ROOT"], "kennel_console"))
 from cdp import attach   # the console's tiny CDP client; same repo, no new dependency
 
 ws = attach(int(os.environ["CDP_PORT"]))
 dist, height = float(os.environ["DIST"]), float(os.environ["HEIGHT"])
 
-if ws.js("typeof window.viewer") != "object":
-    sys.exit("meshcat viewer object absent -- is this a Meshcat page?")
+# Precondition 4: the SCENE, waited for rather than slept through. Chrome serves
+# the page immediately, but the Drake scene tree arrives afterwards over the
+# websocket -- and the camera cannot be aimed at a robot that is not there yet.
+# This replaced a `sleep 6`; dry-run.md F8's rule is not only for guest tools.
+POS_JS = """
+(() => {
+  const v = window.viewer; if (!v) return '';
+  const ill = v.scene.getObjectByName('illustration'); if (!ill) return '';
+  let base = null;
+  ill.traverse(o => { if (!base && /^base_link$/.test(o.name)) base = o; });
+  if (!base) return '';
+  const at = new MeshCat.THREE.Vector3();
+  base.getWorldPosition(at);
+  return JSON.stringify({x: at.x, y: at.y, z: at.z});
+})()"""
+
+def base_link_pos():
+    r = ws.js(POS_JS)
+    return json.loads(r) if isinstance(r, str) and r.startswith("{") else None
+
+deadline, p0 = time.time() + float(os.environ["SCENE_WAIT"]), None
+while time.time() < deadline:
+    p0 = base_link_pos()
+    if p0:
+        break
+    time.sleep(0.5)
+if not p0:
+    sys.exit("the Meshcat scene never carried a base_link within "
+             f"{os.environ['SCENE_WAIT']}s -- the viewer is up but the robot is not in it. "
+             "Is the simulator running?  demo/tools/kennel-demo.sh status")
+print("[p21-shot] scene ready     base_link is in the scene")
+
+# Precondition 5: is the scene LIVE? Measured, reported, and warned about only
+# when it is unambiguous -- see the header for why this is not a walking test.
+time.sleep(2.0)
+p1 = base_link_pos() or p0
+moved = math.dist((p0["x"], p0["y"], p0["z"]), (p1["x"], p1["y"], p1["z"]))
+print(f"[p21-shot] scene motion    {moved * 100:.1f} cm in 2 s")
+if moved < 0.01:
+    print("[p21-shot] WARNING: base_link has not moved -- the scene looks FROZEN.")
+    print("[p21-shot]          A paused or dead simulator still renders a valid-looking PNG.")
+    print("[p21-shot]          Check the stack:  demo/tools/kennel-demo.sh status")
 
 # Aim from behind and to one side so the gait reads as a gait: a head-on shot
 # hides the diagonal leg pairing that makes a trot recognisable.
@@ -121,7 +203,12 @@ res = ws.js(f"""
 
 if not res.startswith("{"):
     sys.exit(f"could not aim the camera: {res}")
-print(f"[p21-shot] base_link at     {res}")
+print(f"[p21-shot] base_link at    {res}")
+# The one wait here that is NOT an observation, and it is deliberate: there is
+# no signal for "the re-aimed frame has been rendered". Meshcat renders on its
+# own rAF loop and exposes no completion event, so this is a settle, recorded as
+# a bypass in stack/composed-run.md 9.2 rather than dressed up as a check. The
+# blank-frame guard below is what actually catches a bad capture.
 time.sleep(2.5)
 
 png = base64.b64decode(ws.call("Page.captureScreenshot", format="png")["data"])

@@ -1,8 +1,9 @@
 #!/bin/bash
-# Version: 2026.08.06
+# Version: 2026.09.06
 # Kennel -- issue #21: prove the composed simulator_realtime_rate took effect.
 #
-# Runs on the GUEST, against an already-running stack.
+# Runs on the GUEST, against an already-running stack -- launched by any means:
+# it finds the container source chain itself (see the CHAIN region below, #45).
 #
 # stack/verify.md's recipe reports the realtime rate as [INFO] -- informative,
 # never asserted, because #14 could not know what any given run composed. #21
@@ -37,19 +38,57 @@ fail() { echo "NONZERO SCRIPT EXIT: $1" >&2; shift; for l in "$@"; do echo "  $l
 [ -n "$(sudo docker inspect --type container -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null)" ] || {
     fail "no container named '$CONTAINER'."; exit 2; }
 
+# --- REGION: the container source chain (#45)
+# /tmp/p21-env.sh is written ONLY by p21-launch-from-commands.sh. This tool used
+# to fall back to a THREE-LINE approximation of the chain -- no unitree overlay,
+# no Drake exports, no ROS_PACKAGE_PATH -- which happened to suffice for reading
+# /clock and would have drifted silently for anything else. It now falls back to
+# the whole chain.
+#
+# The block between the CHAIN markers is IDENTICAL to
+# stack/known-good/tools/prelude.sh, which is also what shell 1 of the console's
+# commands.txt emits (launch.md 2). The markers are load-bearing: the check in
+# stack/composed-run.md 9.2 diffs between them against prelude.sh, so the copies
+# are proven identical rather than assumed to be. Sourcing the WRONG workspace
+# setup silently partitions the ROS graph (launch.md 2.1), which is why this is a
+# copy under test and not a paraphrase.
+#
+# It is never written back to /tmp/p21-env.sh: the launcher stays the only writer
+# of that file, so its presence keeps meaning "the launcher ran".
+# --- CHAIN BEGIN (identical to stack/known-good/tools/prelude.sh)
+ENV_CHAIN='source /opt/ros/humble/setup.bash
+[ -f /root/unitree_ros2/install/setup.bash ] && source /root/unitree_ros2/install/setup.bash
+source /root/ros2_ws/install/setup.bash
+export PATH="/opt/drake/bin:${PATH}"
+export PYTHONPATH="/opt/drake/lib/python3.10/site-packages:${PYTHONPATH}"
+export LD_LIBRARY_PATH="/opt/drake/lib:${LD_LIBRARY_PATH}"
+export ROS_PACKAGE_PATH="/root/ros2_ws/src"
+source /root/setup_ulab_workspace.bash
+cd /root/ros2_ws'
+# --- CHAIN END
+# ${...} inside ENV_CHAIN stays literal: bash does not re-expand a variable's
+# value, so these reach the container's shell unexpanded, exactly as they do in
+# commands.txt.
+ENV_PRELUDE="if [ -f /tmp/p21-env.sh ]; then source /tmp/p21-env.sh; else $ENV_CHAIN; fi >/dev/null 2>&1"
+
+env_source() {
+    if sudo docker exec "$CONTAINER" test -f /tmp/p21-env.sh 2>/dev/null
+    then echo "/tmp/p21-env.sh (written by p21-launch-from-commands.sh)"
+    else echo "built-in chain (no /tmp/p21-env.sh -- the stack was launched some other way)"
+    fi
+}
+
 # Sim time in seconds, as a float. sec and nanosec are read separately: at 0.5x
 # a 30 s window is only 15 sim-s, so whole-second resolution alone would carry a
 # ~7 % quantisation error into a measurement with a 20 % acceptance window.
 sim_now() {
     sudo docker exec "$CONTAINER" bash -c \
-        'source /tmp/p21-env.sh >/dev/null 2>&1 || {
-             source /opt/ros/humble/setup.bash
-             source /root/ros2_ws/install/setup.bash
-             source /root/setup_ulab_workspace.bash
-         } >/dev/null 2>&1
-         timeout 15 ros2 topic echo /clock --once 2>/dev/null' 2>/dev/null \
+        "$ENV_PRELUDE
+         timeout 15 ros2 topic echo /clock --once 2>/dev/null" 2>/dev/null \
     | awk '/^ *sec:/ {s=$2} /nanosec:/ {n=$2} END {if (s=="") exit 1; printf "%.3f", s + n/1e9}'
 }
+
+say "env              $(env_source)"
 
 mono() { awk '{printf "%.3f", $1}' /proc/uptime; }   # CLOCK_MONOTONIC, in seconds
 

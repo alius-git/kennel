@@ -63,12 +63,20 @@ detached, with its PID in `/tmp/k13-bridge.pid` and its output in
 `/tmp/k13-bridge.log`.
 
 **The stack must already be running.** rosbridge resolves
-`interfaces/msg/QuadControlTarget` out of the sourced workspace, and the script
-sources `/tmp/p21-env.sh` — the environment prelude
-[`p21-launch-from-commands.sh`](composed-run/tools/p21-launch-from-commands.sh)
-writes. With no stack the script exits **2** and names `kennel-demo.sh launch`
-as the fix. That is [#45](https://github.com/alius-git/kennel/issues/45)'s
-lesson applied on the way in rather than filed afterwards.
+`interfaces/msg/QuadControlTarget` out of the sourced workspace, so with no stack
+the script exits **2** and names `kennel-demo.sh launch` as the fix. That is
+[#45](https://github.com/alius-git/kennel/issues/45)'s lesson applied on the way
+in rather than filed afterwards.
+
+Since #45 it is applied properly. This script used to *ask* that question as
+"does `/tmp/p21-env.sh` exist?", which conflated two different facts — how the
+stack was launched, and whether it is running at all — and so reported a stack
+launched by any other means as "not launched". It now finds its environment the
+same way the `p21-*` tools do (the launcher's file when present, the canonical
+chain from [`known-good/tools/prelude.sh`](known-good/tools/prelude.sh)
+otherwise, saying which), and asks the real question of the ROS graph:
+`/mit_controller_node` present or not. Recorded in
+[`composed-run.md` §9.2](composed-run.md).
 
 **Readiness is observed twice.** The node joining the graph and the socket being
 bound are different events, and neither is reliably last:

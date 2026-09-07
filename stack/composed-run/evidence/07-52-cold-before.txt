@@ -1,0 +1,562 @@
+=== #52 negative control, attempt 1: reset then all on the UNMODIFIED launcher (gates on the controller log line only) ===
+2026-09-06T21:01:23Z
+
+==== reset (revert to the baseline -- guarantees a COLD container) ====
+[kennel-demo] kennel files installed into the Yuruna clone (provisioning.md 4.2)
+
+==== reset: workload.guest.ubuntu.server.24.kennel.reset.ssh (warm path -- revert to 'kennel-vm-baseline') ====
+[kennel-demo] no Test-Config gate here: reset spends seconds, not the 35 minutes the gate
+[kennel-demo] exists to protect. provision still gates.
+Removing previous project clone: /home/thales/git/yuruna/project
+Cloning https://github.com/alissonsol/yuruna-project -> /home/thales/git/yuruna/project
+Project clone refreshed.
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Host type: host.ubuntu.kvm
+[33;1mWARNING: ===================================================================[0m
+[33;1mWARNING:  Host clock is 473.1s behind real time (limit: 120s).[0m
+[33;1mWARNING:  Guests take this clock from their virtual RTC at power-on, and[0m
+[33;1mWARNING:  their own NTP client steps them to real time seconds into the[0m
+[33;1mWARNING:  boot. That step lands mid-startup: a Kubernetes guest comes up[0m
+[33;1mWARNING:  with its pods Running but never Ready and every NodePort[0m
+[33;1mWARNING:  refusing, hours before anything blames a clock.[0m
+[33;1mWARNING: [0m
+[33;1mWARNING:  This cycle continues. Fix the clock from a console that can[0m
+[33;1mWARNING:  answer for Administrator / sudo -- run from the repo root:[0m
+[33;1mWARNING:    pwsh test/Test-Config.ps1[0m
+[33;1mWARNING:    pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1[0m
+[33;1mWARNING: ===================================================================[0m
+Track directory: /home/thales/git/yuruna/test/status/runtime
+Log directory:   /home/thales/git/yuruna/test/status/log
+OCR engines: tesseract | combine: Or
+Guest key (from baseline): guest.ubuntu.server.24
+  Stopping concurrent VM 'kennel-vm-baseline' before the cycle starts.
+Chain: start.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.stack.ssh -> workload.guest.ubuntu.server.24.kennel.baseline.ssh -> workload.guest.ubuntu.server.24.kennel.reset.ssh
+requiresSnapshot: snapshot 'kennel-vm-baseline' present on persisted VM 'kennel-vm-baseline' -- skipping baseline chain (warm path).
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Caching-proxy service: none -- guest will download directly.
+VM 'kennel-vm-baseline' already exists. Reusing.
+VM 'kennel-vm-baseline': skipping pre-sequence start -- first step is loadDiskSnapshot (handler will start the VM after the restore).
+Log file: /home/thales/git/yuruna/test/status/log/000025.2026-09-06.21-01-35.4230bb0f56694b6582bdfe6388bff892.incomplete/000025.2026-09-06.21-01-35.4230bb0f56694b6582bdfe6388bff892.html
+
+=============================================
+  Sequence: workload.guest.ubuntu.server.24.kennel.reset.ssh
+  Chain:    5 sequence(s), 12 total step(s)
+  Range:    starting at step 1
+  VM:       kennel-vm-baseline
+  Guest:    guest.ubuntu.server.24
+=============================================
+
+Step list:
+  --- workload.guest.ubuntu.server.24.kennel.reset.ssh (12 step(s))
+  >> [1] loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+  >> [2] sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+  >> [3] sshExec: Smoke test: whoami/hostname
+  >> [4] sshExec: Assert the guest that came back is kennel-vm
+  >> [5] sshExec: Assert the restored guest carries the baseline record at the stack pin
+  >> [6] sshExec: Assert the clone sits at the stack pin
+  >> [7] sshExec: Assert no tracked file differs from the pin (configs are stock)
+  >> [8] sshExec: Start the dfki_quad container and assert it is running
+  >> [9] sshExec: Assert the go2 workspace survived the revert
+  >> [10] sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+  >> [11] sshExec: Assert no composed run is applied (a baseline is stock)
+  >> [12] sshExec: Record what the reset returned (feeds vm/snapshot.md)
+
+Running steps 1 to 12...
+
+
+--- workload.guest.ubuntu.server.24.kennel.reset.ssh: local steps 1-12 of 12 (global 1-12) ---
+    Sequence: Kennel (SSH): revert the kennel-vm guest to the 'kennel-vm-baseline' disk snapshot and prove what came back is the appliance -- stock at the pin, container running, workspace built, simulator launchable.
+       2 s [1/12] PASS loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+      12 s [2/12] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+       0 s [3/12] PASS sshExec: Smoke test: whoami/hostname
+       0 s [4/12] PASS sshExec: Assert the guest that came back is kennel-vm
+       0 s [5/12] PASS sshExec: Assert the restored guest carries the baseline record at the stack pin
+       0 s [6/12] PASS sshExec: Assert the clone sits at the stack pin
+       0 s [7/12] PASS sshExec: Assert no tracked file differs from the pin (configs are stock)
+       1 s [8/12] PASS sshExec: Start the dfki_quad container and assert it is running
+       0 s [9/12] PASS sshExec: Assert the go2 workspace survived the revert
+      56 s [10/12] PASS sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+       0 s [11/12] PASS sshExec: Assert no composed run is applied (a baseline is stock)
+       0 s [12/12] PASS sshExec: Record what the reset returned (feeds vm/snapshot.md)
+      72 s [All 12 steps completed in 1 min and 12 s]
+
+Chain completed successfully (12 step(s) across 5 sequence(s)).
+[kennel-demo] reset in 1m25s
+[kennel-demo] the guest is back at the baseline: stock configs at the pin, container running,
+[kennel-demo] workspace built, no run applied. Compose and launch with:  demo/tools/kennel-demo.sh all
+
+==== baseline record ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4
+[kennel-demo] image_id=sha256:6326620086e797756c228ec303224d9a9f1eb4bd28ccbf9036d36507ea8ba19e
+[kennel-demo] created=2026-08-30T19:01:56Z
+
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.32 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run <none -- stock, or never applied>
+[status] runs staged 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      eb31c744  eb31c744  eb31c744  unknown
+  mit_controller_sim_go2.yaml    40683000  40683000  40683000  unknown
+
+
+[kennel-demo] console runs in /home/thales/kennel-runs (newest first):
+[kennel-demo]   run-20260830T200816Z
+[kennel-demo]   run-20260830T192838Z
+[kennel-demo]   run-20260830T192548Z
+[kennel-demo]   run-20260830T181403Z
+[kennel-demo]   run-20260830T173133Z
+
+[kennel-demo] Meshcat not reachable (simulator not running, or guest down).
+[kennel-demo] bridge not up (start it with:  demo/tools/kennel-demo.sh teleop)
+reset EXIT=0
+
+==== all (compose -> transfer -> launch -> verify -> walk) ====
+
+==== compose ====
+
+[compose] the console is up and on Compose
+  [ok ] Compose view is the landing view
+  [ok ] solver dropdown present
+  [ok ] real-time rate input present
+  [ok ] starts at stock solver — PARTIAL_CONDENSING_HPIPM
+  [ok ] starts at stock rate — 1
+
+[compose] choice 1 — MPC solver -> PARTIAL_CONDENSING_OSQP
+  [ok ] dropdown holds the choice — PARTIAL_CONDENSING_OSQP
+  [ok ] controller YAML shows it — mpc_solver: "PARTIAL_CONDENSING_OSQP"
+
+[compose] choice 2 — real-time rate -> 0.75
+  [ok ] input holds the choice — 0.75
+  [ok ] simulator YAML shows it — simulator_realtime_rate: 0.75                   # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+
+[compose] map left at stock — transfer.md 6.3: obstacle terrain does not walk
+  [ok ] world_urdf is still the plane
+  [ok ] Compose view photographed — 191242 B
+
+[generate] generate run
+  [ok ] exactly one archive downloaded — ['run-20260906T210256Z.zip']
+
+ARCHIVE=/tmp/tmp.YOXzChSk0x/run-20260906T210256Z.zip
+
+[p22-console] run folder: /home/thales/kennel-runs/run-20260906T210256Z
+a83c79c99727f543b583fd38dd4f90ff33b0126a70be3af51bad50f7e98fe2a4  ./commands.txt
+3c69d87ff866dd3910a29ed0ff17e16da26ad5a36e874a424ea17e4562476962  ./mit_controller_sim_go2.yaml
+2eeab3421f9875239b132f46a66f1146b9ab8ac299f0a4fbd8904d3073710053  ./run.json
+1715821fea8922b8af83de4f32cfc2506af521708db0d16809b0dbdf0693df99  ./simulator_params_go2.yaml
+RUNDIR=/home/thales/kennel-runs/run-20260906T210256Z
+[kennel-demo] run folder       /home/thales/kennel-runs/run-20260906T210256Z
+
+==== transfer ====
+[kennel-demo] run              /home/thales/kennel-runs/run-20260906T210256Z
+[kennel-demo]                  (newest run folder in /home/thales/kennel-runs)
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+run folder       run-20260906T210256Z
+  simulator_params_go2.yaml  1715821f
+  mit_controller_sim_go2.yaml  3c69d87f
+guest            kennel-vm at 192.168.122.32 (libvirt 'default')
+staged           ~/kennel-staging/runs/run-20260906T210256Z
+
+[apply] stock backup materialized: simulator_params_go2.yaml (blob c0a8113b)
+[apply] stock backup materialized: mit_controller_sim_go2.yaml (blob 7fa96720)
+[apply] applying run 'run-20260906T210256Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      1715821f  1715821f  1715821f  1715821f  OK
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+[apply] OK -- the container's config paths carry run 'run-20260906T210256Z'.
+[apply] The stack reads these at LAUNCH; relaunch for them to take effect (stack/launch.md section 1).
+
+==== launch ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-launch] commands.txt     /home/yuuser24/kennel-staging/runs/run-20260906T210256Z/commands.txt
+[p21-launch] split            3 shells, 30 payload lines, reconstructs the file exactly
+[p21-launch] launches         the canonical three, in order (stack/launch.md 1.1)
+[p21-launch] stopping anything already running
+[p21-launch] shell 1 -> /tmp/p21-sim.log  (ros2 launch simulator simulator.launch.py sim:=go2)
+[p21-launch]   /quad_state up
+[p21-launch]   settling 10 sim-s (sim clock at 2s)
+[p21-launch]   settled at sim 14s
+[p21-launch] shell 2 -> /tmp/p21-legdrv.log  (ros2 launch drivers leg_driver_launch.py sim:=go2)
+[p21-launch]   leg driver started
+[p21-launch] shell 3 -> /tmp/p21-ctrl.log  (ros2 launch controllers mit_controller.launch.py sim:=go2)
+[p21-launch]   controller started
+[p21-launch] stack is up, launched from the console's generated commands.txt
+[p21-launch] logs: /tmp/p21-sim.log /tmp/p21-legdrv.log /tmp/p21-ctrl.log (in the container)
+
+==== verify ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] expect solver    PARTIAL_CONDENSING_OSQP  (from run-20260906T210256Z/run.json)
+=== kennel-verify -- CLI walking/health recipe (issue #14) ===
+container=dfki_quad node=/mit_controller_node gait=WALKING_TROT
+windows(sim s): observe=5 settle=5 trot=15
+target: body_x_dot=0.3 world_z=0.30
+
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes, no duplicates
+       waiting for /clock ...
+       observing 5 sim-s (wall budget 40 s) ...
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 6.7 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 0.751, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.2 Hz per sim-second, required 900-1100 Hz per sim-second
+[PASS] 4 controller-alive     -- /controller_heartbeat rate: measured 2.00 Hz per sim-second, required 1.50-2.50 Hz per sim-second
+[INFO]   heartbeat-counters   -- /controller_heartbeat cumulative: measured early_contacts=0 mpc_overtime=0 wbc_overtime=0 mpc_fail=0 wbc_fail=0 model_updates=0, required informative, deltas are asserted by check 7
+[PASS] 5 gait-command         -- ros2 param set/get /mit_controller_node simple_gait_sequencer.gait: measured set said 'Set parameter successful', read back 'WALKING_TROT', required 'Set parameter successful' and read-back 'WALKING_TROT'
+       commanding WALKING_TROT at body_x_dot=0.30 world_z=0.30, 5 sim-s settle ...
+       measuring 15 sim-s of commanded trot ...
+       done: 15.00 sim-s, 15001 /quad_state samples, 533 targets published
+[PASS] 6 gait-active          -- /gait_state: measured period=0.500 duty_factor=['0.600', '0.600', '0.600', '0.600'] phase_offset=['0.000', '0.500', '0.500', '0.000'] sequencer=0, required WALKING_TROT signature period=0.500 duty=0.600 offsets=[0.0, 0.5, 0.5, 0.0]
+[PASS] 7 solver-health        -- /controller_heartbeat counters: measured d_mpc_fail=0 d_wbc_fail=0 d_overtime=0 (d_early_contacts=21, 30 heartbeats), required d_mpc_fail=0, d_wbc_fail=0, d_overtime <= 20
+[PASS] 8 walking              -- /quad_control_target vs /quad_state twist: measured vx_mean=0.272 m/s, dx=4.085 m over 15.00 sim-s, advanced in all 5 sub-windows: yes, required vx_mean in [0.20, 0.35] m/s for a 0.30 m/s command, dx >= 2.25 m, advance in every sub-window
+[PASS] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured belly_contact=0/15001 samples, z median=0.2981 m (p01=0.2860 min=0.2798 max=0.3110), max tilt=0.014 rad, tilt over 0.50 in 0.00% of samples, required belly_contact false in every sample, median z in [0.20, 0.45] m, tilt over 0.50 rad in <= 2.0% of samples
+[INFO]   height-tracking      -- /quad_state z against commanded world_z: measured median 0.2981 m, peak-to-peak 0.0311 m, commanded 0.30 m, required informative, gait bob is config-dependent
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp linear system solver to qdldl), required PARTIAL_CONDENSING_OSQP
+
+=== verdict ===
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes, no duplicates
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 6.7 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 0.751, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.2 Hz per sim-second, required 900-1100 Hz per sim-second
+[PASS] 4 controller-alive     -- /controller_heartbeat rate: measured 2.00 Hz per sim-second, required 1.50-2.50 Hz per sim-second
+[INFO]   heartbeat-counters   -- /controller_heartbeat cumulative: measured early_contacts=0 mpc_overtime=0 wbc_overtime=0 mpc_fail=0 wbc_fail=0 model_updates=0, required informative, deltas are asserted by check 7
+[PASS] 5 gait-command         -- ros2 param set/get /mit_controller_node simple_gait_sequencer.gait: measured set said 'Set parameter successful', read back 'WALKING_TROT', required 'Set parameter successful' and read-back 'WALKING_TROT'
+[PASS] 6 gait-active          -- /gait_state: measured period=0.500 duty_factor=['0.600', '0.600', '0.600', '0.600'] phase_offset=['0.000', '0.500', '0.500', '0.000'] sequencer=0, required WALKING_TROT signature period=0.500 duty=0.600 offsets=[0.0, 0.5, 0.5, 0.0]
+[PASS] 7 solver-health        -- /controller_heartbeat counters: measured d_mpc_fail=0 d_wbc_fail=0 d_overtime=0 (d_early_contacts=21, 30 heartbeats), required d_mpc_fail=0, d_wbc_fail=0, d_overtime <= 20
+[PASS] 8 walking              -- /quad_control_target vs /quad_state twist: measured vx_mean=0.272 m/s, dx=4.085 m over 15.00 sim-s, advanced in all 5 sub-windows: yes, required vx_mean in [0.20, 0.35] m/s for a 0.30 m/s command, dx >= 2.25 m, advance in every sub-window
+[PASS] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured belly_contact=0/15001 samples, z median=0.2981 m (p01=0.2860 min=0.2798 max=0.3110), max tilt=0.014 rad, tilt over 0.50 in 0.00% of samples, required belly_contact false in every sample, median z in [0.20, 0.45] m, tilt over 0.50 rad in <= 2.0% of samples
+[INFO]   height-tracking      -- /quad_state z against commanded world_z: measured median 0.2981 m, peak-to-peak 0.0311 m, commanded 0.30 m, required informative, gait bob is config-dependent
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp linear system solver to qdldl), required PARTIAL_CONDENSING_OSQP
+
+pass=10 fail=0
+VERDICT: PASS -- healthy and walking
+kennel-verify: report in /tmp/kennel-verify (exit 0)
+
+==== walk ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-trot] commanding WALKING_TROT at body_x_dot=0.3 world_z=0.30
+Set parameter successful
+[p21-trot] holding -- the robot is trotting. Stop it with: /tmp/p21-trot-hold.sh stop
+
+[kennel-demo] the robot is trotting. Watch it here:
+[kennel-demo]     http://192.168.122.32:7000/
+[kennel-demo] return it to STAND with:  demo/tools/kennel-demo.sh walk stop
+[kennel-demo] or drive it yourself:      demo/tools/kennel-demo.sh teleop
+
+==== done ====
+[kennel-demo]   compose   7s
+[kennel-demo]   transfer  1s
+[kennel-demo]   launch    46s
+[kennel-demo]   verify    42s
+[kennel-demo]   walk      8s
+all EXIT=0
+
+2026-09-06T21:04:34Z
+
+############################################################
+=== #52 negative control, attempt 2: reset then all on the UNMODIFIED launcher ===
+2026-09-06T21:05:05Z
+
+==== reset (revert to the baseline -- guarantees a COLD container) ====
+[kennel-demo] kennel files installed into the Yuruna clone (provisioning.md 4.2)
+
+==== reset: workload.guest.ubuntu.server.24.kennel.reset.ssh (warm path -- revert to 'kennel-vm-baseline') ====
+[kennel-demo] no Test-Config gate here: reset spends seconds, not the 35 minutes the gate
+[kennel-demo] exists to protect. provision still gates.
+Removing previous project clone: /home/thales/git/yuruna/project
+Cloning https://github.com/alissonsol/yuruna-project -> /home/thales/git/yuruna/project
+Project clone refreshed.
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Host type: host.ubuntu.kvm
+[33;1mWARNING: ===================================================================[0m
+[33;1mWARNING:  Host clock is 473.1s behind real time (limit: 120s).[0m
+[33;1mWARNING:  Guests take this clock from their virtual RTC at power-on, and[0m
+[33;1mWARNING:  their own NTP client steps them to real time seconds into the[0m
+[33;1mWARNING:  boot. That step lands mid-startup: a Kubernetes guest comes up[0m
+[33;1mWARNING:  with its pods Running but never Ready and every NodePort[0m
+[33;1mWARNING:  refusing, hours before anything blames a clock.[0m
+[33;1mWARNING: [0m
+[33;1mWARNING:  This cycle continues. Fix the clock from a console that can[0m
+[33;1mWARNING:  answer for Administrator / sudo -- run from the repo root:[0m
+[33;1mWARNING:    pwsh test/Test-Config.ps1[0m
+[33;1mWARNING:    pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1[0m
+[33;1mWARNING: ===================================================================[0m
+Track directory: /home/thales/git/yuruna/test/status/runtime
+Log directory:   /home/thales/git/yuruna/test/status/log
+OCR engines: tesseract | combine: Or
+Guest key (from baseline): guest.ubuntu.server.24
+  Stopping concurrent VM 'kennel-vm-baseline' before the cycle starts.
+Chain: start.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.stack.ssh -> workload.guest.ubuntu.server.24.kennel.baseline.ssh -> workload.guest.ubuntu.server.24.kennel.reset.ssh
+requiresSnapshot: snapshot 'kennel-vm-baseline' present on persisted VM 'kennel-vm-baseline' -- skipping baseline chain (warm path).
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Caching-proxy service: none -- guest will download directly.
+VM 'kennel-vm-baseline' already exists. Reusing.
+VM 'kennel-vm-baseline': skipping pre-sequence start -- first step is loadDiskSnapshot (handler will start the VM after the restore).
+Log file: /home/thales/git/yuruna/test/status/log/000026.2026-09-06.21-05-16.4230bb0f56694b6582bdfe6388bff892.incomplete/000026.2026-09-06.21-05-16.4230bb0f56694b6582bdfe6388bff892.html
+
+=============================================
+  Sequence: workload.guest.ubuntu.server.24.kennel.reset.ssh
+  Chain:    5 sequence(s), 12 total step(s)
+  Range:    starting at step 1
+  VM:       kennel-vm-baseline
+  Guest:    guest.ubuntu.server.24
+=============================================
+
+Step list:
+  --- workload.guest.ubuntu.server.24.kennel.reset.ssh (12 step(s))
+  >> [1] loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+  >> [2] sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+  >> [3] sshExec: Smoke test: whoami/hostname
+  >> [4] sshExec: Assert the guest that came back is kennel-vm
+  >> [5] sshExec: Assert the restored guest carries the baseline record at the stack pin
+  >> [6] sshExec: Assert the clone sits at the stack pin
+  >> [7] sshExec: Assert no tracked file differs from the pin (configs are stock)
+  >> [8] sshExec: Start the dfki_quad container and assert it is running
+  >> [9] sshExec: Assert the go2 workspace survived the revert
+  >> [10] sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+  >> [11] sshExec: Assert no composed run is applied (a baseline is stock)
+  >> [12] sshExec: Record what the reset returned (feeds vm/snapshot.md)
+
+Running steps 1 to 12...
+
+
+--- workload.guest.ubuntu.server.24.kennel.reset.ssh: local steps 1-12 of 12 (global 1-12) ---
+    Sequence: Kennel (SSH): revert the kennel-vm guest to the 'kennel-vm-baseline' disk snapshot and prove what came back is the appliance -- stock at the pin, container running, workspace built, simulator launchable.
+       1 s [1/12] PASS loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+      10 s [2/12] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+       0 s [3/12] PASS sshExec: Smoke test: whoami/hostname
+       0 s [4/12] PASS sshExec: Assert the guest that came back is kennel-vm
+       0 s [5/12] PASS sshExec: Assert the restored guest carries the baseline record at the stack pin
+       0 s [6/12] PASS sshExec: Assert the clone sits at the stack pin
+       0 s [7/12] PASS sshExec: Assert no tracked file differs from the pin (configs are stock)
+       0 s [8/12] PASS sshExec: Start the dfki_quad container and assert it is running
+       0 s [9/12] PASS sshExec: Assert the go2 workspace survived the revert
+      56 s [10/12] PASS sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+       0 s [11/12] PASS sshExec: Assert no composed run is applied (a baseline is stock)
+       0 s [12/12] PASS sshExec: Record what the reset returned (feeds vm/snapshot.md)
+      70 s [All 12 steps completed in 1 min and 10 s]
+
+Chain completed successfully (12 step(s) across 5 sequence(s)).
+[kennel-demo] reset in 1m22s
+[kennel-demo] the guest is back at the baseline: stock configs at the pin, container running,
+[kennel-demo] workspace built, no run applied. Compose and launch with:  demo/tools/kennel-demo.sh all
+
+==== baseline record ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4
+[kennel-demo] image_id=sha256:6326620086e797756c228ec303224d9a9f1eb4bd28ccbf9036d36507ea8ba19e
+[kennel-demo] created=2026-08-30T19:01:56Z
+
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.32 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run <none -- stock, or never applied>
+[status] runs staged 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      eb31c744  eb31c744  eb31c744  unknown
+  mit_controller_sim_go2.yaml    40683000  40683000  40683000  unknown
+
+
+[kennel-demo] console runs in /home/thales/kennel-runs (newest first):
+[kennel-demo]   run-20260906T210256Z
+[kennel-demo]   run-20260830T200816Z
+[kennel-demo]   run-20260830T192838Z
+[kennel-demo]   run-20260830T192548Z
+[kennel-demo]   run-20260830T181403Z
+
+[kennel-demo] Meshcat not reachable (simulator not running, or guest down).
+[kennel-demo] bridge not up (start it with:  demo/tools/kennel-demo.sh teleop)
+reset EXIT=0
+
+==== all (compose -> transfer -> launch -> verify -> walk) ====
+
+==== compose ====
+
+[compose] the console is up and on Compose
+  [ok ] Compose view is the landing view
+  [ok ] solver dropdown present
+  [ok ] real-time rate input present
+  [ok ] starts at stock solver — PARTIAL_CONDENSING_HPIPM
+  [ok ] starts at stock rate — 1
+
+[compose] choice 1 — MPC solver -> PARTIAL_CONDENSING_OSQP
+  [ok ] dropdown holds the choice — PARTIAL_CONDENSING_OSQP
+  [ok ] controller YAML shows it — mpc_solver: "PARTIAL_CONDENSING_OSQP"
+
+[compose] choice 2 — real-time rate -> 0.75
+  [ok ] input holds the choice — 0.75
+  [ok ] simulator YAML shows it — simulator_realtime_rate: 0.75                   # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+
+[compose] map left at stock — transfer.md 6.3: obstacle terrain does not walk
+  [ok ] world_urdf is still the plane
+  [ok ] Compose view photographed — 191242 B
+
+[generate] generate run
+  [ok ] exactly one archive downloaded — ['run-20260906T210635Z.zip']
+
+ARCHIVE=/tmp/tmp.eBqo8ab8qu/run-20260906T210635Z.zip
+
+[p22-console] run folder: /home/thales/kennel-runs/run-20260906T210635Z
+a83c79c99727f543b583fd38dd4f90ff33b0126a70be3af51bad50f7e98fe2a4  ./commands.txt
+3c69d87ff866dd3910a29ed0ff17e16da26ad5a36e874a424ea17e4562476962  ./mit_controller_sim_go2.yaml
+1b423fd0757430ebc02b99226812d476b470442845b26be5f8078a64939822c5  ./run.json
+1715821fea8922b8af83de4f32cfc2506af521708db0d16809b0dbdf0693df99  ./simulator_params_go2.yaml
+RUNDIR=/home/thales/kennel-runs/run-20260906T210635Z
+[kennel-demo] run folder       /home/thales/kennel-runs/run-20260906T210635Z
+
+==== transfer ====
+[kennel-demo] run              /home/thales/kennel-runs/run-20260906T210635Z
+[kennel-demo]                  (newest run folder in /home/thales/kennel-runs)
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+run folder       run-20260906T210635Z
+  simulator_params_go2.yaml  1715821f
+  mit_controller_sim_go2.yaml  3c69d87f
+guest            kennel-vm at 192.168.122.32 (libvirt 'default')
+staged           ~/kennel-staging/runs/run-20260906T210635Z
+
+[apply] stock backup materialized: simulator_params_go2.yaml (blob c0a8113b)
+[apply] stock backup materialized: mit_controller_sim_go2.yaml (blob 7fa96720)
+[apply] applying run 'run-20260906T210635Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      1715821f  1715821f  1715821f  1715821f  OK
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+[apply] OK -- the container's config paths carry run 'run-20260906T210635Z'.
+[apply] The stack reads these at LAUNCH; relaunch for them to take effect (stack/launch.md section 1).
+
+==== launch ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-launch] commands.txt     /home/yuuser24/kennel-staging/runs/run-20260906T210635Z/commands.txt
+[p21-launch] split            3 shells, 30 payload lines, reconstructs the file exactly
+[p21-launch] launches         the canonical three, in order (stack/launch.md 1.1)
+[p21-launch] stopping anything already running
+[p21-launch] shell 1 -> /tmp/p21-sim.log  (ros2 launch simulator simulator.launch.py sim:=go2)
+[p21-launch]   /quad_state up
+[p21-launch]   settling 10 sim-s (sim clock at 2s)
+[p21-launch]   settled at sim 13s
+[p21-launch] shell 2 -> /tmp/p21-legdrv.log  (ros2 launch drivers leg_driver_launch.py sim:=go2)
+[p21-launch]   leg driver started
+[p21-launch] shell 3 -> /tmp/p21-ctrl.log  (ros2 launch controllers mit_controller.launch.py sim:=go2)
+[p21-launch]   controller started
+[p21-launch] stack is up, launched from the console's generated commands.txt
+[p21-launch] logs: /tmp/p21-sim.log /tmp/p21-legdrv.log /tmp/p21-ctrl.log (in the container)
+
+==== verify ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] expect solver    PARTIAL_CONDENSING_OSQP  (from run-20260906T210635Z/run.json)
+=== kennel-verify -- CLI walking/health recipe (issue #14) ===
+container=dfki_quad node=/mit_controller_node gait=WALKING_TROT
+windows(sim s): observe=5 settle=5 trot=15
+target: body_x_dot=0.3 world_z=0.30
+
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes, no duplicates
+       waiting for /clock ...
+       observing 5 sim-s (wall budget 40 s) ...
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 6.7 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 0.751, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.2 Hz per sim-second, required 900-1100 Hz per sim-second
+[PASS] 4 controller-alive     -- /controller_heartbeat rate: measured 2.00 Hz per sim-second, required 1.50-2.50 Hz per sim-second
+[INFO]   heartbeat-counters   -- /controller_heartbeat cumulative: measured early_contacts=0 mpc_overtime=0 wbc_overtime=0 mpc_fail=0 wbc_fail=0 model_updates=0, required informative, deltas are asserted by check 7
+[PASS] 5 gait-command         -- ros2 param set/get /mit_controller_node simple_gait_sequencer.gait: measured set said 'Set parameter successful', read back 'WALKING_TROT', required 'Set parameter successful' and read-back 'WALKING_TROT'
+       commanding WALKING_TROT at body_x_dot=0.30 world_z=0.30, 5 sim-s settle ...
+       measuring 15 sim-s of commanded trot ...
+       done: 15.00 sim-s, 15001 /quad_state samples, 533 targets published
+[PASS] 6 gait-active          -- /gait_state: measured period=0.500 duty_factor=['0.600', '0.600', '0.600', '0.600'] phase_offset=['0.000', '0.500', '0.500', '0.000'] sequencer=0, required WALKING_TROT signature period=0.500 duty=0.600 offsets=[0.0, 0.5, 0.5, 0.0]
+[PASS] 7 solver-health        -- /controller_heartbeat counters: measured d_mpc_fail=0 d_wbc_fail=0 d_overtime=0 (d_early_contacts=25, 30 heartbeats), required d_mpc_fail=0, d_wbc_fail=0, d_overtime <= 20
+[PASS] 8 walking              -- /quad_control_target vs /quad_state twist: measured vx_mean=0.269 m/s, dx=4.037 m over 15.00 sim-s, advanced in all 5 sub-windows: yes, required vx_mean in [0.20, 0.35] m/s for a 0.30 m/s command, dx >= 2.25 m, advance in every sub-window
+[PASS] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured belly_contact=0/15001 samples, z median=0.2998 m (p01=0.2705 min=0.2621 max=0.3281), max tilt=0.019 rad, tilt over 0.50 in 0.00% of samples, required belly_contact false in every sample, median z in [0.20, 0.45] m, tilt over 0.50 rad in <= 2.0% of samples
+[INFO]   height-tracking      -- /quad_state z against commanded world_z: measured median 0.2998 m, peak-to-peak 0.0659 m, commanded 0.30 m, required informative, gait bob is config-dependent
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp linear system solver to qdldl), required PARTIAL_CONDENSING_OSQP
+
+=== verdict ===
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes, no duplicates
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 6.7 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 0.751, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.2 Hz per sim-second, required 900-1100 Hz per sim-second
+[PASS] 4 controller-alive     -- /controller_heartbeat rate: measured 2.00 Hz per sim-second, required 1.50-2.50 Hz per sim-second
+[INFO]   heartbeat-counters   -- /controller_heartbeat cumulative: measured early_contacts=0 mpc_overtime=0 wbc_overtime=0 mpc_fail=0 wbc_fail=0 model_updates=0, required informative, deltas are asserted by check 7
+[PASS] 5 gait-command         -- ros2 param set/get /mit_controller_node simple_gait_sequencer.gait: measured set said 'Set parameter successful', read back 'WALKING_TROT', required 'Set parameter successful' and read-back 'WALKING_TROT'
+[PASS] 6 gait-active          -- /gait_state: measured period=0.500 duty_factor=['0.600', '0.600', '0.600', '0.600'] phase_offset=['0.000', '0.500', '0.500', '0.000'] sequencer=0, required WALKING_TROT signature period=0.500 duty=0.600 offsets=[0.0, 0.5, 0.5, 0.0]
+[PASS] 7 solver-health        -- /controller_heartbeat counters: measured d_mpc_fail=0 d_wbc_fail=0 d_overtime=0 (d_early_contacts=25, 30 heartbeats), required d_mpc_fail=0, d_wbc_fail=0, d_overtime <= 20
+[PASS] 8 walking              -- /quad_control_target vs /quad_state twist: measured vx_mean=0.269 m/s, dx=4.037 m over 15.00 sim-s, advanced in all 5 sub-windows: yes, required vx_mean in [0.20, 0.35] m/s for a 0.30 m/s command, dx >= 2.25 m, advance in every sub-window
+[PASS] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured belly_contact=0/15001 samples, z median=0.2998 m (p01=0.2705 min=0.2621 max=0.3281), max tilt=0.019 rad, tilt over 0.50 in 0.00% of samples, required belly_contact false in every sample, median z in [0.20, 0.45] m, tilt over 0.50 rad in <= 2.0% of samples
+[INFO]   height-tracking      -- /quad_state z against commanded world_z: measured median 0.2998 m, peak-to-peak 0.0659 m, commanded 0.30 m, required informative, gait bob is config-dependent
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp linear system solver to qdldl), required PARTIAL_CONDENSING_OSQP
+
+pass=10 fail=0
+VERDICT: PASS -- healthy and walking
+kennel-verify: report in /tmp/kennel-verify (exit 0)
+
+==== walk ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-trot] commanding WALKING_TROT at body_x_dot=0.3 world_z=0.30
+Set parameter successful
+[p21-trot] holding -- the robot is trotting. Stop it with: /tmp/p21-trot-hold.sh stop
+
+[kennel-demo] the robot is trotting. Watch it here:
+[kennel-demo]     http://192.168.122.32:7000/
+[kennel-demo] return it to STAND with:  demo/tools/kennel-demo.sh walk stop
+[kennel-demo] or drive it yourself:      demo/tools/kennel-demo.sh teleop
+
+==== done ====
+[kennel-demo]   compose   6s
+[kennel-demo]   transfer  2s
+[kennel-demo]   launch    43s
+[kennel-demo]   verify    42s
+[kennel-demo]   walk      6s
+all EXIT=0
+
+2026-09-06T21:08:08Z
+
+############################################################
+=== NEGATIVE CONTROL: OUTCOME ===
+
+Two cold-container attempts (reset -> all), both on 2026-09-06, both GREEN:
+
+  attempt 1   launch 46s   verify 42s   check 1 PASS   pass=10 fail=0   all EXIT=0
+  attempt 2   launch 43s   verify 42s   check 1 PASS   pass=10 fail=0   all EXIT=0
+
+So #52 DID NOT REPRODUCE TODAY, in two attempts, on the unmodified launcher.
+
+That is not evidence the race is absent -- it is what an intermittent race looks
+like when it is not lost. It is on record twice already, on two different guests,
+both cold-started:
+
+  vm/snapshot/evidence/10-all-after-reset.txt        FAIL [missing: /joy_to_target ]
+  vm/snapshot/evidence/11-verify-rerun.txt           the same stack, verify alone: pass=10 fail=0
+  vm/snapshot/evidence/16-all-on-cold-provisioned.txt  FAIL [missing: /joy_to_target ]
+  vm/snapshot/evidence/17-verify-rerun-2.txt         the same stack, verify alone: pass=10 fail=0
+
+and vm/snapshot.md 6 F5 measured it at green on 2 of 4 attempts. Two greens in a
+row has a probability of about 1 in 4 at that rate, so today's result is an
+ordinary outcome, not a contradiction.
+
+The plan (plan/reliability.md 3.3) caps this at two attempts on purpose: the
+defect is already reproduced and recorded, and the fix does not depend on
+catching it a third time. What the fix removes is the DEPENDENCE ON LUCK -- the
+launcher returning while a node it started is still joining the graph. After it,
+the launcher does not return until the graph is complete, so the timing that
+produced 10- and 16- cannot produce a red verify again.
+
+Honest statement of what this file proves and does not:
+  proves      -- the workflow is green on this host today, before the change,
+                 which is the baseline the four post-change runs are compared to
+  proves      -- the launch phase costs 43-46 s before the change
+  DOES NOT    -- reproduce the failure; see 10-/16- above for that

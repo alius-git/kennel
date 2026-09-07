@@ -1,0 +1,17 @@
+=== #45 row 1 -- BEFORE the fix: the old trot tool with no /tmp/p21-env.sh ===
+2026-09-06T21:24:45Z
+
+/tmp/p21-env.sh is written ONLY by p21-launch-from-commands.sh. Removing
+it puts the container in exactly the state a stack launched any other way
+leaves it in -- launch.md 1.1 by hand, k14-stack-up.sh, or a Yuruna step.
+The stack itself keeps running throughout; only the file goes away.
+
+$ sudo docker exec dfki_quad mv /tmp/p21-env.sh /tmp/p21-env.sh.bak
+env file present=1 (1 = absent, as intended)
+
+$ /tmp/p21-trot-hold-OLD.sh start        # the tool exactly as it was at HEAD
+[p21-trot] commanding WALKING_TROT at body_x_dot=0.3 world_z=0.30
+timeout: failed to run command ‘ros2’: No such file or directory
+EXIT=1
+
+NB the message names ros2, not the missing file. That is #45.
