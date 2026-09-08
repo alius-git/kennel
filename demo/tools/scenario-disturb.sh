@@ -164,8 +164,15 @@ start_chrome
 page boot
 page connect
 f="$(observe seed 3)"
-hz="$(jget "$f" target.hz)"
-num_ok "$hz" 18 22; check $? "the page is publishing at 20 Hz" "${hz:-none} Hz (sim)"
+# The WALL-clock rate, which is the one the page controls: its tick is a
+# setInterval, and per SIM second the same stream reads 20/rate. The live suite
+# made this correction first (stack/bridge.md §10) and it applies here for the
+# same reason -- at any rtf but exactly 1.0 the sim-second reading is a true
+# number about a different thing.
+hzw="$(jget "$f" target.hz_wall)"; hzs="$(jget "$f" target.hz)"
+num_ok "$hzw" 18 22
+check $? "the page is publishing at 20 Hz" \
+      "${hzw:-none} Hz wall (${hzs:-?} per sim-second at rtf $(jget "$f" rtf))"
 dvx="$(jget "$f" target.distinct_vx)"
 [ "$dvx" = "[0.0]" ]; check $? "and it is publishing zeros -- nobody has touched the stick" "$dvx"
 [ -z "$(jget "$f" disturbance)" ] || [ "$(jget "$f" disturbance)" = "null" ]

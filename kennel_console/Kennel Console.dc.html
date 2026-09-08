@@ -1895,8 +1895,23 @@ class RosbridgeTarget {
     this.gaitState = 'sent';
     this.gaitT0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     if (this.gaitTimer) { clearTimeout(this.gaitTimer); this.gaitTimer = null; }
-    this.call(CTRL_PARAM_SRV, CTRL_PARAM_TYPE, gaitArgs(name),
-              'gait ' + name + ' sent — waiting for /gait_state');
+    // Not this.call(): its response callback says its message unconditionally,
+    // and a SLOW response would then overwrite a verdict this page had already
+    // reached. Measured on a cold container (demo/scenarios.md §1.6): the
+    // SetParameters response took longer than GAIT_SETTLE_MS, the timer below
+    // had already said `refused`, and the late response painted `sent` back over
+    // it -- leaving the operator watching `sent` forever on a picker whose state
+    // machine had long since decided. The guard is the whole fix: say `sent`
+    // only while `sent` is still what this gait is.
+    if (!this.open()) { this.say('not connected — nothing was sent', true); return; }
+    this.link.call(CTRL_PARAM_SRV, CTRL_PARAM_TYPE, gaitArgs(name), m => {
+      if (this.gaitWant !== name || this.gaitState !== 'sent') return;
+      if (m && m.result === false) {
+        this.say('the stack refused the call: ' + JSON.stringify((m && m.values) || ''), true);
+        return;
+      }
+      this.say('gait ' + name + ' sent — waiting for /gait_state', false);
+    });
     // The honest signal for a gait the node ignores. Bounded, and it fires only
     // if nothing on the wire has confirmed the change by then.
     this.gaitTimer = setTimeout(() => {

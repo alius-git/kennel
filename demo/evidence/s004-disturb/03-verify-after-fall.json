@@ -18,7 +18,7 @@
       "status": "PASS"
     },
     {
-      "measured": "1.000",
+      "measured": "1.003",
       "n": null,
       "name": "realtime-rate",
       "observable": "/clock vs monotonic wall clock",
@@ -26,7 +26,7 @@
       "status": "INFO"
     },
     {
-      "measured": "1000.4 Hz per sim-second",
+      "measured": "998.2 Hz per sim-second",
       "n": 3,
       "name": "state-stream",
       "observable": "/quad_state rate",
@@ -42,7 +42,7 @@
       "status": "PASS"
     },
     {
-      "measured": "early_contacts=780 mpc_overtime=13 wbc_overtime=479 mpc_fail=0 wbc_fail=250 model_updates=0",
+      "measured": "early_contacts=916 mpc_overtime=3 wbc_overtime=271 mpc_fail=0 wbc_fail=235 model_updates=0",
       "n": null,
       "name": "heartbeat-counters",
       "observable": "/controller_heartbeat cumulative",
@@ -66,7 +66,7 @@
       "status": "PASS"
     },
     {
-      "measured": "d_mpc_fail=0 d_wbc_fail=0 d_overtime=10 (d_early_contacts=50, 30 heartbeats)",
+      "measured": "d_mpc_fail=0 d_wbc_fail=0 d_overtime=1 (d_early_contacts=36, 30 heartbeats)",
       "n": 7,
       "name": "solver-health",
       "observable": "/controller_heartbeat counters",
@@ -74,7 +74,7 @@
       "status": "PASS"
     },
     {
-      "measured": "vx_mean=-0.009 m/s, dx=-0.132 m over 15.00 sim-s, advanced in all 5 sub-windows: no",
+      "measured": "vx_mean=0.149 m/s, dx=2.240 m over 15.00 sim-s, advanced in all 5 sub-windows: yes",
       "n": 8,
       "name": "walking",
       "observable": "/quad_control_target vs /quad_state twist",
@@ -82,7 +82,7 @@
       "status": "FAIL"
     },
     {
-      "measured": "belly_contact=0/15000 samples, z median=0.3428 m (p01=0.2547 min=0.2521 max=0.4013), max tilt=0.090 rad, tilt over 0.50 in 0.00% of samples",
+      "measured": "belly_contact=0/15000 samples, z median=0.2821 m (p01=0.2636 min=0.2597 max=0.2991), max tilt=0.035 rad, tilt over 0.50 in 0.00% of samples",
       "n": 9,
       "name": "no-fall",
       "observable": "/quad_state belly_contact, z, attitude",
@@ -90,7 +90,7 @@
       "status": "PASS"
     },
     {
-      "measured": "median 0.3428 m, peak-to-peak 0.1492 m, commanded 0.30 m",
+      "measured": "median 0.2821 m, peak-to-peak 0.0394 m, commanded 0.30 m",
       "n": null,
       "name": "height-tracking",
       "observable": "/quad_state z against commanded world_z",
@@ -109,14 +109,14 @@
   "exit": 1,
   "expect_solver": "PARTIAL_CONDENSING_OSQP",
   "fail": 1,
-  "finished_at": "2026-09-08T18:00:51Z",
+  "finished_at": "2026-09-08T20:49:26Z",
   "gait": "WALKING_TROT",
   "headline": {
-    "early_contacts": 50,
+    "early_contacts": 36,
     "mpc_fail": 0,
     "mpc_overtime": 0,
     "wbc_fail": 0,
-    "wbc_overtime": 10
+    "wbc_overtime": 1
   },
   "knobs": {
     "CLOCK_WAIT_WALL_SECONDS": "20",
@@ -142,16 +142,16 @@
   },
   "metrics": {
     "belly_hits": 0,
-    "buckets_ok": false,
+    "buckets_ok": true,
     "deltas": {
-      "num_early_contacts": 50,
+      "num_early_contacts": 36,
       "num_model_updates": 0,
       "num_mpc_solver_fail": 0,
       "num_mpc_solver_overtime": 0,
-      "num_wbc_overtime": 10,
+      "num_wbc_overtime": 1,
       "num_wbc_solver_fail": 0
     },
-    "dx": -0.1321,
+    "dx": 2.2402,
     "gait": {
       "duty_factor": [
         0.6,
@@ -170,43 +170,43 @@
       ]
     },
     "hb_first": {
-      "num_early_contacts": 795,
+      "num_early_contacts": 953,
       "num_model_updates": 0,
       "num_mpc_solver_fail": 0,
-      "num_mpc_solver_overtime": 13,
-      "num_wbc_overtime": 489,
-      "num_wbc_solver_fail": 250
+      "num_mpc_solver_overtime": 3,
+      "num_wbc_overtime": 274,
+      "num_wbc_solver_fail": 235
     },
     "hb_hz": 2.0,
     "hb_last": {
-      "num_early_contacts": 845,
+      "num_early_contacts": 989,
       "num_model_updates": 0,
       "num_mpc_solver_fail": 0,
-      "num_mpc_solver_overtime": 13,
-      "num_wbc_overtime": 499,
-      "num_wbc_solver_fail": 250
+      "num_mpc_solver_overtime": 3,
+      "num_wbc_overtime": 275,
+      "num_wbc_solver_fail": 235
     },
     "n_heartbeats": 30,
     "n_samples": 15000,
     "observe_sim_s": 5.0,
-    "observe_wall_s": 5.0,
-    "realtime_rate": 1.0001,
+    "observe_wall_s": 4.98,
+    "realtime_rate": 1.0031,
     "sim_window": 15.0,
-    "state_hz": 1000.4,
+    "state_hz": 998.2,
     "target_vx": 0.3,
     "target_z": 0.3,
-    "tilt_max": 0.0904,
+    "tilt_max": 0.0349,
     "tilt_over_frac": 0.0,
-    "vx_mean": -0.0088,
-    "z_max": 0.4013,
-    "z_median": 0.34276,
-    "z_min": 0.2521,
-    "z_p01": 0.2547,
-    "z_p2p": 0.1492
+    "vx_mean": 0.1494,
+    "z_max": 0.29912,
+    "z_median": 0.2821,
+    "z_min": 0.25975,
+    "z_p01": 0.26359,
+    "z_p2p": 0.03937
   },
   "pass": 9,
   "pin": "dcf53c596339afd45b82f12c54b1e93e8273c2f4",
-  "run": "run-20260908T172705Z",
+  "run": "run-20260908T202817Z",
   "schema": "kennel-verify/1",
   "solver_log_line": "[mitcontrollernode-1] Set osqp linear system solver to qdldl",
   "verdict": "unhealthy",

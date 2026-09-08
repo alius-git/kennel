@@ -1,12 +1,22 @@
 [
  [
   "",
-  "run-20260908T172705Z",
+  "run-20260908T202817Z",
   "Flat plane",
   "Simple \u2192 OSQP \u00b7 partial condensing \u2192 ArcOPT \u00b7 Eiquadprog \u2192 stock \u2014 single implementation \u2192 stock \u2014 no selection key \u2192 Off",
   "15.0 s",
   "UNHEALTHY",
-  "early 50 \u00b7 mpc_over 0 \u00b7 wbc_over 10 \u00b7 fail 0\nload",
+  "early 36 \u00b7 mpc_over 0 \u00b7 wbc_over 1 \u00b7 fail 0\nload",
+  "verify"
+ ],
+ [
+  "",
+  "run-20260908T200723Z",
+  "Flat plane",
+  "Simple \u2192 OSQP \u00b7 partial condensing \u2192 ArcOPT \u00b7 Eiquadprog \u2192 stock \u2014 single implementation \u2192 stock \u2014 no selection key \u2192 Off",
+  "15.0 s",
+  "COMPLETED",
+  "early 20 \u00b7 mpc_over 0 \u00b7 wbc_over 0 \u00b7 fail 0\nload",
   "verify"
  ],
  [
@@ -14,9 +24,9 @@
   "run-20260907T202843Z",
   "Flat plane",
   "Simple \u2192 OSQP \u00b7 partial condensing \u2192 ArcOPT \u00b7 Eiquadprog \u2192 stock \u2014 single implementation \u2192 stock \u2014 no selection key \u2192 Off",
-  "\u2014",
-  "FELL",
-  "early 0 \u00b7 mpc_over 0 \u00b7 wbc_over 0 \u00b7 fail 0\nload",
+  "15.0 s",
+  "COMPLETED",
+  "early 15 \u00b7 mpc_over 0 \u00b7 wbc_over 0 \u00b7 fail 0\nload",
   "verify"
  ],
  [

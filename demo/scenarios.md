@@ -36,7 +36,7 @@ Three rules they inherit, and one they add:
   `verify-dashboard.py`. Each suite is meant to be readable on its own, and a
   shared helper that drifts breaks them all silently.
 - **New here: the process table.** s004's Target Verification Point is that the
-  console never started or stopped a process, and §1.4 is how that becomes a
+  console never started or stopped a process, and §1.5 is how that becomes a
   check rather than a claim.
 
 Both verbs **leave the stack standing at `STAND` with the bridge down**, on
@@ -65,7 +65,7 @@ disturbances on** — `/disturb_simulation` is block 4 of that run's
 | **3** severe push → fall, banner, post-mortem | guest **and** page | **300.0 N** for 0.3 s → z_min **0.0890 m**, body past 0.5 rad in **84 %** of samples; banner *attitude — tilt over 0.5 rad in 15 % of the last 2 s*; the `Disturbance: 300 N…` line is row 3 of 8 in the pinned window, `FALL:` is row 7 | z_min **0.1307 m**, **63 %**; disturbance row 2 of 5, `FALL:` row 4 |
 | **3v** the verdict | `verify.json` | `unhealthy`, robot at z 0.269 m | `unhealthy`, z 0.202 m |
 | **3r/4** the record, and the reset | page + `/api/runs` | the run's row carries its verdict; *reset sim* → standing at **0.3137 m**, sim clock **3.8 s**, feed: `/reset_sim called …` then `sim clock restarted at …`; the record still listed | standing at **0.3140 m** |
-| **5** manual stepping | — | **BYPASS**, §1.5 | |
+| **5** manual stepping | — | **BYPASS**, §1.6 | |
 | **6** the process table | guest | **six captures, six empty diffs, 25 processes** | six, six, 25 |
 
 The magnitude, not the vector, is what is compared: the disturbance node rotates
@@ -133,7 +133,43 @@ configuration (the first is `plan/two-scenarios.md` §0.1).
 prints the finding and the relaunch command and stops. **A dead simulator is a
 red result, never a retry.**
 
-### 1.4 The process-table assert — the TVP made mechanical
+### 1.4 A defect in #66 that only a cold container showed
+
+The first run of this verb from a freshly `reset` guest failed one check: the
+gait picker sat at
+
+```
+gait WALKING_TROT sent — waiting for /gait_state
+```
+
+for the whole ten seconds the step allows — while the guest's own reading, two
+lines later, confirmed `/gait_state`'s signature **was** `WALKING_TROT`. The gait
+had taken; the page had not noticed.
+
+The cause is an ordering bug in [#66](https://github.com/alius-git/kennel/issues/66)'s
+`setGait`, and it needs a slow service response to show. `setGait` arms a
+2-second timer that says **refused** if nothing has confirmed the change, and it
+sends the `SetParameters` call through a helper whose response callback says its
+message *unconditionally*. On a cold container the response came back **after**
+the timer had already fired — so the late `sent` was painted over the `refused`,
+and the picker was left showing a message its own state machine had abandoned.
+
+The fix is the guard, and nothing else: say `sent` only while `sent` is still
+what this gait is.
+
+```js
+this.link.call(CTRL_PARAM_SRV, CTRL_PARAM_TYPE, gaitArgs(name), m => {
+  if (this.gaitWant !== name || this.gaitState !== 'sent') return;
+  …
+});
+```
+
+Worth stating plainly: **the no-VM suite could not have caught this.**
+`fake-rosbridge.py` answers instantly, so the two orderings are the same
+ordering there. It took a real bridge on a cold container — which is the argument
+for running a scenario against the real stack at all.
+
+### 1.5 The process-table assert — the TVP made mechanical
 
 ```bash
 sudo docker exec dfki_quad ps -e -o comm=,args= --no-headers \
@@ -163,7 +199,7 @@ and the watchdog. All of them are stack processes started by `launch` and
 `teleop`; none is the console's. That is the point of taking the reference
 *after* `teleop` and *before* the page connects.
 
-### 1.5 Step 5 — manual stepping · **bypass**
+### 1.6 Step 5 — manual stepping · **bypass**
 
 `manually_step_sim` is fixed at stock in the composer
 ([`composer-scope.md`](../kennel_console/composer-scope.md) §1.2), so the
@@ -356,7 +392,7 @@ will not reach its bar and the verb goes red for the right reason.
 ## 5. Limits
 
 - **The process-table check cannot see a restart that reproduces the same
-  command line** (§1.4). Pids would catch it and would make every capture differ
+  command line** (§1.5). Pids would catch it and would make every capture differ
   for a reason that is not the console's.
 - **The verbs need a VM.** They are not among the eight no-VM console suites, for
   the same reason `verify-teleop-live.sh` is not.

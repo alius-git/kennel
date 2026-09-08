@@ -1,19 +1,19 @@
-KENNEL_MEASURING 1788890371.763 sim=26.048
+KENNEL_MEASURING 1788900490.827 sim=25.516
 wall,sim,z,x,vx,wz,contacts,tgt_vx,tgt_wz,tgt_z,n_tgt,gait
-0.0,26.049,0.2991,0.961,0.504,0.000,-,-,-,-,0,-
-0.5,26.595,0.2971,1.220,0.493,-0.169,1111,0.500,0.000,0.300,10,-
-1.0,27.096,0.2974,1.459,0.499,-0.152,1111,0.500,0.000,0.300,20,WALKING_TROT
-1.5,27.593,0.2962,1.696,0.489,-0.201,1111,0.500,0.000,0.300,30,WALKING_TROT
-2.0,28.097,0.2972,1.936,0.499,-0.173,1111,0.500,0.000,0.300,39,WALKING_TROT
-2.5,28.597,0.2949,2.174,0.492,-0.165,1111,0.500,0.000,0.300,50,WALKING_TROT
-3.0,29.091,0.2971,2.408,0.490,-0.213,1111,0.500,0.000,0.300,60,WALKING_TROT
-3.5,29.597,0.2954,2.650,0.502,-0.146,1111,0.500,0.000,0.300,70,WALKING_TROT
-4.0,30.097,0.2973,2.888,0.488,-0.194,1111,0.500,0.000,0.300,80,WALKING_TROT
-4.5,30.595,0.2958,3.124,0.503,-0.187,1111,0.500,0.000,0.300,90,WALKING_TROT
-5.0,31.097,0.2966,3.365,0.489,-0.252,1111,0.500,0.000,0.300,100,WALKING_TROT
-5.5,31.596,0.2947,3.604,0.499,-0.173,1111,0.500,0.000,0.300,110,WALKING_TROT
-6.0,32.090,0.2998,3.838,0.469,-0.333,1111,0.500,0.000,0.300,120,WALKING_TROT
-6.5,32.597,0.2960,4.075,0.482,-0.222,1111,0.500,0.000,0.300,130,WALKING_TROT
-7.0,33.094,0.2928,4.309,0.493,-0.196,1111,0.500,0.000,0.300,140,WALKING_TROT
-7.5,33.593,0.2960,4.547,0.495,-0.218,1111,0.500,0.000,0.300,150,WALKING_TROT
-KENNEL_JSON {"at_rest_at_end_since_sim": null, "belly_hits": 0, "dist_xy": 3.8024, "disturbance": null, "gait": {"duty": [0.6, 0.6, 0.6, 0.6], "name": "WALKING_TROT", "offsets": [0.0, 0.5, 0.5, 0.0], "period": 0.5, "sequencer": 0}, "gait_changes": [{"duty": 0.6, "name": "WALKING_TROT", "period": 0.5, "sim": 27.037}], "hb_hz": 1.75, "label": "vel", "n_hb": 14, "n_state": 7992, "rtf": 1.0061, "sim_window": 8.0, "speed_mean": 0.4761, "target": {"distinct_vx": [0.5], "distinct_vx_n": 1, "first_zero_after_nonzero_sim": null, "first_zero_after_nonzero_wall": null, "gap_max_ms": 75.6, "gap_mean_ms": 50.0, "gap_std_ms": 9.79, "hz": 19.875, "hz_wall": 19.996, "last_msg": {"body_x_dot": 0.5, "body_y_dot": 0.0, "hybrid_theta_dot": 0.0, "pitch": 0.0, "roll": 0.0, "world_z": 0.3}, "last_nonzero_sim": 34.036, "last_nonzero_wall": 1788890379.703, "last_sim": 34.036, "last_wall": 1788890379.703, "n": 159, "n_publishers": 3}, "tilt_max": 0.0147, "tilt_over_frac": 0.0, "vx_below_0_05_since_sim": null, "vx_max": 0.5337, "vx_mean": 0.4758, "vx_min": 0.446, "vy_mean": -0.0061, "wall_window": 7.951, "x_travel": 3.802, "z_max": 0.30823, "z_median": 0.29971, "z_min": 0.29012, "z_p01": 0.29158}
+0.0,25.517,0.2996,0.897,0.454,0.000,-,-,-,-,0,-
+0.5,26.035,0.2899,1.141,0.460,0.027,0110,-,-,-,0,WALKING_TROT
+1.0,26.534,0.3018,1.374,0.458,0.026,0110,0.500,0.000,0.300,10,WALKING_TROT
+1.5,27.035,0.2944,1.610,0.457,0.023,0110,0.500,0.000,0.300,21,WALKING_TROT
+2.0,27.535,0.3020,1.847,0.453,0.023,0110,0.500,0.000,0.300,30,WALKING_TROT
+2.5,28.035,0.3004,2.084,0.457,0.024,0110,0.500,0.000,0.300,41,WALKING_TROT
+3.0,28.534,0.2982,2.319,0.459,0.025,0110,0.500,0.000,0.300,51,WALKING_TROT
+3.5,29.034,0.2926,2.553,0.461,0.023,0110,0.500,0.000,0.300,61,WALKING_TROT
+4.0,29.533,0.2970,2.788,0.455,0.018,0110,0.500,0.000,0.300,71,WALKING_TROT
+4.5,30.033,0.3007,3.026,0.456,0.017,0110,0.500,0.000,0.300,80,WALKING_TROT
+5.0,30.534,0.2881,3.262,0.454,0.024,0110,0.500,0.000,0.300,91,WALKING_TROT
+5.5,31.035,0.3027,3.497,0.448,0.019,0110,0.500,0.000,0.300,101,WALKING_TROT
+6.0,31.534,0.2950,3.733,0.466,0.022,0110,0.500,0.000,0.300,111,WALKING_TROT
+6.5,32.035,0.2910,3.967,0.453,0.030,0110,0.500,0.000,0.300,121,WALKING_TROT
+7.0,32.534,0.2837,4.202,0.457,0.036,0110,0.500,0.000,0.300,130,WALKING_TROT
+7.5,33.031,0.2903,4.433,0.450,0.027,0110,0.500,0.000,0.300,140,WALKING_TROT
+KENNEL_JSON {"at_rest_at_end_since_sim": null, "belly_hits": 0, "dist_xy": 3.7639, "disturbance": null, "gait": {"duty": [0.6, 0.6, 0.6, 0.6], "name": "WALKING_TROT", "offsets": [0.0, 0.5, 0.5, 0.0], "period": 0.5, "sequencer": 0}, "gait_changes": [{"duty": 0.6, "name": "WALKING_TROT", "period": 0.5, "sim": 25.528}], "hb_hz": 2.0, "label": "vel", "n_hb": 16, "n_state": 7992, "rtf": 1.0021, "sim_window": 8.0, "speed_mean": 0.4715, "target": {"distinct_vx": [0.5], "distinct_vx_n": 1, "first_zero_after_nonzero_sim": null, "first_zero_after_nonzero_wall": null, "gap_max_ms": 70.1, "gap_mean_ms": 46.81, "gap_std_ms": 14.12, "hz": 18.75, "hz_wall": 18.79, "last_msg": {"body_x_dot": 0.5, "body_y_dot": 0.0, "hybrid_theta_dot": 0.0, "pitch": 0.0, "roll": 0.0, "world_z": 0.3}, "last_nonzero_sim": 33.478, "last_nonzero_wall": 1788900498.771, "last_sim": 33.478, "last_wall": 1788900498.771, "n": 150, "n_publishers": 3}, "tilt_max": 0.0159, "tilt_over_frac": 0.0, "vx_below_0_05_since_sim": null, "vx_max": 0.5282, "vx_mean": 0.4707, "vx_min": 0.4418, "vy_mean": 0.0159, "wall_window": 7.983, "x_travel": 3.7617, "z_max": 0.30495, "z_median": 0.29437, "z_min": 0.27706, "z_p01": 0.28005}

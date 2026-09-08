@@ -369,6 +369,17 @@ exactly what it always was: the mock's own rewind.
 
 ### 12.2 The gait picker says `active`, or `refused`
 
+> **A defect this had, found later by a cold container** (2026-09-08,
+> [`demo/scenarios.md`](../demo/scenarios.md) §1.4). `setGait` sent the call
+> through `call()`, whose response callback says its message unconditionally —
+> so a response slower than `GAIT_SETTLE_MS` painted `sent` back over the
+> `refused` the timer had already reached, and the picker was left showing a
+> message its own state machine had abandoned. The response callback is now
+> guarded on the gait still being the one it was sent for. The no-VM suite could
+> not have caught it: the fake bridge answers instantly, so both orderings are
+> the same ordering there.
+
+
 §4 ended: *"`/gait_state` is the observable that could say active, and reading it
 is not this issue."* This is that issue.
 

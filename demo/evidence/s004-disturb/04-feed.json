@@ -5,7 +5,7 @@
  ],
  [
   "1.6s",
-  "FALL: body height \u2014 z median 0.147 m, outside [0.20, 0.45] m \u2014 controller latched to damping mode"
+  "FALL: body height \u2014 z median 0.076 m, outside [0.20, 0.45] m \u2014 controller latched to damping mode"
  ],
  [
   "3.9s",
@@ -13,10 +13,14 @@
  ],
  [
   "0.0s",
-  "sim clock restarted at 0.0 s \u2014 windows cleared"
+  "sim clock restarted at 0.1 s \u2014 windows cleared"
  ],
  [
-  "2.9s",
-  "WBC missed its 2 ms deadline \u2014 worst solve sampled 0.3 ms; torque command late"
+  "1.2s",
+  "WBC missed its 2 ms deadline \u2014 worst solve sampled 0.6 ms; torque command late"
+ ],
+ [
+  "3.3s",
+  "WBC missed its 2 ms deadline \u2014 worst solve sampled 0.2 ms; torque command late"
  ]
 ]
