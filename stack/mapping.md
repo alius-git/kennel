@@ -362,6 +362,25 @@ walking; disturbance scenarios need a fourth, so the generated command block is
 conditional on the composer enabling disturbances.
 **Retirement:** upstream adding `sim_disturber` to `simulator.launch.py`.
 
+**Done within the MVP** ([#68](https://github.com/alius-git/kennel/issues/68),
+2026-09-08). The composer has a `disturbances` toggle; with it on, `commands.txt`
+carries a fourth block and `run.json` an eighth choice, and
+`p21-launch-from-commands.sh` starts that block last and waits for **two**
+signals — `/disturbance_node` in the graph and `/disturb_simulation` served. The
+upstream retirement above is unchanged: the pin still ships no launch file for
+it. Two things the live measurement added to this section:
+
+- **The node is `disturbance_node`**, not `sim_disturber`. The executable's name
+  is the CMake target; the graph name is the one the constructor gives it
+  (`disturbance_node.cpp:16`). `kennel-verify.sh` tolerates that name under
+  `KENNEL_EXPECT_DISTURBER=1`.
+- **`time` is a WALL second unless the node is told otherwise.** Measured at
+  `simulator_realtime_rate: 0.5`: a 0.2 s request lasts **0.100 sim-s / 0.200
+  wall** as a bare `ros2 run`, and **0.200 sim-s / 0.399 wall** with
+  `--ros-args -p use_sim_time:=true`. The composed block carries the argument, so
+  a push is a sim-second like every other window in this repo
+  ([`kennel_console/teleop.md`](../kennel_console/teleop.md) §13).
+
 ---
 
 ## 5. Change latency

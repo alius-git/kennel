@@ -46,6 +46,7 @@ uses when nothing is configured.
 | Condensed size | int, 1–10 | `5` | `mpc_condensed_size` (mapping §1.3) |
 | Real-time rate | ≥ 0 (`0` = as fast as possible) | `1.0` | `simulator_realtime_rate` (mapping §1.2) |
 | Ground-truth state | on / off | **on** | `publish_quad_state` (mapping §1.2) |
+| Disturbances | on / off | **off** | *no YAML key*: a fourth command, `ros2 run simulator sim_disturber` (mapping §4.6, [#68](https://github.com/alius-git/kennel/issues/68)) |
 
 The solver's **stored value is the canonical parameter string**, not a friendly
 id. The display label may be friendly ("HPIPM · partial condensing"); the value

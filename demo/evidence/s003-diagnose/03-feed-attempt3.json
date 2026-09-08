@@ -1,0 +1,82 @@
+[
+ [
+  "5.5s",
+  "WBC missed its 2 ms deadline \u2014 worst solve sampled 0.2 ms; torque command late"
+ ],
+ [
+  "5.7s",
+  "Late contact FL +250 ms vs planned touchdown"
+ ],
+ [
+  "6.2s",
+  "Early contact RR \u2212210 ms vs planned touchdown"
+ ],
+ [
+  "6.4s",
+  "Late contact FL +51 ms vs planned touchdown"
+ ],
+ [
+  "6.6s",
+  "Early contact RL \u221230 ms vs planned touchdown"
+ ],
+ [
+  "7.0s",
+  "MPC missed its 10 ms deadline \u2014 worst solve sampled 9.1 ms, 25 iters; previous solution held"
+ ],
+ [
+  "7.0s",
+  "WBC missed its 2 ms deadline \u00d72 \u2014 worst solve sampled 0.2 ms; torque command late"
+ ],
+ [
+  "7.7s",
+  "Late contact FR +39 ms vs planned touchdown"
+ ],
+ [
+  "7.8s",
+  "Early contact FL \u221230 ms vs planned touchdown"
+ ],
+ [
+  "7.8s",
+  "Early contact RR \u221230 ms vs planned touchdown"
+ ],
+ [
+  "8.5s",
+  "MPC missed its 10 ms deadline \u00d74 \u2014 worst solve sampled 6.0 ms; previous solution held"
+ ],
+ [
+  "8.5s",
+  "WBC missed its 2 ms deadline \u00d72 \u2014 worst solve sampled 0.3 ms; torque command late"
+ ],
+ [
+  "8.6s",
+  "Early contact FR \u221240 ms vs planned touchdown"
+ ],
+ [
+  "8.6s",
+  "Early contact FL \u2212240 ms vs planned touchdown"
+ ],
+ [
+  "9.2s",
+  "Early contact RL \u221230 ms vs planned touchdown"
+ ],
+ [
+  "9.2s",
+  "Early contact RR \u2212250 ms vs planned touchdown"
+ ],
+ [
+  "9.6s",
+  "Early contact FR \u221240 ms vs planned touchdown"
+ ],
+ [
+  "10.0s",
+  "MPC missed its 10 ms deadline \u00d75 \u2014 worst solve sampled 7.7 ms, 20 iters; previous solution held"
+ ],
+ [
+  "10.2s",
+  "Early contact RR \u2212248 ms vs planned touchdown"
+ ],
+ [
+  "10.2s",
+  "FALL: body height \u2014 z median 0.200 m, outside [0.20, 0.45] m \u2014 controller latched to damping mode"
+ ]
+]

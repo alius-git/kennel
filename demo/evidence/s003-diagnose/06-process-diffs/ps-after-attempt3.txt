@@ -1,0 +1,22 @@
+bash bash
+bash bash -c bash /tmp/p21-block1.sh > /tmp/p21-sim.log 2>&1
+bash bash -c bash /tmp/p21-block2.sh > /tmp/p21-legdrv.log 2>&1
+bash bash -c bash /tmp/p21-block3.sh > /tmp/p21-ctrl.log 2>&1
+bash bash /tmp/p21-block1.sh
+bash bash /tmp/p21-block2.sh
+bash bash /tmp/p21-block3.sh
+joy_linux_node /opt/ros/humble/lib/joy_linux/joy_linux_node --ros-args -r __node:=joy_linux_node --params-file /tmp/launch_params__i_jiuoz
+leg_driver /root/ros2_ws/install/drivers/lib/drivers/leg_driver --ros-args -r __node:=leg_driver --params-file /root/ros2_ws/install/drivers/share/drivers/config/leg_param_sim.yaml --params-file /root/ros2_ws/install/common/share/common/config/common_config_go2.yaml --params-file /tmp/launch_params_sak6novi
+mitcontrollerno /root/ros2_ws/install/controllers/lib/controllers/mitcontrollernode --ros-args --log-level mit_controller_node:=info --ros-args -r __node:=mit_controller_node --params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml --params-file /root/ros2_ws/install/common/share/common/config/common_config_go2.yaml --params-file /tmp/launch_params_2ow4j3r9
+python3 python3 /opt/ros/humble/lib/rosapi/rosapi_node --ros-args -r __node:=rosapi --params-file /tmp/launch_params__mrtliuq --params-file /tmp/launch_params_kwilyp4u --params-file /tmp/launch_params_ju2cgi49 --params-file /tmp/launch_params_f6d92v84 --params-file /tmp/launch_params_ofkmvq1s --params-file /tmp/launch_params_nn1dsi9r
+python3 python3 /opt/ros/humble/lib/rosbridge_server/rosbridge_websocket --ros-args -r __node:=rosbridge_websocket --params-file /tmp/launch_params_3uxs_q4f --params-file /tmp/launch_params_uep6xax2 --params-file /tmp/launch_params_uz5ac_t2 --params-file /tmp/launch_params_lbz9kawo --params-file /tmp/launch_params_92ahfr2f --params-file /tmp/launch_params_1aznar11 --params-file /tmp/launch_params_qypck7e0 --params-file /tmp/launch_params_3ioiotgv --params-file /tmp/launch_params_bl0h7xf2 --params-file /tmp/launch_params_pn5gklsf --params-file /tmp/launch_params_nsnyadg_ --params-file /tmp/launch_params_y_jwodzz --params-file /tmp/launch_params_9x_ctnm5 --params-file /tmp/launch_params_37dwwoh7 --params-file /tmp/launch_params_ppc9ty_9 --params-file /tmp/launch_params_5lje1zxj --params-file /tmp/launch_params_8xs_t0yn --params-file /tmp/launch_params_veytdggp --params-file /tmp/launch_params_obwbez5y --params-file /tmp/launch_params_5ihy1l1g
+python3 python3 /root/k13-target-watchdog.py
+python3 python3 /root/ros2_ws/install/controllers/lib/controllers/joy_to_target.py --ros-args -r __node:=joy_to_target --params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml --params-file /tmp/launch_params_99ittqbr
+python3 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 100 --rmw-implementation rmw_fastrtps_cpp
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch controllers mit_controller.launch.py sim:=go2
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch drivers leg_driver_launch.py sim:=go2
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=9090
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch simulator simulator.launch.py sim:=go2
+sh /bin/sh -c /root/ros2_ws/install/drivers/lib/drivers/leg_driver --ros-args -r __node:=leg_driver --params-file /root/ros2_ws/install/drivers/share/drivers/config/leg_param_sim.yaml --params-file /root/ros2_ws/install/common/share/common/config/common_config_go2.yaml --params-file /tmp/launch_params_sak6novi
+sh /bin/sh -c /root/ros2_ws/install/simulator/lib/simulator/simulator --ros-args -r __node:=drake_simulator --params-file /root/ros2_ws/install/simulator/share/simulator/config/simulator_params_go2.yaml
+simulator /root/ros2_ws/install/simulator/lib/simulator/simulator --ros-args -r __node:=drake_simulator --params-file /root/ros2_ws/install/simulator/share/simulator/config/simulator_params_go2.yaml

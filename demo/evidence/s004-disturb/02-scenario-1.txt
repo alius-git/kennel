@@ -1,0 +1,118 @@
+=== scenario disturb, run 1 of 2 ===
+=== scenario s004.disturb -- interventions, and the process set that never changes (#69) ===
+2026-09-08T17:47:32Z
+guest        kennel-vm at 192.168.122.32
+evidence     /home/thales/kennel/demo/evidence/s004-disturb
+pushes       moderate [100 0 0 0.2]   severe [0 300 0 0.3]
+ps excludes  k13-target-monitor[.]py|k14-solve-probe[.]py|kennel-verify[.]sh|check[.]py|^ps |ros2 (topic|service|param|node|run) 
+applied run  run-20260908T172705Z
+[scenario] /disturb_simulation is served
+
+---- 0 · seed: a defined starting state, the bridge up, the reference process set ----
+  [PASS] kennel-demo.sh teleop brought the bridge up -- [kennel-demo] bridge           ws://192.168.122.32:9090/
+[scenario] establishing the starting state (kennel-bridge.sh recover)
+[scenario]   [kennel-bridge] recovered: standing at 0.31406 m, gait STAND, target zero
+  [PASS] the scenario starts from a robot that is standing -- z median 0.31404 m
+  [PASS]   and upright -- tilt over 0.5 rad in 0.0 of samples
+[scenario] reference process set: 25 processes
+  [PASS] the console booted against the scenario's own serve.py
+  [PASS] the bridge URL was prefilled from /api/health, so teleop's hand-off works -- ws://192.168.122.32:9090/
+  [PASS] nothing is dialled before the operator asks -- []
+  [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
+  [PASS] the panels are on the live stack, and the page says so -- live
+  [PASS] the page is publishing at 20 Hz -- 20.0 Hz (sim)
+  [PASS] and it is publishing zeros -- nobody has touched the stick -- [0.0]
+  [PASS] nothing has been injected yet
+
+---- 1 · velocity change: commanded and measured converge ----
+  [PASS] the gait picker reports WALKING_TROT ACTIVE from /gait_state -- ['gait WALKING_TROT active — /gait_state period 0.500 s, duty 0.60, offsets [0.00, 0.50, 0.50, 0.00] after 0.03 s']
+  [PASS] the stick is pushed (ny=-1.0)
+  [PASS] a measurement window is open
+  [PASS] measured speed is within 20 % of the 0.5 m/s commanded -- 0.4708 m/s, band 0.400-0.600 (planar: /quad_state twist is world-frame, bridge.md §10.7)
+  [PASS] and the robot actually travelled -- 3.7621 m
+  [PASS] upright throughout -- tilt over 0.5 rad in 0.0 of samples
+  [PASS] the gait the picker asked for is the one running -- /gait_state's signature reads WALKING_TROT (gait.cpp's own table; the message carries no name)
+  [PASS] the process set is unchanged after after-velocity -- 25 processes, diff empty
+
+---- 2 · moderate push: a stagger, and a recovery ----
+  [PASS] a measurement window is open
+  [PASS] inject asked for 100 N for 0.20 s -- ['disturbance requested: 100 N for 0.20 s — the service answers when the push ends']
+  [PASS] and the feed logs the exact injected parameters -- Disturbance: 100 N for 0.20 s at body CoM
+  [PASS] the SIMULATOR was pushed with the magnitude the page asked for -- 100.0 N on /simulation_disturbance (the node rotates the vector into the robot's yaw frame; the magnitude is what survives)
+  [PASS] as one push and one zero, which is what a bounded disturbance is -- n=2
+  [PASS] and it lasted the SIM seconds it was asked for -- 0.199 sim-s against 0.2 asked (wall 0.191 s)
+  [PASS] the robot staggered but never went down -- z_min 0.20726 m
+  [PASS] and stayed upright -- tilt over 0.5 rad in 0.0 of samples
+  [PASS] it recovered the commanded speed inside the window -- 0.494 m/s over the whole 10 s
+  [PASS] no fall banner
+  [PASS] photographed 05-renders/02-moderate.png -- 218300 B
+  [PASS] the process set is unchanged after after-moderate -- 25 processes, diff empty
+
+---- 3 · severe push: a fall, and the disturbance inside the post-mortem ----
+  [PASS] a measurement window is open
+  [PASS] inject asked for 300 N for 0.30 s -- ['disturbance requested: 300 N for 0.30 s — the service answers when the push ends']
+  [PASS] and the feed logs the exact injected parameters -- Disturbance: 300 N for 0.30 s at body CoM
+  [PASS] the severe push reached the simulator -- 300.0 N
+  [PASS] the robot FELL, by the verification recipe's own rule -- z_min 0.08897 m, tilt over 0.5 rad in 0.83701 of samples
+  [PASS] the fall banner is raised -- FALL DETECTED — attitude — tilt over 0.5 rad in 15% of the last 2 s
+  [PASS] and the feed is pinned to the five seconds before it
+  [PASS] the feed has something to read -- 8 entries
+  [PASS] photographed 05-renders/03-fall.png -- 220316 B
+  [PASS] the disturbance is in the pinned window, before the fall -- rows=8 disturbance_at=[3] fall_at=[7]
+  [PASS] and nothing in the pinned window happened after the fall (s003 step 7's order) -- NOTHING_LATER
+  [PASS] the process set is unchanged after after-severe -- 25 processes, diff empty
+
+---- 3v · the verdict: verify records what happened to this run ----
+  [PASS] the stick is released
+  [PASS] disconnected, so nothing of ours is publishing
+[scenario] the robot is at z 0.26891 m going into verify
+  [PASS] verify filed a report for this run, with a verdict the recipe defines -- unhealthy in run-20260908T172705Z/verify.json (exit 1, robot at z 0.26891 m)
+[scenario]   the robot was still down or unsteady when the recipe opened its window
+[scenario]   [kennel-demo] expect disturber 1  (from run-20260908T172705Z/run.json) -- check 1 will tolerate /disturbance_node
+[scenario]   pass=9 fail=1
+  [PASS] the process set is unchanged after after-verify -- 25 processes, diff empty
+
+---- 3r · the record: the Runs view shows it ----
+  [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
+  [PASS] the panels are on the live stack, and the page says so -- live
+  [PASS] the Runs view lists the host's runs -- 18 rows
+  [PASS] run-20260908T172705Z is listed, with the verdict its record carries -- run-20260908T172705Z | Flat plane | Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → sto (want unhealthy)
+
+---- 4 · reset: standing again, the Dashboard cleared, the record kept ----
+  [PASS] reset sim was pressed
+  [PASS] the page says it called /reset_sim -- ['reset sim', 'reset: target zeroed, asking for STAND …']
+[scenario]   z median 0.31366 m
+  [PASS] the robot is standing again after /reset_sim -- z median 0.31366 m
+  [PASS] no fall banner
+  [NOTE] the page's sim clock reads -- 4.0 s
+  [PASS] the sim clock restarted (under 20 s) -- 4.0 s
+  [PASS] the feed has something to read -- 7 entries
+  [PASS] the feed carries the call and then its consequence -- call_at=[2] clock_at=[3] -- '/reset_sim called ...' then 'sim clock restarted at ...'
+  [PASS] the Runs view lists the host's runs -- 18 rows
+  [PASS] run-20260908T172705Z is listed, with the verdict its record carries -- run-20260908T172705Z | Flat plane | Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → sto (want unhealthy)
+  [PASS] photographed 05-renders/04-reset.png -- 164793 B
+  [PASS] the process set is unchanged after after-reset -- 25 processes, diff empty
+
+---- 5 · manual stepping ----
+  [BYPASS] 5 manual-stepping -- manually_step_sim is fixed at stock (composer-scope.md §1.2), so /step_sim is not served. Retirement: the composer offering the key, then the console's two step buttons calling it. demo/scenarios.md §s004
+
+---- 6 · the process table, across every step ----
+[scenario] six captures, each diffed against the reference taken before the page connected:
+[scenario]   /home/thales/kennel/demo/evidence/s004-disturb/06-process-diffs/ps-after-moderate.txt
+[scenario]   /home/thales/kennel/demo/evidence/s004-disturb/06-process-diffs/ps-after-reset.txt
+[scenario]   /home/thales/kennel/demo/evidence/s004-disturb/06-process-diffs/ps-after-severe.txt
+[scenario]   /home/thales/kennel/demo/evidence/s004-disturb/06-process-diffs/ps-after-velocity.txt
+[scenario]   /home/thales/kennel/demo/evidence/s004-disturb/06-process-diffs/ps-after-verify.txt
+[scenario]   /home/thales/kennel/demo/evidence/s004-disturb/06-process-diffs/ps-before.txt
+  [PASS] no uncaught errors anywhere in the session -- []
+  [PASS] nothing was fetched from anywhere but localhost and the guest -- []
+
+bypassed (measured, not asserted -- see demo/scenarios.md):
+  5 manual-stepping -- manually_step_sim is fixed at stock (composer-scope.md §1.2), so /step_sim is not served. Retirement: the composer offering the key, then the console's two step buttons calling it. demo/scenarios.md §s004
+pass=64 fail=0 bypass=1
+ALL CHECKS PASSED
+
+[scenario] leaving the stack as a scenario found it: standing, STAND, bridge down
+[scenario]   [kennel-bridge] watchdog stopped (interventions this session: 1)
+[scenario]   [kennel-bridge] bridge stopped
+[scenario]   [kennel-demo] teleop stopped. The console will report the bridge as unreachable.

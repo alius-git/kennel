@@ -1,0 +1,22 @@
+[
+ [
+  "0.0s",
+  "data source: live (ws://192.168.122.32:9090/)"
+ ],
+ [
+  "1.6s",
+  "FALL: body height \u2014 z median 0.147 m, outside [0.20, 0.45] m \u2014 controller latched to damping mode"
+ ],
+ [
+  "3.9s",
+  "/reset_sim called \u2014 spawn at z 0.40 m with the simulator's own joint positions; the sim clock restarts"
+ ],
+ [
+  "0.0s",
+  "sim clock restarted at 0.0 s \u2014 windows cleared"
+ ],
+ [
+  "2.9s",
+  "WBC missed its 2 ms deadline \u2014 worst solve sampled 0.3 ms; torque command late"
+ ]
+]

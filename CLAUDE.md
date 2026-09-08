@@ -15,15 +15,16 @@ record before deviating from the rule.
 |---|---|
 | [`plan/`](plan/) | the corpus — PRFAQ, personas, applications, scenarios, [`plan/design.md`](plan/design.md) and its `design/` diagrams — plus the implementation plans: A–C [`plan/next-goals.md`](plan/next-goals.md), D [`plan/teleop-joystick.md`](plan/teleop-joystick.md), E [`plan/reliability.md`](plan/reliability.md), F [`plan/console-live.md`](plan/console-live.md) |
 | [`kennel_console/`](kennel_console/) | the single-file React console, [`kennel_console/serve.py`](kennel_console/serve.py), eight `verify-*.sh` suites (serve, scope, generate, export, send, teleop, dashboard, runs), and the recorded-stack fixtures they replay |
-| [`stack/`](stack/) | running the pinned stack: [`stack/launch.md`](stack/launch.md), `transfer/`, `verify/`, `composed-run/tools/` (the `p21-*` tools), `bridge/` (the rosbridge, its live suite `verify-teleop-live.sh`, and the target watchdog), `known-good/` |
+| [`stack/`](stack/) | running the pinned stack: [`stack/launch.md`](stack/launch.md), `transfer/`, `verify/` (the recipe, the `k14-*` sweep and its probe, [`stack/stress.md`](stack/stress.md)), `composed-run/tools/` (the `p21-*` tools), `bridge/` (the rosbridge, its live suite `verify-teleop-live.sh`, and the target watchdog), `known-good/` |
 | [`vm/`](vm/) | the appliance: [`vm/host-baseline.md`](vm/host-baseline.md), [`vm/provisioning.md`](vm/provisioning.md), [`vm/snapshot.md`](vm/snapshot.md), and the Yuruna sequences under `vm/test/` |
-| [`demo/`](demo/) | the driver [`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh), the [runbook](demo/runbook.md), the [dry run](demo/dry-run.md) |
+| [`demo/`](demo/) | the driver [`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh), the [runbook](demo/runbook.md), the [dry run](demo/dry-run.md), the [scenario verbs](demo/scenarios.md) (`scenario disturb`, `scenario diagnose`) |
 | `dfki-quad/` | the pinned upstream clone — **gitignored, never edited**; read it at the pin with `git show <PIN>:path` |
 
 Driver verbs ([`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh) `help`):
 
 - once per host — `setup`, `provision`
 - each session — `up`, `console`, `run`, `teleop [stop]`, `walk [stop]`, `down`, `reset`
+- the scenarios as tests — `scenario disturb`, `scenario diagnose`
 - the pieces underneath — `all`, `compose`, `transfer`, `launch`, `verify`, `status`, `snapshot`, `halt`
 
 ## The rules
