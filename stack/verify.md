@@ -91,7 +91,7 @@ Each line of output names the observable it read:
 
 | # | Check | Observable | Threshold | Provenance |
 |---|-------|-----------|-----------|------------|
-| 1 | `node-graph` | `ros2 node list` | exactly the six healthy-session nodes, no duplicates — plus the three rosbridge nodes *tolerated* when `KENNEL_EXPECT_BRIDGE=1` | [`launch.md`](launch.md) §6, [`known-good/06-healthy-graph.txt`](known-good/06-healthy-graph.txt), [`bridge.md`](bridge.md) §6 |
+| 1 | `node-graph` | `ros2 node list` | exactly the six healthy-session nodes, no duplicates — plus the **four** a teleop session adds, *tolerated* when `KENNEL_EXPECT_BRIDGE=1` | [`launch.md`](launch.md) §6, [`known-good/06-healthy-graph.txt`](known-good/06-healthy-graph.txt), [`bridge.md`](bridge.md) §6, §11 |
 | 2 | `sim-clock` | `/clock` vs monotonic wall clock | advances ≥ 90 % of the requested window within the wall budget | §1.1; realtime rate reported, never asserted |
 | 3 | `state-stream` | `/quad_state` message count ÷ sim-seconds | 900–1100 Hz | 1000 Hz measured, [`launch.md`](launch.md) §6 |
 | 4 | `controller-alive` | `/controller_heartbeat` count ÷ sim-seconds | 1.5–2.5 Hz | 2 Hz measured; `controller_heartbeat_dt` default 0.5 s |
@@ -102,9 +102,13 @@ Each line of output names the observable it read:
 | 9 | `no-fall` | `/quad_state` `belly_contact`, `z`, attitude | `belly_contact` false in every sample, **median** z in 0.20–0.45 m, tilt > 0.5 rad in ≤ 2 % of samples | §4 — every part of this was forced by an observed failure |
 | 10 | `composed-config` | `ros2 param get mpc_solver` + controller launch log | reports the active solver; asserts equality when `--expect-solver` is given | §3 |
 
-`KENNEL_EXPECT_BRIDGE=1` adds `/rosapi`, `/rosapi_params` and
-`/rosbridge_websocket` to the *allowed* set only — they are tolerated, never
-required. Without it a bridge left running reports them as `extra:`, which is
+`KENNEL_EXPECT_BRIDGE=1` adds `/rosapi`, `/rosapi_params`,
+`/rosbridge_websocket` and — since
+[#67](https://github.com/alius-git/kennel/issues/67) — `/k13_target_watchdog` to
+the *allowed* set only: they are tolerated, never required. The watchdog is a
+publisher on `/quad_control_target`, and it does not disturb this recipe's own
+20 Hz walk, because a publisher that is still publishing is never stale
+([`bridge.md` §11.3](bridge.md)). Without it a bridge left running reports them as `extra:`, which is
 the intended signal. `kennel-demo.sh verify` sets the knob when it can reach a
 bridge, and warns that checks 6–9 command their own trot, so a console that is
 connected and driving must be disconnected first — two publishers on
@@ -246,7 +250,12 @@ parameter path says so.
 
 `/gait_state` is the observable that does. It carries no gait *name*, but it
 carries what a gait *is* — `period`, `duty_factor`, `phase_offset` — and those
-come straight from `GaitDatabase::getGait`. `WALKING_TROT` is
+come straight from `GaitDatabase::getGait`. Since
+[#66](https://github.com/alius-git/kennel/issues/66) the console's gait picker
+reads the same signature live and reports `active` or `refused` rather than
+`sent` ([`kennel_console/teleop.md` §12](../kennel_console/teleop.md)); measured
+against the real node, an accepted gait shows up on `/gait_state` in under a
+tenth of a second, and `GARBAGE` never does. `WALKING_TROT` is
 `period 0.5, duty 0.6, offsets [0, 0.5, 0.5, 0]`; `STAND` is `0.5 / 1.0 /
 [0,0,0,0]`. The script carries the ten-entry table and checks the signature, so
 check 6 fails if the sequencer did not follow even when check 5 passes.

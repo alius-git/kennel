@@ -1,0 +1,37 @@
+=== D.3 §7: Firefox on the host, against the real bridge (#65) ===
+2026-09-07T20:35:47Z
+Firefox 154.0.1 (snap), headless, driven over Marionette. Chrome is what the
+suites drive; the classroom browser may not be, and Firefox's Private Network
+Access rules differ -- a page on http://localhost reaching ws://192.168.122.x is
+exactly the case those rules are about.
+
+PROFILE: $HOME/snap/firefox/common/kennel-ff-profile. Snap confinement is real:
+a profile outside $HOME/snap is not readable by the snap, and the profile has to
+live there. That is the only accommodation this needed.
+
+handshake: {'applicationType': 'gecko', 'marionetteProtocol': 3}
+bridge field: ws://192.168.122.32:9090/
+the probe resolved after 0.5 s
+  page: ws://192.168.122.32:9090/ · <= 50 Hz
+  page: listening on /quad_control_target for another publisher …
+  page: MODEL ADAPTATION
+  page: /controller_heartbeat.num_model_updates · off
+  page: data source: live (ws://192.168.122.32:9090/)
+  page: MODE
+  page: live
+errors: 0
+holding the connection for 45 s so the guest can be asked what it sees ...
+
+AND WHAT THE GUEST SAW WHILE IT WAS CONNECTED:
+  /quad_control_target 17.4 Hz wall, 139 messages, distinct body_x_dot [0.0], 2 publishers
+
+VERDICT: Firefox connects and publishes. Private Network Access did NOT interfere:
+no prompt, no block, no console error (errors: 0), the DataSource went live and the
+page published a 20 Hz zero stream the guest received.
+
+ONE DIFFERENCE WORTH RECORDING: headless Firefox delivers the page's 20 Hz
+setInterval at about 17.4 Hz, where headless Chrome delivers 19.9-20.1. Both are
+inside what the controller needs (it consumes the latest target every cycle and
+does not care about the rate), but a suite that asserted 20 +/- 2 against a
+headless Firefox would be asserting a property of the browser's timer throttling.
+The stick was never pushed in this test, so the distinct value is 0.0 throughout.

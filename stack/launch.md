@@ -238,11 +238,41 @@ latest target every cycle.
 
 ### 4.3 Other controls the same node exposes
 
-Useful when a run goes bad, and all reachable from the CLI: `/set_emergency_damping_mode`
-(`std_srvs/Trigger`, drops the robot into damping) and the simulator's
-`/reset_sim` (`interfaces/srv/ResetSimulation`, pose + 12 joint positions — the
-call is spelled out in upstream's README). Returning to `STAND` via the same
-parameter is the gentle stop.
+Useful when a run goes bad, and all reachable from the CLI. Returning to `STAND`
+via the same parameter is the gentle stop.
+
+| Service | Type | What it does |
+|---|---|---|
+| `/set_emergency_damping_mode` | `std_srvs/Trigger` | drops the robot into `EMERGENCY_DAMPING` — it sits down where it is |
+| `/set_damping_mode` | `std_srvs/Trigger` | **leaves** `EMERGENCY_DAMPING`, into `DAMPING`, which returns to `OPERATE` by itself once a leg command and a quad state arrive (`leg_driver.cpp:233-237`, `:348-374`) |
+| `/reset_sim` | `interfaces/srv/ResetSimulation` | pose + joint positions → the simulator is rebuilt around them |
+
+**The reset sequence, measured** ([#66](https://github.com/alius-git/kennel/issues/66);
+`kennel-bridge.sh recover` and the console's *reset sim* both run it):
+
+```bash
+# 1. zero the target FIRST -- /reset_sim does not touch the controller, which
+#    keeps the last target it was ever sent (mit_controller_node.cpp:793-798),
+#    so a reset under a held velocity walks the fresh robot off its spawn.
+ros2 topic pub --times 10 -r 10 /quad_control_target interfaces/msg/QuadControlTarget \
+  "{body_x_dot: 0.0, body_y_dot: 0.0, world_z: 0.30, hybrid_theta_dot: 0.0, roll: 0.0, pitch: 0.0}"
+# 2. STAND
+ros2 param set /mit_controller_node simple_gait_sequencer.gait STAND
+# 3. ONLY if the robot is on the floor: leave emergency damping, or the fresh
+#    robot lands with no controller under it.
+ros2 service call /set_damping_mode std_srvs/srv/Trigger
+# 4. reset. joint_positions EMPTY: anything but exactly 12 makes the simulator
+#    use its own initial_joint_positions (drake_simulator.cpp:504-512), which is
+#    the stock spawn and needs no constants copied anywhere else.
+ros2 service call /reset_sim interfaces/srv/ResetSimulation \
+  "{pose: {position: {z: 0.4}, orientation: {w: 1.0}}, joint_positions: []}"
+```
+
+It answers `success: True` in about 0.01 s, the sim clock **restarts at zero**,
+and the robot is standing again about a sim-second later — 0.075 m on the floor
+to 0.314 m standing, with the controller never restarting and `verify` still
+`pass=10 fail=0` afterwards. Upstream's README spells the call with a twelve-value
+joint vector; that vector is a real robot's pose, not this sim's spawn.
 
 ## 5. Verified result
 

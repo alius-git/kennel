@@ -148,9 +148,23 @@ mid-stride must put a zero on the wire before it does.
 
 **The limit, stated plainly: a killed renderer fires none of these.** Kill the
 tab mid-stride and the robot keeps walking until someone runs
-`kennel-demo.sh teleop stop`. No amount of JavaScript fixes that; the retirement
-path is a guest-side watchdog node that damps the target when it goes stale,
-which is a new ROS node and not this issue.
+`kennel-demo.sh teleop stop`. No amount of JavaScript fixes that, because the
+JavaScript is what died.
+
+> **Measured, and then retired by [#67](https://github.com/alius-git/kennel/issues/67).**
+>
+> First the measurement, because the retirement is only worth what the finding
+> was. `kill -9` on the renderer mid-stride, twice, on a live stack: the robot
+> travelled **13.3 m in 30 sim-s and was still going** when the window closed;
+> on the second run it destabilised after 0.6 m and stopped by itself. No zero
+> was ever published either time, and the stack was still holding the target the
+> dead page had sent. What an abandoned robot *does* varies; that nothing stops
+> it did not ([`bridge.md` §10.6](../stack/bridge.md)).
+>
+> Since #67 a guest-side node zeroes a stale non-zero target about a second after
+> the page goes quiet, and the robot then stops. It runs beside the bridge,
+> started and stopped by the same verb, and it is the only thing in the system
+> that can catch this: [`bridge.md` §11](../stack/bridge.md).
 
 ## 6. What the Dashboard showed while this issue was the whole of the bridge
 
@@ -232,9 +246,10 @@ The other five suites are green and unmodified: `verify-serve.sh`,
 
 - ~~**The Dashboard is still on `MockDataSource`** (§6). This is the big one.~~
   **Done** in #62/#63 — [`dashboard.md`](dashboard.md).
-- **No `/reset_sim`, no disturbance injector.** Both are in the Interventions
-  spec, both are sim-level service calls this bridge could carry, neither is
-  this issue. The existing `inject` / `reset sim` buttons still drive the mock.
+- ~~**No `/reset_sim`, no disturbance injector.**~~ `/reset_sim` is **done** in
+  [#66](https://github.com/alius-git/kennel/issues/66) — §12. The disturbance
+  injector is still [#68](https://github.com/alius-git/kennel/issues/68), and
+  `inject` says so in the feed rather than quietly driving the mock.
 - **No keyboard driving.** The same publisher would carry WASD; not built.
 - ~~**The 3D pane is still a placeholder.**~~ **Done** in
   [#61](https://github.com/alius-git/kennel/issues/61): the pane frames the
@@ -243,3 +258,159 @@ The other five suites are green and unmodified: `verify-serve.sh`,
 - **One operator.** Two connected browsers are two publishers; the probe makes
   the second one refuse, which is the right outcome but not a shared-control
   design.
+
+## 11. Tested live ([#65](https://github.com/alius-git/kennel/issues/65))
+
+§8's 51 checks run against a fake bridge with no VM, and that is deliberate: they
+prove the *console's* half, byte for byte. What they cannot prove is that the
+robot moves. [`stack/bridge/verify-teleop-live.sh`](../stack/bridge/verify-teleop-live.sh)
+does, from the host, against the real stack — and it re-runs, which the thirteen
+transcripts of [`bridge.md` §8](../stack/bridge.md) never did.
+
+**90 checks, green twice in a row** — and 76, twice, with `KENNEL_WATCHDOG=0`,
+which is the same suite measuring the behaviour #67 replaced. It leaves the stack
+in STAND on every path:
+[`04a`](../stack/bridge/evidence/live/04a-live-suite.txt),
+[`04b`](../stack/bridge/evidence/live/04b-live-suite.txt) before the watchdog and
+[`10a`](../stack/bridge/evidence/live/10a-live-suite-watchdog.txt),
+[`10b`](../stack/bridge/evidence/live/10b-live-suite-watchdog.txt) with it.
+
+| Group | What it drives, and what the GUEST is asked |
+|---|---|
+| 0 | `recover`, then `teleop`: `/api/health` carries the URL `verify-bridge-host.sh` prints |
+| 1 | connect → `driving`; the guest sees 20 Hz of zeros; the watchdog has said nothing |
+| 2 | gait + stick forward → 20 Hz, **0.47 m/s**, 9.4 m in 20 sim-s, z 0.289 m, tilt 0.02 rad, `/gait_state` says `WALKING_TROT` |
+| 3 | release → the wire carries zeros and the robot stops going anywhere |
+| 4 | STAND → the sequencer stands, the last target is a zero |
+| 5 | a held trot → the page **refuses**; `walk stop` → it drives again |
+| 6 | `kill -9` on the renderer → §5's measurement, and #67's answer |
+| 7 | E-STOP → z < 0.15 m; `recover` → standing, no relaunch |
+| 7b | `kennel-demo.sh verify` with the session up → `pass=10 fail=0` |
+| 8 | `teleop stop` → port closed, no process, `/api/health` `bridge: null` |
+| 9 | no uncaught errors; nothing fetched from anywhere but localhost and the guest |
+
+The numbers all come from
+[`k13-target-monitor.py`](../stack/bridge/tools/k13-target-monitor.py) in the
+container: **what a node in the ROS graph saw**, never a variable read back out
+of the page under test — the rule [`dashboard.md` §4](dashboard.md) sets.
+
+### 11.1 The five caveats of `plan/teleop-joystick.md` D.3, answered
+
+| | Answer | Evidence |
+|---|---|---|
+| §4 two publishers | reproduced: `[0.3, 0.5]` on the wire, 3 publishers, 30 Hz, robot at 0.427 m/s between the two commands. `teleop` returns it to `[0.5]` | [`03-jitter.txt`](../stack/bridge/evidence/live/03-jitter.txt) |
+| §5 killed renderer | **13.3 m in 30 sim-s, still going** — §5 | [`04a`](../stack/bridge/evidence/live/04a-live-suite.txt) |
+| §6 CPU and lag | 84.3 % of a core at rate 0.5, 79.0 % at 1.0; inter-arrival std 3.65 / 1.53 ms; no growing lag | [`05-cpu-lag.txt`](../stack/bridge/evidence/live/05-cpu-lag.txt) |
+| §7 Firefox | connects and publishes at 17.4 Hz; **Private Network Access does not interfere** | [`06-firefox.txt`](../stack/bridge/evidence/live/06-firefox.txt) |
+| §8 readiness race | the port is bound first in **10 of 10** starts, by 0.10–2.18 s | [`02-bridge-race.txt`](../stack/bridge/evidence/live/02-bridge-race.txt) |
+
+[`bridge.md` §10](../stack/bridge.md) has each of these in full, and the three
+traps the suite itself fell into first.
+
+**Still open: a person at the controls.** #65 also asks for a session with a
+mouse and one with a trackpad, logged as a friction list. An agent has no hand;
+the pad was driven with synthetic `PointerEvent`s, which proves the code path and
+says nothing about how the control feels. The template is
+[`20-friction-human.md`](../stack/bridge/evidence/live/20-friction-human.md),
+with the dead zone and the ramp already filled in from the measurements.
+
+## 12. Interventions over the bridge ([#66](https://github.com/alius-git/kennel/issues/66))
+
+Two controls in the Interventions row stopped pretending.
+
+### 12.1 `reset sim` is four steps, and the order was measured
+
+§10 used to say *"the existing `inject` / `reset sim` buttons still drive the
+mock"* — a button that rewound a recording while a real robot lay on the floor in
+front of it. It now calls `/reset_sim`, in the sequence a live probe forced:
+
+| | | why |
+|---|---|---|
+| 1 | a hard zero on the wire | `/reset_sim` replaces the simulator's context and never touches the controller, which keeps the last target it was sent (`mit_controller_node.cpp:793-798`). Resetting under a held velocity walks the fresh robot off its spawn |
+| 2 | `STAND` | so the gait the operator picks next is deliberate |
+| 3 | `/set_damping_mode` — **only when the robot is down** (`z < 0.15 m`) | E-STOP is `EMERGENCY_DAMPING` and a reset while damped puts a fresh robot on the ground with no controller under it. On a robot that is standing the same call would drop it ([`bridge.md` §10.5](../stack/bridge.md)) |
+| 4 | `/reset_sim`, `joint_positions` **empty** | anything but exactly 12 makes the simulator use its own `initial_joint_positions` (`drake_simulator.cpp:504-512`), so the stock spawn stays the simulator's to define and this page copies no joint constants it would have to keep in step |
+
+```js
+{op: 'call_service', service: '/reset_sim', type: 'interfaces/srv/ResetSimulation',
+ args: {pose: {position: {x: 0, y: 0, z: 0.40},
+                orientation: {x: 0, y: 0, z: 0, w: 1}},
+        joint_positions: []}}
+```
+
+`0.40` is `initial_robot_height` in `simulator_params_go2.yaml` at the pin, which
+the composer never touches ([`composer-scope.md`](composer-scope.md)).
+
+**Live, end to end** ([`08-reset-from-console.txt`](../stack/bridge/evidence/live/08-reset-from-console.txt)):
+driving at 0.470 m/s → E-STOP → **z 0.0754 m** on the floor → *reset sim* in the
+browser → **z 0.3140 m** standing, gait `STAND`, target zero. The leg driver's own
+log carries the middle of it (`Switch to DAMPING` → `switching to operation` →
+`Switch to OPERATE`), and `verify` afterwards is `pass=10 fail=0` **with no
+relaunch**. That is s004.disturb step 4 — *"standing posture restored, plots and
+counters cleared"* — done.
+
+The feed says both halves, in order:
+
+```
+/reset_sim called — spawn at z 0.40 m with the simulator's own joint positions; the sim clock restarts
+sim clock restarted at 0.0 s — windows cleared
+```
+
+The second line is #63's, unchanged: the call is what the operator did, the clock
+restart is what happened, and they are different events a few hundred
+milliseconds apart. The counters are **not** cleared — they are the controller's
+own cumulative values and it was never restarted ([`dashboard.md` §2.5](dashboard.md)).
+
+**When it refuses.** Under a foreign publisher, nothing is sent at all and the
+page says `kennel-demo.sh walk stop` — a reset into a held trot spawns the robot
+and walks it straight off. While the probe is still listening it says to try
+again in a second. With no bridge, and under plain `http.server`, the button is
+exactly what it always was: the mock's own rewind.
+
+### 12.2 The gait picker says `active`, or `refused`
+
+§4 ended: *"`/gait_state` is the observable that could say active, and reading it
+is not this issue."* This is that issue.
+
+`RosbridgeTarget` subscribes `/gait_state` itself — **after** the advertise, so
+the first subscribe on the wire is still the foreign-publisher probe (§3), and a
+target that refused to drive subscribes to nothing — and matches the incoming
+signature against `GaitDatabase::getGait`'s ten entries (`gait.cpp:748-783` at
+the pin, the same table `kennel-verify.sh` check 6 carries).
+
+- signature matches what was asked → **`active`**, with the period, duty and
+  offsets it matched and how long it took;
+- two seconds after a `successful: true` with no change → **`refused`**.
+
+Live, at rate 1.0 ([`09-gait-active-refused.txt`](../stack/bridge/evidence/live/09-gait-active-refused.txt)):
+
+```
+WALKING_TROT   -> active — /gait_state period 0.500 s, duty 0.60, offsets [0.00, 0.50, 0.50, 0.00] after 0.04 s
+STATIC_WALK    -> active — period 1.250 s, duty 0.80, offsets [0.00, 0.50, 0.75, 0.25]       after 0.04 s
+PRONK          -> active — period 0.500 s, duty 0.50, offsets [0.00, 0.00, 0.00, 0.00]       after 0.07 s
+GARBAGE        -> refused — /gait_state has not changed 2.0 s after the node reported success
+```
+
+and the controller log says `Unknown gait type [GARBAGE]`, which is the whole
+point: the parameter took, the sequencer did not, and until now the page could
+not tell the difference. Sub-second in every accepted case, so the two-second
+window is generous rather than tight.
+
+### 12.3 Verification
+
+`verify-teleop.sh` grows two more far ends — a fake that follows the gait
+parameter and publishes `/gait_state`, and the recorded fall replayed with the
+held trot dropped so the page can drive at a robot that is on the floor — and
+five groups. **51 → 76 checks, still no VM.**
+
+| Group | Asserts, from the bytes the page sent |
+|---|---|
+| 13 | reset while driving: a zero, then `STAND`, then `/reset_sim` with the exact args and **no** damping call |
+| 14 | reset on the replayed fall: `/set_damping_mode` **precedes** `/reset_sim` |
+| 15 | reset under a foreign publisher: no service call at all, and the page names `walk stop` |
+| 16 | `active` for a gait the node loads, `refused` for one it ignores, never `active` for that one; the `/gait_state` subscribe comes after the probe |
+| 17 | plain `http.server`: `reset sim` still rewinds the mock, no socket, nothing thrown |
+
+The fake answers each service in **its own shape** — `SetParameters` returns a
+list of results, `ResetSimulation` and the Triggers return a bool. One shape for
+all three was fine while only the gait was called.

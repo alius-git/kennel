@@ -1,0 +1,57 @@
+=== #66 live: reset sim, from the console, on a robot that is on the floor ===
+2026-09-07T20:45:09Z
+guest kennel-vm; applied run run-20260907T202843Z (OSQP, flat plane, rate 1.0)
+
+--- drive it, then E-STOP it from the page
+  stick forward
+  before E-STOP:
+    z median 0.2867 m, vx_mean 0.470 m/s, gait WALKING_TROT, target 0.5
+  E-STOP: ['emergency damping requested — target zeroed']
+  after E-STOP:
+    z median 0.0754 m, vx_mean -0.000 m/s, gait WALKING_TROT, target 0.0
+
+--- now the console's own `reset sim` button, with nothing else touched
+  the page says:
+     sim reset — spawned at z 0.40 m with the simulator's own joint positions; the sim clock restarts
+  after reset sim:
+    z median 0.3140 m, vx_mean -0.000 m/s, gait STAND, target 0.0
+  the event feed, newest last:
+     data source: live (ws://192.168.122.32:9090/)
+     /reset_sim called — spawn at z 0.40 m with the simulator's own joint positions; the sim clock restarts
+     sim clock restarted at 0.0 s — windows cleared
+
+--- the leg driver's own account (it had to be brought out of EMERGENCY_DAMPING)
+    [leg_driver-1] [INFO] [1788814396.678341377] [leg_driver]: Swicht to ENERGENCY_DAMPING
+    [leg_driver-1] [WARN] [1788814396.679005561] [leg_driver]: EMERGENCY DAMPING
+    [leg_driver-1] [WARN] [1788814401.724338176] [leg_driver]: EMERGENCY DAMPING
+    [leg_driver-1] [INFO] [1788814404.598000942] [leg_driver]: Switch to DAMPING
+    [leg_driver-1] [INFO] [1788814404.598345262] [leg_driver]: Leg cmd message and quadt state received, switching to operation
+    [leg_driver-1] [INFO] [1788814404.598368686] [leg_driver]: Switch to OPERATE
+    [simulator-1] [INFO] [1788814336.157101826] [drake_simulator]: Simulation reset was performed
+    [simulator-1] [INFO] [1788814404.643405091] [drake_simulator]: No or the wrong number of joint positions specified, joint positions will be reset to default values
+    [simulator-1] [INFO] [1788814404.643988246] [drake_simulator]: Simulation reset was performed
+
+--- and the stack is still healthy afterwards: no relaunch, nothing restarted
+    [kennel-demo] expect solver    PARTIAL_CONDENSING_OSQP  (from $KENNEL_SOLVER)
+    [PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required the six healthy-session nodes plus the three rosbridge nodes (KENNEL_EXPECT_BRIDGE=1), no duplicates
+    [PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 5.0 s wall, required >= 4.50 sim-s within 40 s wall
+    [PASS] 3 state-stream         -- /quad_state rate: measured 934.6 Hz per sim-second, required 900-1100 Hz per sim-second
+    [PASS] 4 controller-alive     -- /controller_heartbeat rate: measured 2.00 Hz per sim-second, required 1.50-2.50 Hz per sim-second
+    [PASS] 5 gait-command         -- ros2 param set/get /mit_controller_node simple_gait_sequencer.gait: measured set said 'Set parameter successful', read back 'WALKING_TROT', required 'Set parameter successful' and read-back 'WALKING_TROT'
+    [PASS] 6 gait-active          -- /gait_state: measured period=0.500 duty_factor=['0.600', '0.600', '0.600', '0.600'] phase_offset=['0.000', '0.500', '0.500', '0.000'] sequencer=0, required WALKING_TROT signature period=0.500 duty=0.600 offsets=[0.0, 0.5, 0.5, 0.0]
+    [PASS] 7 solver-health        -- /controller_heartbeat counters: measured d_mpc_fail=0 d_wbc_fail=0 d_overtime=0 (d_early_contacts=23, 30 heartbeats), required d_mpc_fail=0, d_wbc_fail=0, d_overtime <= 20
+    [PASS] 8 walking              -- /quad_control_target vs /quad_state twist: measured vx_mean=0.267 m/s, dx=4.010 m over 15.00 sim-s, advanced in all 5 sub-windows: yes, required vx_mean in [0.20, 0.35] m/s for a 0.30 m/s command, dx >= 2.25 m, advance in every sub-window
+    [PASS] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured belly_contact=0/15000 samples, z median=0.2906 m (p01=0.2785 min=0.2770 max=0.3018), max tilt=0.012 rad, tilt over 0.50 in 0.00% of samples, required belly_contact false in every sample, median z in [0.20, 0.45] m, tilt over 0.50 rad in <= 2.0% of samples
+    [PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp linear system solver to qdldl), required PARTIAL_CONDENSING_OSQP
+    [PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required the six healthy-session nodes plus the three rosbridge nodes (KENNEL_EXPECT_BRIDGE=1), no duplicates
+    [PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 5.0 s wall, required >= 4.50 sim-s within 40 s wall
+    [PASS] 3 state-stream         -- /quad_state rate: measured 934.6 Hz per sim-second, required 900-1100 Hz per sim-second
+    [PASS] 4 controller-alive     -- /controller_heartbeat rate: measured 2.00 Hz per sim-second, required 1.50-2.50 Hz per sim-second
+    [PASS] 5 gait-command         -- ros2 param set/get /mit_controller_node simple_gait_sequencer.gait: measured set said 'Set parameter successful', read back 'WALKING_TROT', required 'Set parameter successful' and read-back 'WALKING_TROT'
+    [PASS] 6 gait-active          -- /gait_state: measured period=0.500 duty_factor=['0.600', '0.600', '0.600', '0.600'] phase_offset=['0.000', '0.500', '0.500', '0.000'] sequencer=0, required WALKING_TROT signature period=0.500 duty=0.600 offsets=[0.0, 0.5, 0.5, 0.0]
+    [PASS] 7 solver-health        -- /controller_heartbeat counters: measured d_mpc_fail=0 d_wbc_fail=0 d_overtime=0 (d_early_contacts=23, 30 heartbeats), required d_mpc_fail=0, d_wbc_fail=0, d_overtime <= 20
+    [PASS] 8 walking              -- /quad_control_target vs /quad_state twist: measured vx_mean=0.267 m/s, dx=4.010 m over 15.00 sim-s, advanced in all 5 sub-windows: yes, required vx_mean in [0.20, 0.35] m/s for a 0.30 m/s command, dx >= 2.25 m, advance in every sub-window
+    [PASS] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured belly_contact=0/15000 samples, z median=0.2906 m (p01=0.2785 min=0.2770 max=0.3018), max tilt=0.012 rad, tilt over 0.50 in 0.00% of samples, required belly_contact false in every sample, median z in [0.20, 0.45] m, tilt over 0.50 rad in <= 2.0% of samples
+    [PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp linear system solver to qdldl), required PARTIAL_CONDENSING_OSQP
+    pass=10 fail=0
+    [kennel-demo] verify report    /home/thales/kennel-runs/run-20260907T202843Z/verify.json (verdict completed)

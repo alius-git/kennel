@@ -43,4 +43,9 @@ pkill -KILL -f 'controllers/joy_to_target[.]py' 2>/dev/null || true
 pkill -KILL -f 'rosbridge_server/rosbridge_websocke[t]' 2>/dev/null || true
 pkill -KILL -f 'rosapi/rosapi_nod[e]' 2>/dev/null || true
 rm -f /tmp/k13-bridge.pid
+# The target watchdog (#67) is signalled by the pidfile sweep above like anything
+# else, and it removes its own state file when it is INTed. This is for the case
+# where it had to be KILLed: a stale state file would tell the next
+# `kennel-bridge.sh stop` to wait for a watchdog that is not there.
+rm -f /tmp/k13-watchdog.pid /tmp/k13-watchdog.state
 true

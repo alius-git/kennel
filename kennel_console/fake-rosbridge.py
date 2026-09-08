@@ -17,6 +17,19 @@ testing.
     --foreign          answer a subscribe to /quad_control_target with one
                        publish, imitating a held trot or a verify walk. The
                        console must then refuse to publish at all.
+    --gait-follow      keep a gait, and PUBLISH /gait_state for it at 10 Hz to
+                       anyone who subscribes (#66). A set_parameters call with a
+                       gait name the pin knows changes the signature; a name it
+                       does not know answers `successful: true` and changes
+                       NOTHING, which is what the real node does (verify.md
+                       §4.4). Opt-in on purpose: without it this fixture never
+                       publishes /gait_state, so the pre-#66 assertion that the
+                       page says `sent` and never `active` still holds exactly.
+    --drop TOPIC       (replay) never deliver this topic. Both recorded fixtures
+                       carry the held trot on /quad_control_target, so a page
+                       connecting to a plain replay refuses to drive -- correct,
+                       and useless when the test needs a fallen robot AND a
+                       driving page. Repeatable.
     --refuse-service   answer call_service with result:false, so the suite can
                        see the page report a refusal rather than swallow it.
     --replay FIXTURE   answer every subscribe by replaying what the REAL stack
@@ -56,6 +69,24 @@ import time
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 TOPIC = "/quad_control_target"
+GAIT_TOPIC = "/gait_state"
+GAIT_PARAM = "simple_gait_sequencer.gait"
+# GaitDatabase::getGait at the pin (gait.cpp:748-783): name -> period, duty,
+# phase offsets. A test fixture's copy of the same ten lines the console, the
+# verification recipe and k13-target-monitor.py each carry; a drift between them
+# shows up as a gait that reports `refused` after it plainly loaded.
+GAIT_SIGS = {
+    "STAND": (0.5, 1.0, [0.0, 0.0, 0.0, 0.0]),
+    "STATIC_WALK": (1.25, 0.8, [0.0, 0.5, 0.75, 0.25]),
+    "WALKING_TROT": (0.5, 0.6, [0.0, 0.5, 0.5, 0.0]),
+    "TROT": (0.5, 0.5, [0.0, 0.5, 0.5, 0.0]),
+    "FLYING_TROT": (0.4, 0.4, [0.0, 0.5, 0.5, 0.0]),
+    "PACE": (0.35, 0.5, [0.0, 0.5, 0.0, 0.5]),
+    "BOUND": (0.4, 0.4, [0.0, 0.0, 0.5, 0.5]),
+    "ROTARY_GALLOP": (0.4, 0.2, [0.0, 0.8571, 0.3571, 0.5]),
+    "TRAVERSE_GALLOP": (0.5, 0.2, [0.0, 0.8571, 0.3571, 0.5]),
+    "PRONK": (0.5, 0.5, [0.0, 0.0, 0.0, 0.0]),
+}
 
 
 def load_fixture(path):
@@ -129,6 +160,8 @@ class Conn(threading.Thread):
         self.replayer = None
         self.alive = True
         self.buf = b""
+        self.gait = "STAND"          # --gait-follow: what the "node" is running
+        self.gait_thread = None
 
     # --- framing ------------------------------------------------------------
     def _read(self, n):
@@ -265,6 +298,8 @@ class Conn(threading.Thread):
                     time.sleep(min(wait, 0.25))
                 if not self.alive:
                     return
+                if topic in (self.opts.drop or []):
+                    continue
                 thr = self.throttle_for(topic)
                 if thr is None:
                     continue
@@ -277,8 +312,39 @@ class Conn(threading.Thread):
                 return
             loop += 1
 
+    # --- the gait, when this fixture is pretending to have a sequencer
+    def start_gait(self):
+        if self.gait_thread is not None:
+            return
+        self.gait_thread = threading.Thread(target=self.gait_loop, daemon=True)
+        self.gait_thread.start()
+
+    def gait_loop(self):
+        """10 Hz of /gait_state for whatever gait is current. Only the SIGNATURE
+        matters to the page -- contact and phase change every message and decide
+        nothing (#66) -- but they are filled in so the shape is the pin's."""
+        while self.alive:
+            period, duty, off = GAIT_SIGS.get(self.gait, GAIT_SIGS["STAND"])
+            ph = (time.monotonic() % period) / period
+            phases = [(ph + o) % 1.0 for o in off]
+            self.send_text({"op": "publish", "topic": GAIT_TOPIC, "msg": {
+                "period": period, "duty_factor": [duty] * 4, "phase_offset": list(off),
+                "contact": [p < duty for p in phases],
+                "phase": phases, "gait_sequencer": 0}})
+            time.sleep(0.1)
+
+    def response_values(self, service):
+        if service.endswith("set_parameters"):
+            return {"results": [{"successful": True, "reason": ""}]}
+        if service == "/reset_sim":
+            return {"success": True}
+        return {"success": True, "message": ""}     # std_srvs/srv/Trigger
+
     def dispatch(self, msg):
         op = msg.get("op")
+        if op == "subscribe" and self.opts.gait_follow and msg.get("topic") == GAIT_TOPIC:
+            self.start_gait()
+            return
         if op == "subscribe" and self.fixture is not None:
             with self.sub_lock:
                 self.subs[msg.get("id") or msg.get("topic")] = (
@@ -294,12 +360,28 @@ class Conn(threading.Thread):
                         self.subs.pop(k, None)
             return
         if op == "call_service":
+            service = msg.get("service") or ""
+            if self.opts.gait_follow and service.endswith("set_parameters"):
+                # THE NODE'S OWN BEHAVIOUR: it accepts the parameter whatever the
+                # string is, and only loads a gait it knows (verify.md §4.4). So
+                # an unknown name answers `successful: true` and changes nothing,
+                # which is exactly the case the console has to detect.
+                for p in (msg.get("args") or {}).get("parameters", []):
+                    if p.get("name") == GAIT_PARAM:
+                        want = (p.get("value") or {}).get("string_value")
+                        if want in GAIT_SIGS:
+                            self.gait = want
             self.send_text({
                 "op": "service_response",
                 "service": msg.get("service"),
                 "id": msg.get("id"),
                 "result": not self.opts.refuse_service,
-                "values": ({"results": [{"successful": True, "reason": ""}]}
+                # Each service answers in ITS OWN shape. SetParameters returns a
+                # list of results; ResetSimulation and the two Triggers return a
+                # bool. One shape for all three was fine while only the gait was
+                # called; #66 calls three different services and the page reads
+                # what comes back.
+                "values": (self.response_values(service)
                            if not self.opts.refuse_service
                            else "service unavailable"),
             })
@@ -317,6 +399,10 @@ def main(argv=None):
     ap.add_argument("--port", type=int, required=True)
     ap.add_argument("--log", required=True)
     ap.add_argument("--foreign", action="store_true")
+    ap.add_argument("--gait-follow", action="store_true",
+                    help="publish /gait_state, and follow the gait parameter (#66)")
+    ap.add_argument("--drop", action="append", default=[],
+                    help="(replay) never deliver this topic; repeatable")
     ap.add_argument("--refuse-service", action="store_true")
     ap.add_argument("--replay", default=None,
                     help="a fixture from record-fixture.py: answer subscribes with it")
@@ -349,9 +435,10 @@ def main(argv=None):
               file=sys.stderr)
         return 2
     srv.listen(8)
-    print("[fake-rosbridge] ws://localhost:%d/ -> %s%s%s" % (
+    print("[fake-rosbridge] ws://localhost:%d/ -> %s%s%s%s" % (
         opts.port, opts.log,
         "  (foreign publisher)" if opts.foreign else "",
+        "  (gait-follow)" if opts.gait_follow else "",
         "  (replay%s)" % (", looping" if opts.loop else "") if opts.replay else ""), flush=True)
     lock = threading.Lock()
     try:

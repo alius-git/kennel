@@ -1,0 +1,14 @@
+=== #66 live: the gait picker reports what /gait_state says ===
+2026-09-07T20:44:11Z
+guest kennel-vm; applied run run-20260907T202843Z (OSQP, flat plane, simulator_realtime_rate 1.0)
+
+[kennel-bridge] recovered: standing at 0.31225 m, gait STAND, target zero
+connected: ['driving — 20 Hz to /quad_control_target']
+
+  WALKING_TROT   -> gait WALKING_TROT active — /gait_state period 0.500 s, duty 0.60, offsets [0.00, 0.50, 0.50, 0.00] after 0.04 s
+  STATIC_WALK    -> gait STATIC_WALK active — /gait_state period 1.250 s, duty 0.80, offsets [0.00, 0.50, 0.75, 0.25] after 0.04 s
+  PRONK          -> gait PRONK active — /gait_state period 0.500 s, duty 0.50, offsets [0.00, 0.00, 0.00, 0.00] after 0.07 s
+  GARBAGE        -> gait GARBAGE refused — /gait_state has not changed 2.0 s after the node reported success. The node accepts the parameter and keeps the sequencer it had for a name it does not know (launch.md §4.1).
+     (the node answered successful: true for it 2.0 s earlier)
+  WALKING_TROT   -> gait WALKING_TROT active — /gait_state period 0.500 s, duty 0.60, offsets [0.00, 0.50, 0.50, 0.00] after 0.04 s
+  controller log says Unknown gait type [GARBAGE] x1

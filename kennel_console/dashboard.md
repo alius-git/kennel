@@ -455,9 +455,10 @@ wrong.
   1000 Hz and 2.6 kB a message that is 1.5 MB/s of JSON through a browser tab.
   *Retirement path:* aggregation on the bridge side, which is where the full
   rate already is.
-- **The interventions still drive the mock.** `inject`, `reset sim` and the two
-  step buttons are sim-level service calls the bridge could carry and does not
-  yet: [#66](https://github.com/alius-git/kennel/issues/66) and
+- **Some interventions still drive the mock.** `reset sim` is **done** —
+  [#66](https://github.com/alius-git/kennel/issues/66) calls `/reset_sim` in a
+  measured sequence ([`teleop.md` §12](teleop.md)). `inject` and the two step
+  buttons are still sim-level service calls the bridge could carry and does not:
   [#68](https://github.com/alius-git/kennel/issues/68). Live, they say so in the
   feed rather than doing nothing.
 - **Touchdown offsets are quantised to ~20 ms** by the subscription rate. Below

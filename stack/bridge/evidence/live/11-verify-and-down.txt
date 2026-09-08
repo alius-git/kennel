@@ -1,0 +1,50 @@
+=== #67: check 1 with and without the knob, the watchdog's silence, and the reap ===
+2026-09-07T23:32:38Z
+guest kennel-vm; applied run run-20260907T202843Z (OSQP, flat plane, rate 1.0)
+
+The recipe COMMANDS its own 15 sim-s trot and measures it, so each run below is
+preceded by kennel-bridge.sh recover: two verifies back to back measure a robot
+the first one has already tired out, and this file is about check 1 and the
+watchdog, not about how many trots this guest has left in it.
+
+--- a teleop session is up (bridge + watchdog):
+  [kennel-bridge] pid       175916 alive
+  [kennel-bridge] port      9090 bound (0.0.0.0:9090)
+  [kennel-bridge] node      /rosbridge_websocket in the graph
+  [kennel-bridge] watchdog  pid 176114 alive · idle 1788824386.164 0.0000 0.0000 0.3000 interventions=0
+  [kennel-bridge] bridge is up
+
+--- 1. the recipe run BY HAND on the guest, with no knob, on a freshly launched
+       stack. Check 1 must report the four extra nodes: that is the intended
+       signal, not a defect.
+  [FAIL] 1 node-graph           -- ros2 node list: measured /drake_simulator /joy_linux_node /joy_to_target /k13_target_watchdog /leg_driver /mit_controller_node /rosapi /rosapi_params /rosbridge_websocket /safe_start_launcher [missing: none][extra: /k13_target_watchdog /rosapi /rosapi_params /rosbridge_websocket ][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+  pass=9 fail=1
+
+       ONE failure, and it is check 1. An earlier capture of this same command
+       read pass=7 fail=3, on a robot that had already been driven, E-STOPped and
+       verified twice over: checks 8 and 9 were failing the ROBOT, not the node
+       graph. Re-measured on a fresh launch, which is the only way this line says
+       anything about the knob.
+
+--- 2. the same recipe through the driver, which sets KENNEL_EXPECT_BRIDGE=1:
+  [PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required the six healthy-session nodes plus the four a teleop session adds -- three rosbridge, one target watchdog (KENNEL_EXPECT_BRIDGE=1), no duplicates
+  [PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required the six healthy-session nodes plus the four a teleop session adds -- three rosbridge, one target watchdog (KENNEL_EXPECT_BRIDGE=1), no duplicates
+  pass=10 fail=0
+
+--- 3. the watchdog through both of those. The recipe publishes its own 20 Hz
+       target for checks 6-9; a publisher that is still publishing is never
+       stale, so the watchdog arms and never fires:
+  [watchdog] armed: vx=0.300 vy=0.000 wz=0.000 z=0.300
+  [watchdog] armed: vx=0.300 vy=0.000 wz=0.000 z=0.300
+  [watchdog] armed: vx=0.300 vy=0.000 wz=0.000 z=0.300
+  [watchdog] armed: vx=0.300 vy=0.000 wz=0.000 z=0.300
+    interventions: 0
+
+--- 4. kennel-demo.sh down, WITHOUT teleop stop first. The watchdog's pidfile is
+       /tmp/k13-watchdog.pid, so k13-stop.sh's sweep reaps it like everything else:
+  [kennel-demo] stack stopped in container 'dfki_quad'. The container itself is left running.
+  watchdog processes: 0
+  rosbridge processes: 0
+  pidfiles left: (none)
+  watchdog state file: none
+  port 9090: closed

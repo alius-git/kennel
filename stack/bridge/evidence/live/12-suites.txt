@@ -1,0 +1,30 @@
+=== the eight console suites plus the live one, after #65 / #66 / #67 ===
+2026-09-07T23:42:30Z
+
+No VM, no ROS, no stack -- the far ends are fake-rosbridge.py and a fake Meshcat:
+
+verify-serve      exit=0   (prints step/ok lines, not [PASS] -- see below)
+verify-scope      exit=0   36 checks
+verify-generate   exit=0   45 checks
+verify-export     exit=0   55 checks
+verify-send       exit=0   43 checks
+verify-teleop     exit=0   76 checks
+verify-dashboard  exit=0   85 checks
+verify-runs       exit=0   51 checks
+
+Seven of the eight are untouched by this pass; verify-teleop.sh gained five
+groups for #66 (51 -> 76 checks) and had nothing removed:
+
+  $ git diff --stat main -- kennel_console/verify-{serve,scope,generate,export,send,dashboard,runs}.*
+  (nothing)
+
+  $ git diff main -- kennel_console/verify-teleop.py | grep '^-' | grep -v '^---'
+  (nothing removed)
+
+verify-serve.sh is the odd one out only in its output: it prints numbered steps
+and an `OK` per step rather than [PASS] lines, which is why the count above is
+blank. Its verdict is its exit code, and it is 0.
+
+And on the guest, the live suite (stack/bridge/verify-teleop-live.sh):
+  KENNEL_WATCHDOG=0   76 checks, green twice   04a / 04b
+  default             90 checks, green twice   10a / 10b

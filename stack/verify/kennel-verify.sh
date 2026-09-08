@@ -87,11 +87,12 @@ Usage: kennel-verify.sh [options]        (run on the guest, kennel-vm)
                          /tmp/kennel-verify).
   -h, --help             this text.
 
-  KENNEL_EXPECT_BRIDGE=1 tolerate the three nodes a running rosbridge adds
-                         (/rosapi, /rosapi_params, /rosbridge_websocket) in
-                         check 1. Without it a bridge left up reports `extra:`,
-                         which is the intended signal. Never REQUIRES them.
-                         `kennel-demo.sh verify` sets it when the bridge is up.
+  KENNEL_EXPECT_BRIDGE=1 tolerate the four nodes a teleop session adds
+                         (/rosapi, /rosapi_params, /rosbridge_websocket and
+                         /k13_target_watchdog) in check 1. Without it a bridge
+                         left up reports `extra:`, which is the intended signal.
+                         Never REQUIRES them. `kennel-demo.sh verify` sets it
+                         when the bridge is up.
   KENNEL_RUN / KENNEL_PIN  recorded verbatim in report.json, so a report says
                          which composed run it is of. Set by `kennel-demo.sh
                          verify` from the applied run; empty when this script is
@@ -232,16 +233,21 @@ EXPECTED_NODES="/drake_simulator
 /mit_controller_node
 /safe_start_launcher"
 
-# KENNEL_EXPECT_BRIDGE=1 makes the three nodes `kennel-demo.sh teleop` adds
+# KENNEL_EXPECT_BRIDGE=1 makes the four nodes `kennel-demo.sh teleop` adds
 # TOLERATED, never required: the bridge is optional beside the stack, and a run
 # with one up is still a healthy six-node session plus a bridge. Tolerated
 # rather than expected on purpose -- the entries also linger 10-20 s after the
 # bridge is stopped (a dead DDS participant times out, the same effect this
 # check's own comment describes), so requiring them would turn a correct
 # teardown into a red run. See stack/bridge.md §4.
+#
+# Three of them are rosbridge's own. The fourth is the target watchdog (#67),
+# which teleop starts beside the bridge and which is a publisher on
+# /quad_control_target -- so a session that has one is still a healthy session.
 BRIDGE_NODES="/rosapi
 /rosapi_params
-/rosbridge_websocket"
+/rosbridge_websocket
+/k13_target_watchdog"
 TOLERATED_NODES=""
 [ "${KENNEL_EXPECT_BRIDGE:-0}" = 1 ] && TOLERATED_NODES="$BRIDGE_NODES"
 
@@ -258,7 +264,7 @@ extra="$(comm -13 "$WORK/nodes.allowed" "$WORK/nodes.uniq" | tr '\n' ' ')"
 dups="$(uniq -d "$WORK/nodes.txt" | tr '\n' ' ')"
 node_detail="$(tr '\n' ' ' < "$WORK/nodes.txt")"
 NODE_CRITERION="exactly the six healthy-session nodes, no duplicates"
-[ -n "$TOLERATED_NODES" ] && NODE_CRITERION="the six healthy-session nodes plus the three rosbridge nodes (KENNEL_EXPECT_BRIDGE=1), no duplicates"
+[ -n "$TOLERATED_NODES" ] && NODE_CRITERION="the six healthy-session nodes plus the four a teleop session adds -- three rosbridge, one target watchdog (KENNEL_EXPECT_BRIDGE=1), no duplicates"
 if [ -n "$missing" ] || [ -n "$extra" ] || [ -n "$dups" ]; then
   record FAIL "1 node-graph" "ros2 node list" \
     "${node_detail:-<empty>}[missing: ${missing:-none}][extra: ${extra:-none}][duplicate: ${dups:-none}]" \

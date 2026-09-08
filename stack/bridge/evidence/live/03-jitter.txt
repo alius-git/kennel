@@ -1,0 +1,38 @@
+=== D.3 §4 and §6: the two-publisher jitter, and what the bridge costs (#65) ===
+2026-09-07T20:26:07Z
+guest kennel-vm; applied run run-20260907T144210Z (OSQP, flat plane, simulator_realtime_rate 0.5)
+
+[kennel-bridge] recovered: standing at 0.31397 m, gait STAND, target zero
+
+--- ONE publisher: the page, driving at 0.5 m/s
+  distinct body_x_dot on the wire: [0.5] (1 distinct)
+  publishers on the topic: 2   rate: 20.1 Hz wall
+  robot: vx_mean 0.467 m/s, x_travel 3.74 m, z median 0.289 m
+
+--- bridge cost while the page drives and eight panels subscribe (D.3 §6)
+MiB Swap:      0.0 total,      0.0 free,      0.0 used.  14834.8 avail Mem 
+
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+ 185433 root      20   0 1704024  77892  34868 S  84.3   0.5   0:23.43 python3
+
+--- TWO publishers: kennel-demo.sh walk starts a held trot at 0.3 m/s beside the page
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] WARNING: the rosbridge is running: if a console is connected and driving, it is
+[kennel-demo] WARNING: publishing /quad_control_target too and the two will fight.
+[kennel-demo] WARNING: Disconnect it in the browser, or:  demo/tools/kennel-demo.sh teleop stop
+[p21-trot] env              /tmp/p21-env.sh (written by p21-launch-from-commands.sh)
+[p21-trot] commanding WALKING_TROT at body_x_dot=0.3 world_z=0.30
+Set parameter successful
+[p21-trot] holding -- the robot is trotting (publisher pid 74008). Stop it with: /tmp/p21-trot-hold.sh stop
+
+[kennel-demo] the robot is trotting. Watch it here:
+[kennel-demo]     http://192.168.122.32:7000/
+[kennel-demo] return it to STAND with:  demo/tools/kennel-demo.sh walk stop
+[kennel-demo] or drive it yourself:      demo/tools/kennel-demo.sh teleop
+  distinct body_x_dot on the wire: [0.3, 0.5] (2 distinct)
+  publishers on the topic: 3   rate: 30.0 Hz wall (two streams interleaved)
+  robot: vx_mean 0.427 m/s, x_travel 3.41 m, z median 0.287 m
+
+--- the fix the driver offers: kennel-demo.sh teleop stops the trot it knows about
+  distinct body_x_dot on the wire: [0.5] (1 distinct)
+  publishers on the topic: 2
