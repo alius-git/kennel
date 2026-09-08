@@ -28,6 +28,9 @@
 #   launch     stack/composed-run/tools/p21-launch-from-commands.sh  (on guest)
 #   verify     stack/verify/kennel-verify.sh                         (on guest),
 #              then files its report in the applied run's folder as verify.json
+#   scenario   demo/tools/scenario-<name>.sh -- one verification scenario of
+#              plan/scenarios.md driven end to end and asserted (see
+#              demo/scenarios.md). A test, not a demo phase.
 #   walk       vm/test/verify-meshcat-host.sh + p21-trot-hold.sh
 #   teleop     stack/bridge/kennel-bridge.sh (on guest) + verify-bridge-host.sh,
 #              then the console: drive the robot from the browser joystick
@@ -58,6 +61,11 @@
 #     kennel-demo.sh status
 #     kennel-demo.sh snapshot [--yes]  # re-take the baseline from a green guest
 #     kennel-demo.sh halt              # power the guest down cleanly
+#
+#   Scenarios (tests against the running stack, not demo phases)
+#     kennel-demo.sh scenario disturb  # s004: interventions, and the process
+#                                      # set that never changes (#69)
+#     kennel-demo.sh scenario diagnose # s003: degradation, fall, post-mortem (#71)
 #
 # Knobs (all optional, environment variables):
 #   YURUNA_DIR            ~/git/yuruna       framework checkout (setup, provision)
@@ -1414,6 +1422,34 @@ do_teleop() {
     say "When you are done:  $0 teleop stop"
 }
 
+# --- REGION: scenarios (#69, #71)
+# A scenario is a TEST: it drives the console against the running stack and
+# asserts plan/scenarios.md's numbered steps from the guest and from the DOM.
+# This verb adds nothing but dispatch -- every knob reaches the scenario through
+# the environment, as every other verb's do.
+do_scenario() {
+    local name="${1:-}"
+    local -a available=()
+    local f
+    for f in "$HERE"/scenario-*.sh; do
+        [ -f "$f" ] || continue
+        case "$f" in *scenario-lib.sh) continue ;; esac
+        available+=("$(basename "$f" .sh | sed 's/^scenario-//')")
+    done
+    if [ -z "$name" ]; then
+        say "scenarios: ${available[*]-none}"
+        say "  $0 scenario <name>        (what each asserts: demo/scenarios.md)"
+        return 0
+    fi
+    local script="$HERE/scenario-$name.sh"
+    [ -x "$script" ] || {
+        fail "no scenario '$name'." "Available: ${available[*]-none}"              "What each one asserts: demo/scenarios.md"
+        exit 2
+    }
+    shift
+    exec "$script" "$@"
+}
+
 do_down() {
     need_guest
     ssh "${SSH_OPTS[@]}" "$TARGET" "[ -x /tmp/p21-trot-hold.sh ] && /tmp/p21-trot-hold.sh stop" \
@@ -1532,8 +1568,9 @@ case "${1:-}" in
     teleop)    shift; do_teleop "$@" ;;
     down)      shift; do_down ;;
     status)    shift; do_status ;;
+    scenario)  shift; do_scenario "$@" ;;
     all)       shift; do_all ;;
     -h|--help|help) usage ;;
-    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status"
+    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status | scenario"
        usage >&2; exit 2 ;;
 esac

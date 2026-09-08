@@ -411,7 +411,7 @@ select{appearance:none}
             <sc-if value="{{ live }}" hint-placeholder-val="{{ true }}">
               <div style="flex:1;min-height:0;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:7px">
                 <sc-for list="{{ health }}" as="h" hint-placeholder-count="6">
-                  <div onClick="{{ h.onClick }}" style="border:1px solid {{ h.border }};background:{{ h.bg }};border-radius:5px;padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:10px;animation:{{ h.anim }}">
+                  <div onClick="{{ h.onClick }}" data-lvl="{{ h.lvl }}" style="border:1px solid {{ h.border }};background:{{ h.bg }};border-radius:5px;padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:10px;animation:{{ h.anim }}">
                     <div style="width:7px;height:7px;border-radius:4px;flex:none;background:{{ h.dot }}"></div>
                     <div style="min-width:0;flex:1">
                       <div style="font:600 10px 'IBM Plex Sans';letter-spacing:.04em;text-transform:uppercase;color:#dbe2ea">{{ h.name }}</div>
@@ -3128,7 +3128,12 @@ class Component extends DCLogic {
       const down = !!(ds && ds.fallen);
       const t = tint(down ? 'red' : h.lvl);
       if (down) { h.sub = 'halted at fall · controller latched to damping'; h.metric = 'stopped'; }
+      // The tint as a STRING, on the card (#71). s003.diagnose asserts a tint
+      // HISTORY -- green then amber then red, in step with the counters -- and a
+      // background colour is not something a suite can read, any more than a
+      // canvas is (dashboard.md §4). Same rule, same fix as the counter strip.
       return {name: BY_ID[h.id].name, sub:h.sub, metric:h.metric, dot:t.dot, bg:t.bg, border: h.flash ? '#e0a63c' : t.border,
+        lvl: down ? 'red' : h.lvl,
         anim: h.flash ? 'kcFlash .4s' : 'none', onClick: () => this.setState({detail:h.id})};
     });
 

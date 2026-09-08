@@ -2,6 +2,12 @@
 
 Usage: p22-console-demo.py <cdpPort> <downloadDir> <solver> <rate> <shotPath>
 
+Four more controls are reachable through environment knobs, for the compositions
+the scenarios need (#68, #70): KENNEL_MAP, KENNEL_HPIPM_MODE, KENNEL_CONDENSED
+and KENNEL_DISTURBANCES. Each is left ALONE when unset — an untouched control is
+what every composition before these knobs existed produced, and that is not the
+same as setting it to its stock value.
+
 An agent has no hands, so the clicks a human performs in the Compose view are
 scripted here. What is NOT scripted is the work: every value travels through the
 console's own controls and its own download path, exactly as a person clicking
@@ -27,6 +33,11 @@ DL = os.path.abspath(sys.argv[2])
 SOLVER = sys.argv[3]
 RATE = float(sys.argv[4])
 SHOT = os.path.abspath(sys.argv[5])
+MAP = os.environ.get("KENNEL_MAP", "")
+HPIPM_MODE = os.environ.get("KENNEL_HPIPM_MODE", "")
+CONDENSED = os.environ.get("KENNEL_CONDENSED", "")
+DISTURBANCES = os.environ.get("KENNEL_DISTURBANCES", "0") == "1"
+MAP_LABEL = {"flat_plane": "Flat plane", "obstacle_terrain": "Obstacle terrain"}
 
 ws = attach(CDP_PORT)
 fail = []
@@ -66,6 +77,28 @@ window.__setNum = (el, val) => { const setter =
   el.dispatchEvent(new Event('change', {bubbles:true})); };
 window.__pane = () => { const p = [...document.querySelectorAll('pre')]
   .filter(p => /ros__parameters/.test(p.textContent)); return p.length ? p[0].textContent : ''; };
+// A Sim options toggle by its label: the ROW is the div with exactly two
+// children (the label text sits in a span), and the switch is the descendant
+// with the pill border-radius. The same route verify-scope.py takes.
+window.__simToggle = label => {
+  const row = [...document.querySelectorAll('div')].filter(d =>
+    d.textContent.trim() === label && d.children.length === 2)[0];
+  if (!row) return false;
+  const t = [...row.querySelectorAll('div')].find(d =>
+    /border-radius: 10px/.test(d.getAttribute('style') || ''));
+  if (!t) return false; t.click(); return true; };
+// One field inside an open stage drawer, by its label.
+window.__drawerNum = label => { const col = [...document.querySelectorAll('div')]
+  .find(d => d.children.length === 2 && d.children[0].textContent.trim() === label
+             && d.querySelector('input[type=number]'));
+  return col ? col.querySelector('input[type=number]') : null; };
+window.__drawerSel = label => { const col = [...document.querySelectorAll('div')]
+  .find(d => d.children.length === 2 && d.children[0].textContent.trim() === label
+             && d.querySelector('select'));
+  return col ? col.querySelector('select') : null; };
+window.__cmds = () => [...document.querySelectorAll('div')]
+  .filter(d => /^source \/opt\/ros/.test(d.textContent.trim()))
+  .map(d => d.textContent);
 true""")
 
 
@@ -116,8 +149,55 @@ sim = pane(SIM_TAB)
 step("simulator YAML shows it", f"simulator_realtime_rate: {RATE}" in sim,
      next((l.strip() for l in sim.split("\n") if "simulator_realtime_rate" in l), "absent"))
 
-print("\n[compose] map left at stock — transfer.md 6.3: obstacle terrain does not walk")
-step("world_urdf is still the plane", 'world_urdf: "src/common/model/urdf/plane.urdf"' in sim)
+if MAP:
+    print(f"\n[compose] choice 3 — map -> {MAP}")
+    step("the map card is there", ws.js(f"__click({MAP_LABEL[MAP]!r})"))
+    time.sleep(0.5)
+    sim = pane(SIM_TAB)
+    want = "terrain.urdf" if MAP == "obstacle_terrain" else "plane.urdf"
+    step("simulator YAML shows it", f'world_urdf: "src/common/model/urdf/{want}"' in sim,
+         next((l.strip() for l in sim.split("\n") if "world_urdf" in l and not l.strip().startswith("#")), "absent"))
+else:
+    print("\n[compose] map left at stock — transfer.md 6.3: obstacle terrain does not walk")
+    step("world_urdf is still the plane", 'world_urdf: "src/common/model/urdf/plane.urdf"' in sim)
+
+if HPIPM_MODE or CONDENSED:
+    print(f"\n[compose] the MPC drawer — hpipm_mode {HPIPM_MODE or '(stock)'},"
+          f" condensed {CONDENSED or '(stock)'}")
+    ws.js("__click('MPC')")
+    time.sleep(0.5)
+    if HPIPM_MODE:
+        ok_ = ws.js(f"(() => {{ const s = __drawerSel('mpc_hpipm_mode'); if (!s) return false;"
+                    f" __setSel(s, {HPIPM_MODE!r}); return true; }})()")
+        step("hpipm mode set", ok_, "the field is hidden for solvers that ignore it (composer-scope.md §2)")
+    if CONDENSED:
+        ws.js("(() => { const el = __drawerNum('mpc_condensed_size'); if (!el) return false;"
+              " const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;"
+              f" set.call(el, {CONDENSED!r}); el.dispatchEvent(new Event('input', {{bubbles:true}}));"
+              " el.dispatchEvent(new Event('change', {bubbles:true})); return true; })()")
+        step("condensed size set", True)
+    time.sleep(0.4)
+    ws.js("__click('close')")
+    time.sleep(0.35)
+    ctrl = pane(CTRL_TAB)
+    if HPIPM_MODE:
+        step("controller YAML shows the hpipm mode", f'mpc_hpipm_mode: "{HPIPM_MODE}"' in ctrl,
+             next((l.strip() for l in ctrl.split("\n") if "mpc_hpipm_mode" in l), "absent"))
+    if CONDENSED:
+        step("controller YAML shows the condensed size", f"mpc_condensed_size: {CONDENSED}" in ctrl,
+             next((l.strip() for l in ctrl.split("\n") if "mpc_condensed_size" in l), "absent"))
+
+if DISTURBANCES:
+    print("\n[compose] disturbances on — the fourth block (#68)")
+    ws.js("__click('Compose')")
+    time.sleep(0.4)
+    step("the disturbances toggle is there", ws.js("__simToggle('disturbances')"))
+    time.sleep(0.5)
+    cmds = ws.js("__cmds()")
+    step("a fourth command block appeared", len(cmds) == 4, f"{len(cmds)} blocks")
+    step("and it is the pin's own disturber",
+         bool(cmds) and "ros2 run simulator sim_disturber" in cmds[-1],
+         cmds[-1].strip().splitlines()[-1] if cmds else "absent")
 
 # Back to the composition itself for the photograph: the YAML tabs are a detail
 # pane, and the screenshot is meant to show the choices as an operator made them.

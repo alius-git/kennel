@@ -21,6 +21,13 @@
 #   KENNEL_SOLVER        PARTIAL_CONDENSING_OSQP
 #   KENNEL_RATE          0.75
 #   KENNEL_CDP_PORT      9252
+#   KENNEL_MAP           (stock)  flat_plane | obstacle_terrain -- the stress
+#                        preset's map (#70). Obstacle terrain is known not to
+#                        walk (transfer.md 6.3), which is the point of it.
+#   KENNEL_HPIPM_MODE    (stock)  SPEED_ABS | SPEED | BALANCE | ROBUST
+#   KENNEL_CONDENSED     (stock)  1..10
+#   KENNEL_DISTURBANCES  0        1 composes the fourth block (#68), which is
+#                        what scenario s004 needs
 #
 # Exit 0 = the run folder is on disk and every choice was observed to take.
 
@@ -34,6 +41,13 @@ URL="${KENNEL_CONSOLE_URL:-http://localhost:8000/Kennel%20Console.dc.html}"
 SOLVER="${KENNEL_SOLVER:-PARTIAL_CONDENSING_OSQP}"
 RATE="${KENNEL_RATE:-0.75}"
 CDP_PORT="${KENNEL_CDP_PORT:-9252}"
+# Empty means "leave it at stock and do not touch the control", which is not the
+# same as setting it to the stock value: an untouched control is what every
+# composition before these knobs existed produced.
+MAP="${KENNEL_MAP:-}"
+HPIPM_MODE="${KENNEL_HPIPM_MODE:-}"
+CONDENSED="${KENNEL_CONDENSED:-}"
+DISTURBANCES="${KENNEL_DISTURBANCES:-0}"
 
 command -v google-chrome >/dev/null 2>&1 || {
   echo "google-chrome is required — it is this script's hands." >&2; exit 2; }
@@ -73,7 +87,9 @@ done
 sleep 3   # let the console boot and the mock DataSource settle (verify-export.sh)
 
 shot="$OUT/02-console-compose.png"
-out="$(python3 "$DIR/p22-console-demo.py" "$CDP_PORT" "$downloads" "$SOLVER" "$RATE" "$shot")"
+out="$(KENNEL_MAP="$MAP" KENNEL_HPIPM_MODE="$HPIPM_MODE" KENNEL_CONDENSED="$CONDENSED" \
+       KENNEL_DISTURBANCES="$DISTURBANCES" \
+       python3 "$DIR/p22-console-demo.py" "$CDP_PORT" "$downloads" "$SOLVER" "$RATE" "$shot")"
 rc=$?
 echo "$out"
 [[ $rc -ne 0 ]] && { echo "[p22-console] the console did not accept the composition" >&2; exit 1; }
