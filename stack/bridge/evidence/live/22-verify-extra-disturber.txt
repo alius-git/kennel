@@ -1,0 +1,23 @@
+=== 22-verify-extra-disturber: the negative control ===
+2026-09-08T16:51:05Z
+The applied run (run-20260907T202843Z) was composed with disturbances OFF, so
+kennel-demo.sh verify must NOT set KENNEL_EXPECT_DISTURBER -- and a disturber
+running beside that stack must therefore report as extra:. That is the reason
+the knob exists, measured before the knob is used.
+
+--- starting sim_disturber by hand (the mapping.md §4.6 command)
+  /disturbance_node on the graph after 1 polls
+
+--- kennel-demo.sh verify
+[kennel-demo] expect solver    PARTIAL_CONDENSING_OSQP  (from $KENNEL_SOLVER)
+[FAIL] 1 node-graph           -- ros2 node list: measured /disturbance_node /drake_simulator /joy_linux_node /joy_to_target /leg_driver /mit_controller_node /safe_start_launcher [missing: none][extra: /disturbance_node ][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+[FAIL] 1 node-graph           -- ros2 node list: measured /disturbance_node /drake_simulator /joy_linux_node /joy_to_target /leg_driver /mit_controller_node /safe_start_launcher [missing: none][extra: /disturbance_node ][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+pass=3 fail=7
+VERDICT: FAIL
+[kennel-demo] verify report    /home/thales/kennel-runs/run-20260907T202843Z/verify.json (verdict fell)
+
+--- and with the knob set by hand, the same stack is green
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes plus the composed disturber (KENNEL_EXPECT_DISTURBER=1), no duplicates
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes plus the composed disturber (KENNEL_EXPECT_DISTURBER=1), no duplicates
+pass=8 fail=2
+VERDICT: FAIL

@@ -1,0 +1,63 @@
+=== 21-before: the state this pass starts from ===
+2026-09-08T16:50:43Z
+
+--- kennel-demo.sh status
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.32 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run run-20260907T202843Z
+[status] runs staged run-20260906T212107Z run-20260907T144210Z run-20260907T151451Z run-20260907T151610Z run-20260907T202843Z 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      f2674ff5  f2674ff5  f2674ff5  run-20260907T151451Z
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  run-20260906T212107Z
+
+
+[kennel-demo] console runs in /home/thales/kennel-runs (newest first):
+[kennel-demo]   run-20260907T202843Z
+[kennel-demo]   run-20260907T151610Z
+[kennel-demo]   run-20260907T151451Z
+[kennel-demo]   run-20260907T144210Z
+[kennel-demo]   run-20260906T212107Z
+
+[kennel-demo] Meshcat reachable:  http://192.168.122.32:7000/
+[kennel-demo] bridge not up (start it with:  demo/tools/kennel-demo.sh teleop)
+
+--- the container's process set
+bash bash
+bash bash -c bash /tmp/p21-block1.sh > /tmp/p21-sim.log 2>&1
+bash bash -c bash /tmp/p21-block2.sh > /tmp/p21-legdrv.log 2>&1
+bash bash -c bash /tmp/p21-block3.sh > /tmp/p21-ctrl.log 2>&1
+bash bash /tmp/p21-block1.sh
+bash bash /tmp/p21-block2.sh
+bash bash /tmp/p21-block3.sh
+joy_linux_node /opt/ros/humble/lib/joy_linux/joy_linux_node --ros-args -r __node:=joy_linux_node --params-file /tmp/laun
+leg_driver /root/ros2_ws/install/drivers/lib/drivers/leg_driver --ros-args -r __node:=leg_driver --params-file /root/ros
+mitcontrollerno /root/ros2_ws/install/controllers/lib/controllers/mitcontrollernode --ros-args --log-level mit_controlle
+python3 python3 /root/ros2_ws/install/controllers/lib/controllers/joy_to_target.py --ros-args -r __node:=joy_to_target -
+python3 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 100 --r
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch controllers mit_controller.launch.py sim:=go2
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch drivers leg_driver_launch.py sim:=go2
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch simulator simulator.launch.py sim:=go2
+sh /bin/sh -c /root/ros2_ws/install/drivers/lib/drivers/leg_driver --ros-args -r __node:=leg_driver --params-file /root/
+sh /bin/sh -c /root/ros2_ws/install/simulator/lib/simulator/simulator --ros-args -r __node:=drake_simulator --params-fil
+simulator /root/ros2_ws/install/simulator/lib/simulator/simulator --ros-args -r __node:=drake_simulator --params-file /r
+
+--- pidfiles
+ls: cannot access '/tmp/k13-*.pid': No such file or directory
+--- nodes
+/drake_simulator
+/joy_linux_node
+/joy_to_target
+/leg_driver
+/mit_controller_node
+/safe_start_launcher
+
+--- host: run folders
+/home/thales/kennel-runs/run-20260907T202843Z/
+/home/thales/kennel-runs/run-20260907T151610Z/
+/home/thales/kennel-runs/run-20260907T151451Z/

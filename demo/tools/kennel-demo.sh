@@ -435,6 +435,19 @@ solver_of_run() {   # $1 = run folder
     echo "$v"
 }
 
+# Was this run composed with disturbances on (#68)? The key is written ONLY when
+# on (kennel_console/export.md §3), so its absence is the answer for every run
+# composed before the toggle existed as well as for every run composed with it
+# off -- which is why this echoes 0/1 and never fails.
+disturbances_of_run() {   # $1 = run folder -> 1 (on) or 0
+    [ -f "$1/run.json" ] || { echo 0; return 0; }
+    if grep -q '"disturbances"[[:space:]]*:[[:space:]]*true' "$1/run.json"; then
+        echo 1
+    else
+        echo 0
+    fi
+}
+
 # The stack pin, read the way kennel-transfer.sh and serve.py read it. Recorded
 # in a verify report so a report says which revision it is a report OF (#64).
 pin_sha() { sed -n 's/^commit:[[:space:]]*//p' "$REPO_ROOT/stack/pin.lock" | head -1; }
@@ -1235,9 +1248,25 @@ do_verify() {
     fi
     local folder run_name=""
     folder="$(applied_run_dir)" && run_name="$(basename "$folder")"
+    # Same two-step resolution as the solver, for the same reason (runs.md §2):
+    # the run applied in THIS process if there was one, else the guest's own
+    # marker. A run composed with disturbances on launches a seventh node, and
+    # check 1 has to be told so or a healthy stack reports `extra:` and fails.
+    local expect_disturber=0 dsrc=""
+    if [ -n "$APPLIED_RUN" ]; then
+        expect_disturber="$(disturbances_of_run "$APPLIED_RUN")"
+        dsrc="$(basename "$APPLIED_RUN")/run.json"
+    elif [ -n "$folder" ]; then
+        expect_disturber="$(disturbances_of_run "$folder")"
+        dsrc="$run_name/run.json"
+    fi
+    if [ "$expect_disturber" = 1 ]; then
+        say "expect disturber 1  (from ${dsrc:-the applied run}) -- check 1 will tolerate /disturbance_node"
+    fi
     guest_stage stack/verify/kennel-verify.sh
     ssh "${SSH_OPTS[@]}" "$TARGET" \
-        "KENNEL_EXPECT_BRIDGE=$expect_bridge KENNEL_RUN='$run_name' KENNEL_PIN='$(pin_sha)' \
+        "KENNEL_EXPECT_BRIDGE=$expect_bridge KENNEL_EXPECT_DISTURBER=$expect_disturber \
+         KENNEL_RUN='$run_name' KENNEL_PIN='$(pin_sha)' \
          /tmp/kennel-verify.sh --expect-solver '$expect' --controller-log /tmp/p21-ctrl.log"
     local rc=$?
     # The report belongs WITH the run it is of (#64). kennel-verify.sh has always

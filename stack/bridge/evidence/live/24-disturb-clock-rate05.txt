@@ -1,0 +1,19 @@
+
+real	0m0.000s
+user	0m0.000s
+sys	0m0.000s
+=== 24-disturb-clock-rate05: is the disturber's  sim or wall? ===
+2026-09-08T16:55:01Z
+Composed rate 0.5, so the two clocks differ by 2x and the question has an
+answer. disturbance_node sleeps on ITS OWN clock (disturbance_node.cpp:62);
+whether that is sim time is a property of use_sim_time, which the console
+would have to compose into block 4. Measured both ways on one stack.
+
+--- A: with --ros-args -p use_sim_time:=true (as block 4 composes it now)
+KENNEL_DISTURB {"force": [100.0, 0.0, 0.0], "time": 0.2, "success": true, "response_wall_s": 0.4}
+    rtf 0.5004 disturbance {'first_sim': 70.948, 'first_wall': 1788886984.172, 'force_max': [99.945, -3.313, 0.0], 'force_max_norm': 100.0, 'n': 2, 'sim_gap': 0.2, 'wall_gap': 0.399}
+
+--- B: the same node without the argument
+    (restarted without use_sim_time, on the graph after 1 polls)
+KENNEL_DISTURB {"force": [100.0, 0.0, 0.0], "time": 0.2, "success": true, "response_wall_s": 0.201}
+    rtf 0.5006 disturbance {'first_sim': 82.09, 'first_wall': 1788887006.456, 'force_max': [99.966, -2.597, 0.0], 'force_max_norm': 100.0, 'n': 2, 'sim_gap': 0.1, 'wall_gap': 0.2}
