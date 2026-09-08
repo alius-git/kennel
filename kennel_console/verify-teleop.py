@@ -4,10 +4,13 @@ Driven by verify-teleop.sh.
 Usage: verify-teleop.py <servePort> <plainPort> <cdpPort> <bridgePort> <opsLog>
                         <foreignPort> <foreignOpsLog>
                         <gaitPort> <gaitOpsLog> <fallPort> <fallOpsLog>
+                        <healthyPort> <healthyOpsLog>
 
 Groups 1-12 are #58's and are unchanged. Groups 13-17 are #66: `reset sim` as a
 real /reset_sim call in the sequence the live stack forced, and a gait picker
 that says `active` or `refused` because it read /gait_state -- never just `sent`.
+Groups 18-21 are #68: `inject` as a real /disturb_simulation call, gated on what
+the newest run composed, and never awaited.
 
 No VM, no ROS, no stack: the far end is fake-rosbridge.py, and every assertion
 is made against THE BYTES THE PAGE SENT (the ops log on disk), never against a
@@ -45,12 +48,17 @@ GAIT_PORT = sys.argv[8]
 GAIT_OPS = os.path.abspath(sys.argv[9])
 FALL_PORT = sys.argv[10]
 FALL_OPS = os.path.abspath(sys.argv[11])
+HEALTHY_PORT = sys.argv[12]
+HEALTHY_OPS = os.path.abspath(sys.argv[13])
 FOREIGN_URL = "ws://localhost:%s/" % FOREIGN_PORT
 GAIT_URL = "ws://localhost:%s/" % GAIT_PORT
 FALL_URL = "ws://localhost:%s/" % FALL_PORT
+HEALTHY_URL = "ws://localhost:%s/" % HEALTHY_PORT
 RESET_SRV = "/reset_sim"
 RESET_TYPE = "interfaces/srv/ResetSimulation"
 UNDAMP_SRV = "/set_damping_mode"
+DISTURB_SRV = "/disturb_simulation"
+DISTURB_TYPE = "interfaces/srv/DisturbSim"
 PARAM_SRV = "/mit_controller_node/set_parameters"
 ORIGIN = "http://localhost:%s" % SERVE_PORT
 PAGE = "/Kennel%20Console.dc.html"
@@ -145,6 +153,13 @@ window.__bridgeInput = () => [...document.querySelectorAll('input[type=text]')]
   .find(i => /^(ws|wss):\/\//.test(i.value) || /rosbridge|9090/.test(i.placeholder || ''));
 window.__gaitSel = () => [...document.querySelectorAll('select')]
   .find(s => [...s.options].some(o => o.value === 'WALKING_TROT'));
+// One Interventions number input, by the label above it: the field column is
+// <div><div>LABEL</div><input></div>, the same shape the velocity fields use.
+window.__numInput = label => { const col = [...document.querySelectorAll('div')]
+  .find(d => d.children.length === 2 && d.children[0].textContent.trim() === label
+             && d.querySelector('input[type=number]'));
+  return col ? col.querySelector('input[type=number]') : null; };
+window.__injectBtn = () => window.__btn(/^inject$/);
 window.__pad = () => [...document.querySelectorAll('div')]
   .find(d => /crosshair/.test(d.getAttribute('style') || ''));
 window.__set = (el, val) => { const proto = el instanceof HTMLSelectElement
@@ -490,6 +505,127 @@ time.sleep(0.6)
 after = sim_t()
 check("the mock's clock went back", before is not None and after is not None and after < before,
       "%s s -> %s s" % (before, after))
+check("no socket was opened by any of it", ws.js("window.__sockets.length") == 0)
+check("and nothing threw", ws.js("window.__errs.length") == 0, str(ws.js("window.__errs")))
+
+def set_num(label, value):
+    ws.js("__set(__numInput(%r), %r)" % (label, str(value)))
+
+
+def inject_click():
+    ws.js("(() => { const b = __injectBtn(); if (b) { b.click(); return true; } return false; })()")
+
+
+print("18. inject, connected the real service call — and nothing waits for it")
+# Against the HEALTHY recording with the held trot dropped: a page that is
+# driving a robot that is really publishing, which is the only state in which the
+# Dashboard renders an event feed at all (with no samples the panels correctly
+# show their empty states). The fixture answers /disturb_simulation two seconds
+# late, because the real one does -- it publishes the force, sleeps for `time`,
+# publishes a zero and only then answers (disturbance_node.cpp:39-65). What is
+# under test is BOTH the payload and that the page keeps driving meanwhile.
+connect_to(HEALTHY_URL, HEALTHY_OPS)
+for label, val in [("Fx [N]", 100), ("Fy [N]", 0), ("Fz [N]", 0), ("dur [s]", 0.2)]:
+    set_num(label, val)
+time.sleep(0.4)
+base_c = len(ops("call_service", HEALTHY_OPS))
+n_pub_before = len(ops("publish", HEALTHY_OPS))
+t_click = time.time()
+inject_click()
+check("inject calls /disturb_simulation",
+      wait_for(lambda: bool(svc(ops("call_service", HEALTHY_OPS)[base_c:], DISTURB_SRV))))
+calls = svc(ops("call_service", HEALTHY_OPS)[base_c:], DISTURB_SRV)
+check("exactly one call, not one per tick", len(calls) == 1, str(len(calls)))
+check("with the stack's own service type",
+      calls and calls[0].get("type") == DISTURB_TYPE, calls[0].get("type", "") if calls else "")
+args = calls[0].get("args") if calls else {}
+check("the force is what the operator typed",
+      args.get("force") == [100, 0, 0], json.dumps(args.get("force")))
+check("the duration is what the operator typed", args.get("time") == 0.2, str(args.get("time")))
+check("and tau is zero — the row has no torque fields, so none is invented",
+      args.get("tau") == [0, 0, 0], json.dumps(args.get("tau")))
+check("the page says it asked", "disturbance requested" in (ws.js("__txt()") or ""))
+check("the feed logs the exact injected parameters",
+      wait_for(lambda: "Disturbance: 100 N for 0.20 s at body CoM (100, 0, 0)"
+               in (ws.js("__txt()") or ""), timeout=6),
+      "the grammar line verify-dashboard.py group 13 already pins")
+# THE POINT: 20 Hz through the two seconds the service is thinking about it.
+time.sleep(2.6)
+pubs = ops("publish", HEALTHY_OPS)[n_pub_before:]
+during = [o for o in pubs if t_click <= o["t"] <= t_click + 2.0]
+check("the joystick kept publishing while the service was blocked",
+      len(during) >= HZ * 2 * 0.7, "%d messages in the 2 s the answer took" % len(during))
+gaps = [b["t"] - a["t"] for a, b in zip(during, during[1:])]
+check("  at 20 Hz, with no stall anywhere in the window",
+      bool(gaps) and max(gaps) < 0.3, "largest gap %.3f s" % (max(gaps) if gaps else -1))
+check("and when the answer finally comes, the page says so",
+      wait_for(lambda: "disturbance done: 100 N for 0.20 s" in (ws.js("__txt()") or ""), timeout=8))
+
+print("19. inject is off when the applied run composed no disturber")
+# The service only exists if the run the guest launched composed block 4. The
+# page cannot see the guest, so it reads the newest run of /api/runs -- what the
+# status bar already calls "the run". Here the fixture run folder is rewritten
+# without the choice, so the page has a run and it is not one with a disturber.
+run_dir = os.path.join(os.path.dirname(OPS), "kennel-runs", "run-20260101T000000Z")
+meta = os.path.join(run_dir, "run.json")
+with open(meta, encoding="utf-8") as fh:
+    saved = fh.read()
+try:
+    j = json.loads(saved)
+    j["choices"].pop("disturbances", None)
+    with open(meta, "w", encoding="utf-8") as fh:
+        json.dump(j, fh)
+    connect_to(HEALTHY_URL, HEALTHY_OPS)
+    base_c = len(ops("call_service", HEALTHY_OPS))
+    inject_click()
+    time.sleep(1.5)
+    check("no service is called at all",
+          not svc(ops("call_service", HEALTHY_OPS)[base_c:], DISTURB_SRV),
+          "a call would come back refused: there is no disturber to answer it")
+    txt = ws.js("__txt()") or ""
+    check("and the feed says which run, and what to do",
+          "disturbances off" in txt and "run-20260101T000000Z" in txt,
+          [l for l in txt.split("\n") if "inject is off" in l][:1])
+finally:
+    with open(meta, "w", encoding="utf-8") as fh:
+        fh.write(saved)
+
+print("20. a disturbance is sent even when the page refuses to DRIVE")
+# A push needs no publisher: the foreign fixture is holding
+# /quad_control_target, so the target refuses to drive -- and inject must still
+# work, because watching somebody else's run and pushing the robot are different
+# privileges. That fixture also refuses every service, which is what a stack
+# whose run composed no disturber does.
+connect_to(FOREIGN_URL, FOREIGN_OPS, want="another publisher is holding")
+base_c = len(ops("call_service", FOREIGN_OPS))
+inject_click()
+check("the call goes out even from a page that is not driving",
+      wait_for(lambda: bool(svc(ops("call_service", FOREIGN_OPS)[base_c:], DISTURB_SRV))))
+check("and a refusal is reported, not swallowed",
+      wait_for(lambda: "the disturbance service refused" in (ws.js("__txt()") or ""), timeout=8))
+check("  naming the toggle that fixes it",
+      "disturbances on" in (ws.js("__txt()") or ""))
+
+print("21. served by plain http.server, inject still drives the mock")
+ws.call("Page.navigate", url="http://localhost:%s%s" % (PLAIN_PORT, PAGE))
+time.sleep(2.2)
+ws.js(HELPERS)
+dash()
+time.sleep(1.5)
+# The scripted demo arrives already fallen -- it is seeded past T_FALL -- and a
+# fall PINS the feed to the five seconds before it (#63). An event emitted now
+# would be filtered out of that window, correctly. So rewind the mock first,
+# which is what `reset sim` does with no bridge attached, and inject into a
+# running demo.
+reset_click()
+time.sleep(1.2)
+check("the mock rewound, so the feed is no longer pinned to a post-mortem",
+      "pinned · last 5 s before fall" not in (ws.js("__txt()") or ""))
+inject_click()
+time.sleep(0.8)
+check("the mock's own disturbance reaches the feed",
+      re.search(r"Disturbance: \d+ N for [\d.]+ s at body CoM", ws.js("__txt()") or "") is not None,
+      "the same grammar line, from the other side of the seam")
 check("no socket was opened by any of it", ws.js("window.__sockets.length") == 0)
 check("and nothing threw", ws.js("window.__errs.length") == 0, str(ws.js("window.__errs")))
 

@@ -32,6 +32,11 @@ testing.
                        driving page. Repeatable.
     --refuse-service   answer call_service with result:false, so the suite can
                        see the page report a refusal rather than swallow it.
+    --service-delay SERVICE:SECONDS   answer that one service late, on a timer
+                       (repeatable). /disturb_simulation genuinely blocks for the
+                       duration of the push it was asked for (#68), and a console
+                       that awaited it would freeze; this is how a suite with no
+                       VM can watch the page keep publishing through one.
     --replay FIXTURE   answer every subscribe by replaying what the REAL stack
                        said, at the timing it said it -- a fixture recorded by
                        record-fixture.py against a live guest (#62). This is
@@ -333,10 +338,37 @@ class Conn(threading.Thread):
                 "phase": phases, "gait_sequencer": 0}})
             time.sleep(0.1)
 
+    def service_delay(self, service):
+        """How long this fixture waits before answering, per --service-delay."""
+        for spec in (self.opts.service_delay or []):
+            name, _, secs = spec.rpartition(":")
+            if name == service:
+                try:
+                    return float(secs)
+                except ValueError:
+                    return 0.0
+        return 0.0
+
+    def answer_service(self, msg, service):
+        self.send_text({
+            "op": "service_response",
+            "service": msg.get("service"),
+            "id": msg.get("id"),
+            "result": not self.opts.refuse_service,
+            # Each service answers in ITS OWN shape. SetParameters returns a
+            # list of results; ResetSimulation, DisturbSim and the two Triggers
+            # return a bool. One shape for all of them was fine while only the
+            # gait was called; #66 and #68 call four different services and the
+            # page reads what comes back.
+            "values": (self.response_values(service)
+                       if not self.opts.refuse_service
+                       else "service unavailable"),
+        })
+
     def response_values(self, service):
         if service.endswith("set_parameters"):
             return {"results": [{"successful": True, "reason": ""}]}
-        if service == "/reset_sim":
+        if service in ("/reset_sim", "/disturb_simulation"):
             return {"success": True}
         return {"success": True, "message": ""}     # std_srvs/srv/Trigger
 
@@ -371,20 +403,19 @@ class Conn(threading.Thread):
                         want = (p.get("value") or {}).get("string_value")
                         if want in GAIT_SIGS:
                             self.gait = want
-            self.send_text({
-                "op": "service_response",
-                "service": msg.get("service"),
-                "id": msg.get("id"),
-                "result": not self.opts.refuse_service,
-                # Each service answers in ITS OWN shape. SetParameters returns a
-                # list of results; ResetSimulation and the two Triggers return a
-                # bool. One shape for all three was fine while only the gait was
-                # called; #66 calls three different services and the page reads
-                # what comes back.
-                "values": (self.response_values(service)
-                           if not self.opts.refuse_service
-                           else "service unavailable"),
-            })
+            delay = self.service_delay(service)
+            if delay > 0:
+                # A service that answers LATE, on a timer -- never by sleeping in
+                # this read loop. /disturb_simulation really does block for the
+                # requested `time` before answering (disturbance_node.cpp:60-63),
+                # and the property under test is that the page keeps publishing
+                # at 20 Hz throughout. A fake that slept here would stall its own
+                # reader, batch the page's next two seconds of publishes, and
+                # fail that assertion for the fixture's reason rather than the
+                # page's.
+                threading.Timer(delay, self.answer_service, args=(msg, service)).start()
+                return
+            self.answer_service(msg, service)
         elif op == "subscribe" and self.opts.foreign and msg.get("topic") == TOPIC:
             # Somebody else is already publishing: a held trot (p21-trot-hold.sh)
             # or kennel-verify.sh's walk phase. The console's probe must see this
@@ -404,6 +435,10 @@ def main(argv=None):
     ap.add_argument("--drop", action="append", default=[],
                     help="(replay) never deliver this topic; repeatable")
     ap.add_argument("--refuse-service", action="store_true")
+    ap.add_argument("--service-delay", action="append", default=[],
+                    metavar="SERVICE:SECONDS",
+                    help="answer this service only after SECONDS, on a timer "
+                         "(#68: /disturb_simulation blocks for the push's length)")
     ap.add_argument("--replay", default=None,
                     help="a fixture from record-fixture.py: answer subscribes with it")
     ap.add_argument("--loop", action="store_true",
