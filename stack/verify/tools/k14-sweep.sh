@@ -228,7 +228,12 @@ for line in "${POINTS[@]}"; do
         "$DEMO" transfer </dev/null 2>&1 | grep -E '^\[kennel-demo\] run |NONZERO|matches' | head -6
         "$DEMO" launch </dev/null 2>&1 | grep -E '^\[p21-launch\]   |stack is up|NONZERO'
         echo "--- verify"
-        "$DEMO" verify </dev/null 2>&1 | grep -E '^\[(PASS|FAIL|INFO)\]|pass=|verify report|NONZERO'
+        # KENNEL_SOLVER, again: `verify` reads the expected solver from the run
+        # APPLIED IN THE SAME PROCESS and falls back to the knob otherwise
+        # (runbook.md §3.3). The sweep transfers and verifies in separate
+        # invocations, so without this every non-default point fails check 10 --
+        # a report saying `unhealthy` about a stack that is perfectly healthy.
+        KENNEL_SOLVER="$solver" "$DEMO" verify </dev/null 2>&1 | grep -E '^\[(PASS|FAIL|INFO)\]|pass=|verify report|NONZERO'
         echo "--- walk, then measure $SIM_SECONDS sim-s"
         "$DEMO" walk </dev/null 2>&1 | grep -E 'trotting|NONZERO'
     } >> "$plog" 2>&1

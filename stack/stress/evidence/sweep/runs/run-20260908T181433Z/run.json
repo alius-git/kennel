@@ -1,0 +1,15 @@
+{
+  "run_id": "RUN-2026-0724-1401",
+  "run": "run-20260908T181433Z",
+  "generated_at": "2026-09-08T18:14:33Z",
+  "pin": "dcf53c596339afd45b82f12c54b1e93e8273c2f4",
+  "choices": {
+    "world_urdf": "src/common/model/urdf/plane.urdf",
+    "world_fix_link": "plane_base_link",
+    "simulator_realtime_rate": 1,
+    "publish_quad_state": true,
+    "mpc_solver": "PARTIAL_CONDENSING_HPIPM",
+    "mpc_hpipm_mode": "SPEED",
+    "mpc_condensed_size": 1
+  }
+}

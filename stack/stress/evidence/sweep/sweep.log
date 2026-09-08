@@ -1,0 +1,76 @@
+=== k14-sweep -- the MPC solve margin across the composer's MVP knobs (#70) ===
+2026-09-08T18:10:38Z
+window       20 sim seconds per point
+points       21 (3 of them the red candidate: PARTIAL_CONDENSING_OSQP 1.0 obstacle_terrain)
+out          /home/thales/kennel/stack/stress/evidence/sweep
+deadline     MPC 10 ms (MPC_CONTROL_DT), WBC 2 ms (WBC_CYCLE_DT) -- wall clock, per sim-time cycle
+
+[k14-sweep] [1/21] hpipm-speed-5-r1 -- PARTIAL_CONDENSING_HPIPM mode=SPEED cond=5 rate=1.0 map=-
+[k14-sweep] probe staged to yuuser24@192.168.122.32:/tmp/k14-solve-probe.py
+[k14-sweep]   [1/21] rtf 1.0024 · mpc p95 0.937 ms · overtime Δ 0 · verdict completed · 114s
+[k14-sweep] [2/21] hpipm-robust-5-r1 -- PARTIAL_CONDENSING_HPIPM mode=ROBUST cond=5 rate=1.0 map=-
+[k14-sweep]   [2/21] rtf 1.0013 · mpc p95 2.31 ms · overtime Δ 0 · verdict completed · 113s
+[k14-sweep] [3/21] hpipm-speed-1-r1 -- PARTIAL_CONDENSING_HPIPM mode=SPEED cond=1 rate=1.0 map=-
+[k14-sweep]   [3/21] rtf 1.0009 · mpc p95 2.087 ms · overtime Δ 0 · verdict completed · 110s
+[k14-sweep] [4/21] hpipm-speed-10-r1 -- PARTIAL_CONDENSING_HPIPM mode=SPEED cond=10 rate=1.0 map=-
+[k14-sweep]   [4/21] rtf 1.0008 · mpc p95 0.955 ms · overtime Δ 0 · verdict completed · 116s
+[k14-sweep] [5/21] fullhpipm-robust-r1 -- FULL_CONDENSING_HPIPM mode=ROBUST cond=- rate=1.0 map=-
+[k14-sweep]   [5/21] rtf 1.0014 · mpc p95 5.26 ms · overtime Δ 0 · verdict completed · 112s
+[k14-sweep] [6/21] osqp-5-r1 -- PARTIAL_CONDENSING_OSQP mode=- cond=5 rate=1.0 map=-
+[k14-sweep]   [6/21] rtf 1.001 · mpc p95 1.853 ms · overtime Δ 0 · verdict completed · 113s
+[k14-sweep] [7/21] osqp-1-r1 -- PARTIAL_CONDENSING_OSQP mode=- cond=1 rate=1.0 map=-
+[k14-sweep]   [7/21] rtf 1.0008 · mpc p95 5.577 ms · overtime Δ 0 · verdict fell · 117s
+[k14-sweep] [8/21] osqp-10-r1 -- PARTIAL_CONDENSING_OSQP mode=- cond=10 rate=1.0 map=-
+[k14-sweep]   [8/21] rtf 1.0007 · mpc p95 1.527 ms · overtime Δ 0 · verdict completed · 113s
+[k14-sweep] [9/21] qpoases-r1 -- FULL_CONDENSING_QPOASES mode=- cond=- rate=1.0 map=-
+[k14-sweep]   [9/21] rtf 1.0008 · mpc p95 1.957 ms · overtime Δ 0 · verdict completed · 107s
+[k14-sweep] [10/21] hpipm-speed-5-r0 -- PARTIAL_CONDENSING_HPIPM mode=SPEED cond=5 rate=0 map=-
+[k14-sweep]   [10/21] rtf 2.1476 · mpc p95 0.916 ms · overtime Δ 0 · verdict completed · 91s
+[k14-sweep] [11/21] hpipm-robust-5-r0 -- PARTIAL_CONDENSING_HPIPM mode=ROBUST cond=5 rate=0 map=-
+[k14-sweep]   [11/21] rtf 2.1138 · mpc p95 2.327 ms · overtime Δ 0 · verdict completed · 96s
+[k14-sweep] [12/21] hpipm-speed-1-r0 -- PARTIAL_CONDENSING_HPIPM mode=SPEED cond=1 rate=0 map=-
+[k14-sweep]   [12/21] rtf 2.1319 · mpc p95 2.096 ms · overtime Δ 0 · verdict fell · 74s
+[k14-sweep] [13/21] hpipm-speed-10-r0 -- PARTIAL_CONDENSING_HPIPM mode=SPEED cond=10 rate=0 map=-
+[k14-sweep]   [13/21] rtf 1.9968 · mpc p95 0.97 ms · overtime Δ 0 · verdict completed · 92s
+[k14-sweep] [14/21] fullhpipm-robust-r0 -- FULL_CONDENSING_HPIPM mode=ROBUST cond=- rate=0 map=-
+[k14-sweep]   [14/21] rtf 2.034 · mpc p95 5.754 ms · overtime Δ 0 · verdict completed · 94s
+[k14-sweep] [15/21] osqp-5-r0 -- PARTIAL_CONDENSING_OSQP mode=- cond=5 rate=0 map=-
+[k14-sweep]   [15/21] rtf 2.0574 · mpc p95 1.858 ms · overtime Δ 0 · verdict completed · 91s
+[k14-sweep] [16/21] osqp-1-r0 -- PARTIAL_CONDENSING_OSQP mode=- cond=1 rate=0 map=-
+[k14-sweep]   [16/21] rtf 1.8294 · mpc p95 5.668 ms · overtime Δ 0 · verdict fell · 88s
+[k14-sweep] [17/21] osqp-10-r0 -- PARTIAL_CONDENSING_OSQP mode=- cond=10 rate=0 map=-
+[k14-sweep]   [17/21] rtf 2.2353 · mpc p95 1.4 ms · overtime Δ 0 · verdict completed · 91s
+[k14-sweep] [18/21] qpoases-r0 -- FULL_CONDENSING_QPOASES mode=- cond=- rate=0 map=-
+[k14-sweep]   [18/21] rtf 2.3104 · mpc p95 1.765 ms · overtime Δ 0 · verdict completed · 81s
+[k14-sweep] [19/21] red-1 -- PARTIAL_CONDENSING_OSQP mode=- cond=- rate=1.0 map=obstacle_terrain
+[k14-sweep]   [19/21] rtf 0.9978 · mpc p95 1.955 ms · overtime Δ 0 · verdict unhealthy · 113s
+[k14-sweep] [20/21] red-2 -- PARTIAL_CONDENSING_OSQP mode=- cond=- rate=1.0 map=obstacle_terrain
+[k14-sweep]   [20/21] rtf 1.0696 · mpc p95 1.878 ms · overtime Δ 0 · verdict fell · 111s
+[k14-sweep] [21/21] red-3 -- PARTIAL_CONDENSING_OSQP mode=- cond=- rate=1.0 map=obstacle_terrain
+[k14-sweep]   [21/21] rtf 1.0098 · mpc p95 1.788 ms · overtime Δ 0 · verdict fell · 112s
+
+=== the table ===
+point                solver                    hpipm_mode  condensed  rate  map               rtf     mpc_mean_ms  mpc_p50_ms  mpc_p95_ms  mpc_max_ms  mpc_iters  mpc_over_deadline  wbc_p95_ms  wbc_over_deadline  overtime_d  mpc_fail_d  wbc_fail_d  early_d  verify_overtime  verify_exit  verdict    walked  fell  speed_mean  dist_xy  z_median  tilt_over_frac  run
+hpipm-speed-5-r1     PARTIAL_CONDENSING_HPIPM  SPEED       5          1.0   -                 1.0024  0.685        0.656       0.937       1.649       14.74      0                  0.192       0                  0           0           0           0        0                0            completed  PASS    PASS  0.2744      5.473    0.31495   0.0             run-20260908T181046Z
+hpipm-robust-5-r1    PARTIAL_CONDENSING_HPIPM  ROBUST      5          1.0   -                 1.0013  1.859        1.803       2.31        3.115       18.64      0                  0.206       1                  0           0           0           0        0                0            completed  PASS    PASS  0.277       5.5261   0.31468   0.0             run-20260908T181240Z
+hpipm-speed-1-r1     PARTIAL_CONDENSING_HPIPM  SPEED       1          1.0   -                 1.0009  1.701        1.652       2.087       5.0         14.68      0                  0.202       0                  0           0           0           0        0                0            completed  PASS    PASS  0.2769      5.5259   0.31406   0.0             run-20260908T181433Z
+hpipm-speed-10-r1    PARTIAL_CONDENSING_HPIPM  SPEED       10         1.0   -                 1.0008  0.69         0.66        0.955       3.377       14.69      0                  0.199       0                  0           0           0           0        0                0            completed  PASS    PASS  0.2757      5.5014   0.31473   0.0             run-20260908T181623Z
+fullhpipm-robust-r1  FULL_CONDENSING_HPIPM     ROBUST      -          1.0   -                 1.0014  4.468        4.385       5.26        9.761       16.26      0                  0.198       0                  0           0           0           0        0                0            completed  PASS    PASS  0.28        5.5863   0.31429   0.0             run-20260908T181819Z
+osqp-5-r1            PARTIAL_CONDENSING_OSQP   -           5          1.0   -                 1.001   1.164        1.068       1.853       2.951       9.55       0                  0.202       0                  0           0           0           50       0                0            completed  PASS    PASS  0.2709      5.4045   0.29461   0.0             run-20260908T182010Z
+osqp-1-r1            PARTIAL_CONDENSING_OSQP   -           1          1.0   -                 1.0008  3.75         3.442       5.577       9.18        15.5       0                  0.197       0                  0           0           0           26       0                1            fell       PASS    FAIL  0.3062      6.0938   0.15754   0.0             run-20260908T182204Z
+osqp-10-r1           PARTIAL_CONDENSING_OSQP   -           10         1.0   -                 1.0007  0.939        0.843       1.527       2.484       10.0       0                  0.201       0                  0           0           0           75       0                0            completed  PASS    PASS  0.2694      5.3772   0.29341   0.0             run-20260908T182401Z
+qpoases-r1           FULL_CONDENSING_QPOASES   -           -          1.0   -                 1.0008  1.353        1.276       1.957       3.154       2.4        0                  0.197       0                  0           0           0           0        0                0            completed  PASS    PASS  0.2762      5.5132   0.31492   0.0             run-20260908T182552Z
+hpipm-speed-5-r0     PARTIAL_CONDENSING_HPIPM  SPEED       5          0     -                 2.1476  0.67         0.634       0.916       2.234       14.75      0                  0.16        0                  0           0           0           0        0                0            completed  PASS    PASS  0.2774      5.5295   0.31474   0.0             run-20260908T182741Z
+hpipm-robust-5-r0    PARTIAL_CONDENSING_HPIPM  ROBUST      5          0     -                 2.1138  1.843        1.777       2.327       3.2         18.73      0                  0.154       0                  0           0           0           0        0                0            completed  PASS    PASS  0.2794      5.5806   0.31459   0.0             run-20260908T182911Z
+hpipm-speed-1-r0     PARTIAL_CONDENSING_HPIPM  SPEED       1          0     -                 2.1319  1.672        1.617       2.096       3.253       14.85      0                  0.158       0                  0           0           0           0        0                1            fell       FAIL    FAIL  0.2792      5.5689   0.31444   0.0             run-20260908T183048Z
+hpipm-speed-10-r0    PARTIAL_CONDENSING_HPIPM  SPEED       10         0     -                 1.9968  0.693        0.656       0.97        2.213       14.74      0                  0.165       0                  0           0           0           0        0                0            completed  PASS    PASS  0.2787      5.5575   0.31416   0.0             run-20260908T183202Z
+fullhpipm-robust-r0  FULL_CONDENSING_HPIPM     ROBUST      -          0     -                 2.034   4.604        4.467       5.754       7.472       16.21      0                  0.164       1                  0           0           0           6        0                0            completed  PASS    PASS  0.287       5.7347   0.31329   0.0             run-20260908T183334Z
+osqp-5-r0            PARTIAL_CONDENSING_OSQP   -           5          0     -                 2.0574  1.151        1.067       1.858       3.303       9.31       0                  0.167       0                  0           0           0           2        0                0            completed  PASS    PASS  0.2732      5.4583   0.29867   0.0             run-20260908T183508Z
+osqp-1-r0            PARTIAL_CONDENSING_OSQP   -           1          0     -                 1.8294  3.707        3.289       5.668       9.12        17.59      0                  0.141       1                  0           0           0           94       0                1            fell       PASS    FAIL  0.2039      2.9703   0.12353   0.26101         run-20260908T183639Z
+osqp-10-r0           PARTIAL_CONDENSING_OSQP   -           10         0     -                 2.2353  0.869        0.779       1.4         2.194       10.35      0                  0.126       0                  0           0           0           42       0                0            completed  PASS    PASS  0.2748      5.4813   0.30255   0.0             run-20260908T183807Z
+qpoases-r0           FULL_CONDENSING_QPOASES   -           -          0     -                 2.3104  1.188        1.087       1.765       2.987       2.4        0                  0.117       0                  0           0           0           0        0                0            completed  PASS    PASS  0.279       5.5725   0.31441   0.0             run-20260908T183936Z
+red-1                PARTIAL_CONDENSING_OSQP   -           -          1.0   obstacle_terrain  0.9978  1.375        1.346       1.955       3.254       17.58      0                  0.201       4                  0           0           0           399      0                1            unhealthy  FAIL    PASS  0.1535      0.0217   0.37145   0.0             run-20260908T184059Z
+red-2                PARTIAL_CONDENSING_OSQP   -           -          1.0   obstacle_terrain  1.0696  1.262        1.197       1.878       3.45        16.17      0                  0.166       0                  0           0           13          80       0                1            fell       FAIL    FAIL  0.3464      1.5      0.24485   0.43456         run-20260908T184251Z
+red-3                PARTIAL_CONDENSING_OSQP   -           -          1.0   obstacle_terrain  1.0098  1.206        1.16        1.788       3.407       13.38      0                  0.169       0                  0           0           2           78       0                1            fell       FAIL    FAIL  0.314       3.7373   0.33682   0.10361         run-20260908T184443Z
+
+wrote /home/thales/kennel/stack/stress/evidence/sweep/sweep.csv

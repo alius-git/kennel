@@ -88,10 +88,14 @@
 #   KENNEL_PRESET         (none)             a named composition for `compose`
 #                                            and `all`. The one that exists is
 #                                            `stress` (#70): the measured red
-#                                            composition, obstacle terrain --
-#                                            which does not walk, by design
-#                                            (stack/stress.md). Named presets
-#                                            are #72; this is the one #71 needs
+#                                            composition -- OSQP at
+#                                            mpc_condensed_size 1 on the flat
+#                                            plane, which degrades the MPC
+#                                            margin AND falls (stack/stress.md
+#                                            §4). It fills in only what you did
+#                                            not choose. Named presets in
+#                                            general are #72; this is the one
+#                                            #71 needs
 #   KENNEL_DISTURBANCES   0                  1 composes the fourth block, the
 #                                            disturbance service (#68)
 #   KENNEL_MAP / KENNEL_HPIPM_MODE / KENNEL_CONDENSED   passed to compose; unset
@@ -132,6 +136,10 @@ DOWNLOADS="${KENNEL_DOWNLOADS:-$HOME/Downloads}"
 PORT="${KENNEL_CONSOLE_PORT:-8000}"
 SOLVER="${KENNEL_SOLVER:-PARTIAL_CONDENSING_OSQP}"
 RATE="${KENNEL_RATE:-0.75}"
+# Whether the RATE above is a choice or a default, because a preset composes one
+# and an explicit knob must still win.
+RATE_IS_DEFAULT=0; [ -z "${KENNEL_RATE:-}" ] && RATE_IS_DEFAULT=1
+SOLVER_IS_DEFAULT=0; [ -z "${KENNEL_SOLVER:-}" ] && SOLVER_IS_DEFAULT=1
 # A named composition (#70's half of #72). `stress` is the one the sweep
 # measured: the red composition of stack/stress.md, which is the demo's own
 # solver and rate on OBSTACLE TERRAIN -- a map that is known not to walk
@@ -1161,11 +1169,28 @@ SERVER_PID=""
 # What a named preset composes. Refused by NAME rather than silently ignored: a
 # preset nobody implemented must not quietly produce the default composition and
 # call itself the stress preset.
-preset_map() {
+# A preset composes a WHOLE composition, and every field of it was measured.
+# `stress` is the row stack/stress.md §4 picks: PARTIAL_CONDENSING_OSQP with
+# mpc_condensed_size 1, on the FLAT PLANE at rate 1.0. It is the only composition
+# in the sweep that does both things s003 needs -- it degrades the MPC margin
+# (3.75 ms mean against 1.16 for the same solver at stock condensing, peaking at
+# 9.18 ms, over the console's 7 ms amber line) AND it falls, by the recipe's own
+# rule, while still walking. Obstacle terrain falls too and shows no degradation
+# at all, which is why the preset is a composition and not a map.
+#
+# Refused by NAME rather than silently ignored: a preset nobody implemented must
+# not quietly compose the default and call itself the stress preset.
+preset_field() {   # $1 = map | rate | solver | condensed
     case "$PRESET" in
-        "")     echo "" ;;
-        stress) echo obstacle_terrain ;;
-        *) fail "no preset '$PRESET'. The one that exists is 'stress' (stack/stress.md)." \
+        "") echo "" ;;
+        stress)
+            case "$1" in
+                map)       echo flat_plane ;;
+                rate)      echo 1.0 ;;
+                solver)    echo PARTIAL_CONDENSING_OSQP ;;
+                condensed) echo 1 ;;
+            esac ;;
+        *) fail "no preset '$PRESET'. The one that exists is 'stress' (stack/stress.md §4)." \
                 "Named presets in general are issue #72."
            exit 2 ;;
     esac
@@ -1173,7 +1198,16 @@ preset_map() {
 
 do_compose() {
     OUT="${1:-$OUT}"
-    PRESET_MAP="$(preset_map)" || exit $?
+    # A preset fills in only what the operator did not choose, so every knob
+    # still wins over it.
+    PRESET_MAP="$(preset_field map)" || exit $?
+    if [ -n "$PRESET" ]; then
+        local pv
+        [ "$RATE_IS_DEFAULT" = 1 ] && { pv="$(preset_field rate)"; [ -n "$pv" ] && RATE="$pv"; }
+        [ "$SOLVER_IS_DEFAULT" = 1 ] && { pv="$(preset_field solver)"; [ -n "$pv" ] && SOLVER="$pv"; }
+        [ -z "${KENNEL_CONDENSED:-}" ] && { pv="$(preset_field condensed)"
+                                            [ -n "$pv" ] && KENNEL_CONDENSED="$pv"; }
+    fi
     mkdir -p "$OUT"
     if ! curl -sf -o /dev/null "$CONSOLE_URL"; then
         say "serving the console on port $PORT (kennel_console/serve.md §1)"
@@ -1186,7 +1220,7 @@ do_compose() {
             sleep 0.25
         done
     fi
-    [ -n "$PRESET" ] && say "preset           $PRESET (map $PRESET_MAP)"
+    [ -n "$PRESET" ] && say "preset           $PRESET -- $SOLVER, condensed ${KENNEL_CONDENSED:-stock}, rate $RATE, $PRESET_MAP (stack/stress.md §4)"
     KENNEL_CONSOLE_URL="$CONSOLE_URL" KENNEL_SOLVER="$SOLVER" KENNEL_RATE="$RATE" \
         KENNEL_MAP="${KENNEL_MAP:-$PRESET_MAP}" \
         KENNEL_HPIPM_MODE="${KENNEL_HPIPM_MODE:-}" KENNEL_CONDENSED="${KENNEL_CONDENSED:-}" \

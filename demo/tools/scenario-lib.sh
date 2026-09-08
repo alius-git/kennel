@@ -21,11 +21,15 @@
 #                constraint (design.md §2), and this is the only thing in the
 #                repo that checks it.
 #   page         one named step against the live page, through scenario-page.py.
-#   recover_if_down / require_sim
-#                a scenario resets the simulator, and /reset_sim has a crash mode
-#                (plan/two-scenarios.md §0.1): from a stale, collapsed robot it
-#                can abort Drake's SAP solver and take the simulator process with
-#                it. That is a RED result naming the relaunch, never a retry.
+#   require_sim  a scenario resets the simulator, and /reset_sim has a crash mode
+#                (demo/scenarios.md §1.3): asked to resolve contacts from a
+#                degenerate configuration, Drake's SAP solver aborts and takes
+#                the simulator process with it. That is a RED result naming the
+#                relaunch, never a retry.
+#   note / bypass
+#                a number worth having in the transcript, and a step this
+#                scenario cannot check at all. Neither is a pass, and neither is
+#                a silent skip.
 #
 # Knobs are the caller's; this file reads the ones every scenario shares:
 #   KENNEL_SCENARIO_PORT   8094   the serve.py the scenario starts
@@ -118,6 +122,13 @@ check() {   # $1 = 0/1 condition (0 = pass), $2 = label, $3 = detail
 bypass() {   # $1 = label, $2 = what was measured / why
     printf 'BYPASS|%s|%s\n' "$1" "${2:-}" >> "$results"
     printf '  [BYPASS] %s%s\n' "$1" "${2:+ -- $2}"
+}
+# Something measured and reported, not asserted. Distinct from `bypass`: a
+# bypass is a step this scenario cannot check at all, a note is a number worth
+# having in the transcript.
+note() {   # $1 = label, $2 = value
+    printf 'NOTE|%s|%s\n' "$1" "${2:-}" >> "$results"
+    printf '  [NOTE] %s%s\n' "$1" "${2:+ -- $2}"
 }
 num_ok() {  # $1 = value, $2 = lo, $3 = hi -- empty value never passes
     [ -n "$1" ] || return 1
@@ -224,6 +235,14 @@ require_sim() {   # $1 = what was being done, for the message
 page() {   # one named step against the live page
     python3 "$HERE/scenario-page.py" --cdp "$CDP_PORT" --serve "$PORT" \
         --results "$results" --guest "$GUEST_IP" --out "$OUT_DIR" "$@"
+}
+# The same, but its checks go nowhere. A step called in a POLLING LOOP -- s003
+# samples the tint about once a second for a minute -- would otherwise append a
+# check per sample and bury the scenario's real ones under two hundred phantom
+# passes.
+page_quiet() {
+    python3 "$HERE/scenario-page.py" --cdp "$CDP_PORT" --serve "$PORT" \
+        --results /dev/null --guest "$GUEST_IP" --out "$OUT_DIR" "$@"
 }
 
 start_chrome() {

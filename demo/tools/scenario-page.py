@@ -33,6 +33,11 @@ The helpers are COPIED from stack/bridge/verify-teleop-live.py and
 kennel_console/verify-dashboard.py rather than imported, as every suite in this
 repo copies them: a shared helper file that drifts breaks suites silently, and
 each suite is meant to be readable on its own.
+
+EXIT CODES
+    0  every check this step made passed
+    1  a check failed (the check itself is also appended to --results, so the
+       bash half's totals see it)
 """
 import argparse
 import json
@@ -98,8 +103,12 @@ window.__feed = () => [...document.querySelectorAll('div')]
 // The six pipeline-health blocks and their TINT, as a string rather than a
 // colour: `data-lvl` is on the card for exactly this reason (#71). A canvas
 // cannot be read by a suite, and neither can a background colour.
+// The card's first LEAF div with text is its name: `div > div` finds the status
+// DOT first, which has no text at all, and a nameless reading makes every later
+// aggregation quietly empty rather than wrong.
 window.__health = () => [...document.querySelectorAll('[data-lvl]')].map(d => {
-  const name = d.querySelector('div > div');
+  const name = [...d.querySelectorAll('div')]
+    .find(x => !x.querySelector('div') && x.textContent.trim());
   return [name ? name.textContent.trim() : '?', d.getAttribute('data-lvl')]; });
 // A Runs table row: the grid whose first cell is the checkbox, minus the header.
 // Copied from verify-runs.py, which is where this was got right: the browser
@@ -201,11 +210,17 @@ def num(label, value):
     ws.js("__set(__numInput(%r), %r)" % (label, str(value)))
 
 
-def dump(name, obj):
+def dump(name, obj, compact=False):
+    """`compact` writes one line, for the files the bash half appends into a
+    .jsonl -- a pretty-printed record in a line-oriented file is a file nothing
+    can read back."""
     path = os.path.join(A.out, name)
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
-        json.dump(obj, fh, indent=1)
+        if compact:
+            json.dump(obj, fh)
+        else:
+            json.dump(obj, fh, indent=1)
     return path
 
 
@@ -299,7 +314,8 @@ elif step == "feed":
 
 elif step == "health":
     h = ws.js("__health()") or []
-    dump(rest[0], {"t": time.time(), "sim": ws.js("__stat('sim t')"), "blocks": h})
+    dump(rest[0], {"t": round(time.time(), 2), "sim": ws.js("__stat('sim t')"),
+                   "blocks": h}, compact=True)
     check("the six pipeline blocks report a tint a suite can read",
           len(h) == 6, str(h))
 
