@@ -85,6 +85,17 @@
 #   KENNEL_SOLVER         PARTIAL_CONDENSING_OSQP   composed solver, and the
 #                                            expected one when no run.json says
 #   KENNEL_RATE           0.75               composed simulator_realtime_rate
+#   KENNEL_PRESET         (none)             a named composition for `compose`
+#                                            and `all`. The one that exists is
+#                                            `stress` (#70): the measured red
+#                                            composition, obstacle terrain --
+#                                            which does not walk, by design
+#                                            (stack/stress.md). Named presets
+#                                            are #72; this is the one #71 needs
+#   KENNEL_DISTURBANCES   0                  1 composes the fourth block, the
+#                                            disturbance service (#68)
+#   KENNEL_MAP / KENNEL_HPIPM_MODE / KENNEL_CONDENSED   passed to compose; unset
+#                                            leaves the control untouched
 #   KENNEL_SNAPSHOT_ID    kennel-vm-baseline snapshot id AND persisted domain name
 #   KENNEL_VM_DOMAIN      (discovered)       libvirt domain, for up/halt/snapshot
 #   KENNEL_UP_TIMEOUT     600                bound on the boot wait in `up`
@@ -121,6 +132,12 @@ DOWNLOADS="${KENNEL_DOWNLOADS:-$HOME/Downloads}"
 PORT="${KENNEL_CONSOLE_PORT:-8000}"
 SOLVER="${KENNEL_SOLVER:-PARTIAL_CONDENSING_OSQP}"
 RATE="${KENNEL_RATE:-0.75}"
+# A named composition (#70's half of #72). `stress` is the one the sweep
+# measured: the red composition of stack/stress.md, which is the demo's own
+# solver and rate on OBSTACLE TERRAIN -- a map that is known not to walk
+# (transfer.md §6.3), which is the point of it. Anything else is refused by
+# name rather than silently ignored.
+PRESET="${KENNEL_PRESET:-}"
 
 GUEST_HOSTNAME="${KENNEL_GUEST_HOSTNAME:-kennel-vm}"
 LIBVIRT_NET="${KENNEL_LIBVIRT_NET:-default}"
@@ -1141,8 +1158,22 @@ console_stop() {
 }
 
 SERVER_PID=""
+# What a named preset composes. Refused by NAME rather than silently ignored: a
+# preset nobody implemented must not quietly produce the default composition and
+# call itself the stress preset.
+preset_map() {
+    case "$PRESET" in
+        "")     echo "" ;;
+        stress) echo obstacle_terrain ;;
+        *) fail "no preset '$PRESET'. The one that exists is 'stress' (stack/stress.md)." \
+                "Named presets in general are issue #72."
+           exit 2 ;;
+    esac
+}
+
 do_compose() {
     OUT="${1:-$OUT}"
+    PRESET_MAP="$(preset_map)" || exit $?
     mkdir -p "$OUT"
     if ! curl -sf -o /dev/null "$CONSOLE_URL"; then
         say "serving the console on port $PORT (kennel_console/serve.md §1)"
@@ -1155,7 +1186,11 @@ do_compose() {
             sleep 0.25
         done
     fi
+    [ -n "$PRESET" ] && say "preset           $PRESET (map $PRESET_MAP)"
     KENNEL_CONSOLE_URL="$CONSOLE_URL" KENNEL_SOLVER="$SOLVER" KENNEL_RATE="$RATE" \
+        KENNEL_MAP="${KENNEL_MAP:-$PRESET_MAP}" \
+        KENNEL_HPIPM_MODE="${KENNEL_HPIPM_MODE:-}" KENNEL_CONDENSED="${KENNEL_CONDENSED:-}" \
+        KENNEL_DISTURBANCES="${KENNEL_DISTURBANCES:-0}" \
         "$HERE/p22-console-demo.sh" "$OUT"
     local rc=$?
     [ -n "$SERVER_PID" ] && { kill "$SERVER_PID" 2>/dev/null; SERVER_PID=""; }

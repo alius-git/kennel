@@ -87,15 +87,27 @@ window.__simToggle = label => {
   const t = [...row.querySelectorAll('div')].find(d =>
     /border-radius: 10px/.test(d.getAttribute('style') || ''));
   if (!t) return false; t.click(); return true; };
-// One field inside an open stage drawer, by its label.
-window.__drawerNum = label => { const col = [...document.querySelectorAll('div')]
-  .find(d => d.children.length === 2 && d.children[0].textContent.trim() === label
-             && d.querySelector('input[type=number]'));
-  return col ? col.querySelector('input[type=number]') : null; };
-window.__drawerSel = label => { const col = [...document.querySelectorAll('div')]
-  .find(d => d.children.length === 2 && d.children[0].textContent.trim() === label
-             && d.querySelector('select'));
-  return col ? col.querySelector('select') : null; };
+// One field inside an open stage drawer, by its label. A drawer row is
+// <div><labelColumn><controlColumn></div> and the label sits TWO levels down,
+// beside a `modified` badge and above a `default …` line -- so the row's first
+// child's textContent is "mpc_hpipm_mode\ndefault SPEED", not the label. Find
+// the innermost element whose text IS the label, then walk out to the row.
+// Measured, not guessed: the label is a <span class="sc-interp"> with no
+// children -- so the search is over ALL elements, not divs -- and the row that
+// holds the control is FOUR levels above it.
+window.__drawerField = (label, sel) => {
+  const lab = [...document.querySelectorAll('*')]
+    .filter(e => !e.children.length && e.textContent.trim() === label).pop();
+  if (!lab) return null;
+  let row = lab;
+  for (let i = 0; i < 6 && row; i++) {
+    const c = row.querySelector(sel);
+    if (c) return c;
+    row = row.parentElement;
+  }
+  return null; };
+window.__drawerNum = label => window.__drawerField(label, 'input[type=number]');
+window.__drawerSel = label => window.__drawerField(label, 'select');
 window.__cmds = () => [...document.querySelectorAll('div')]
   .filter(d => /^source \/opt\/ros/.test(d.textContent.trim()))
   .map(d => d.textContent);
@@ -171,21 +183,31 @@ if HPIPM_MODE or CONDENSED:
                     f" __setSel(s, {HPIPM_MODE!r}); return true; }})()")
         step("hpipm mode set", ok_, "the field is hidden for solvers that ignore it (composer-scope.md §2)")
     if CONDENSED:
-        ws.js("(() => { const el = __drawerNum('mpc_condensed_size'); if (!el) return false;"
-              " const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;"
-              f" set.call(el, {CONDENSED!r}); el.dispatchEvent(new Event('input', {{bubbles:true}}));"
-              " el.dispatchEvent(new Event('change', {bubbles:true})); return true; })()")
-        step("condensed size set", True)
+        ok_ = ws.js("(() => { const el = __drawerNum('mpc_condensed_size'); if (!el) return false;"
+                    " const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;"
+                    f" set.call(el, {CONDENSED!r}); el.dispatchEvent(new Event('input', {{bubbles:true}}));"
+                    " el.dispatchEvent(new Event('change', {bubbles:true})); return true; })()")
+        step("condensed size set", ok_,
+             "the field is hidden for full-condensing solvers (composer-scope.md §2)")
     time.sleep(0.4)
     ws.js("__click('close')")
     time.sleep(0.35)
     ctrl = pane(CTRL_TAB)
+    # Read the KEY line, never the composed block's comment above it -- that
+    # comment names both keys in prose ("PARTIAL_CONDENSING_OSQP reads
+    # mpc_condensed_size; mpc_hpipm_mode is declared but unused"), so a naive
+    # substring match reports the note and calls it the value.
+    def keyline(text, key):
+        return next((l.strip() for l in text.split("\n")
+                     if l.strip().startswith(key + ":")), "absent")
     if HPIPM_MODE:
-        step("controller YAML shows the hpipm mode", f'mpc_hpipm_mode: "{HPIPM_MODE}"' in ctrl,
-             next((l.strip() for l in ctrl.split("\n") if "mpc_hpipm_mode" in l), "absent"))
+        step("controller YAML shows the hpipm mode",
+             keyline(ctrl, "mpc_hpipm_mode") == f'mpc_hpipm_mode: "{HPIPM_MODE}"',
+             keyline(ctrl, "mpc_hpipm_mode"))
     if CONDENSED:
-        step("controller YAML shows the condensed size", f"mpc_condensed_size: {CONDENSED}" in ctrl,
-             next((l.strip() for l in ctrl.split("\n") if "mpc_condensed_size" in l), "absent"))
+        step("controller YAML shows the condensed size",
+             keyline(ctrl, "mpc_condensed_size") == f"mpc_condensed_size: {CONDENSED}",
+             keyline(ctrl, "mpc_condensed_size"))
 
 if DISTURBANCES:
     print("\n[compose] disturbances on — the fourth block (#68)")
