@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Serve the Kennel Console and accept the run folder it exports. 2026-09-07.
+"""Serve the Kennel Console, accept the run folder it exports, and serve the guides. 2026-09-09.
 
 WHERE IT RUNS: HOST (the machine with the browser), from the repository root or
 anywhere -- it resolves its own directory.
 
     python3 kennel_console/serve.py [--port 8000] [--out ~/kennel-runs] [--dir DIR]
-                                    [--bridge ws://GUEST:9090/]
+                                    [--bridge ws://GUEST:9090/] [--guides DIR]
 
     demo/tools/kennel-demo.sh console      # what actually starts it
 
@@ -15,7 +15,8 @@ same URLs, same directory listing, same %20 in the page name (serve.md section 1
 `kennel-demo.sh run` already reads:
 
     GET  /api/health   {"kennel": true, "out": "<abs run dir>", "pin": "<sha>",
-                        "bridge": "<ws url>"|null, "meshcat": "<http url>"|null}
+                        "bridge": "<ws url>"|null, "meshcat": "<http url>"|null,
+                        "guides": [{"name": "first-run.md", "title": "..."}]|null}
     POST /api/runs     body = the export archive; writes run-<stamp>/ under --out
     GET  /api/runs     the run folders present, newest first -- with each run's
                        composed `choices` and, once `kennel-demo.sh verify` has
@@ -23,6 +24,12 @@ same URLs, same directory listing, same %20 in the page name (serve.md section 1
     GET  /api/runs/<stamp>/<file>
                        one file out of one run folder: the four export artifacts
                        plus verify.json / verify.txt. Read-only, allow-listed
+    GET  /guides/<name>.md      the guide's own bytes (#73)
+    GET  /guides/<name>.html    the same file rendered -- the console frames this
+    GET  /guides/img/<file>.png one image out of guides/img/
+
+guides/ is OUTSIDE the docroot, so plain http.server cannot serve a guide
+however it is asked: the Guides item exists exactly when this server does.
 
 The console feature-detects /api/health and shows its `send to kennel-runs`
 button only when this server answers, so plain http.server still serves the same
@@ -38,6 +45,7 @@ EXIT CODES
 """
 import argparse
 import hashlib
+import html
 import io
 import json
 import os
@@ -96,6 +104,25 @@ MESHCAT_FILE = ".kennel-meshcat"
 # should fail closed rather than become an attribute in the page.
 URL_RE = re.compile(r"^(?:wss?|https?)://[A-Za-z0-9.:_@\[\]-]+(?:/[^\s\x00-\x1f]*)?$")
 
+# ---- The guides (#73) -------------------------------------------------------
+#
+# guides/ sits OUTSIDE this server's docroot, so `python3 -m http.server
+# --directory kennel_console` cannot reach it however it is asked. That is the
+# feature-detection rule holding by construction rather than by a flag: served
+# any other way the console has no /api/health, no guides list, and no Guides
+# item -- exactly what send.md §2.1 and teleop.md §7 do.
+#
+# The reading order a newcomer needs, then anything else alphabetically -- so
+# #77's safety gate and hardware notes land at the end without a code change.
+GUIDE_ORDER = ("first-run.md", "walkthrough.md", "diagnosis.md")
+# A guide is named in kebab-case and nothing else, and an image is a PNG. Both
+# are matched in full and the path is then BUILT from what matched, never joined
+# with what the request said -- the reasoning _run_file already applies to a run
+# folder: with no separator, no dot and no absolute path able to satisfy either
+# pattern, traversal is structurally impossible rather than filtered.
+GUIDE_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+GUIDE_IMG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*\.png$")
+
 
 def side_channel(out_dir, name):
     """First line of <out>/<name>, when it is a plausible URL. None otherwise.
@@ -109,6 +136,248 @@ def side_channel(out_dir, name):
     except OSError:
         return None
     return value if value and URL_RE.match(value) else None
+
+
+def guide_title(path):
+    """A guide's first `# ` line, which is its title. The file name otherwise."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("# "):
+                    return line[2:].strip()
+    except OSError:
+        pass
+    return os.path.basename(path)
+
+
+def guide_list(guides_dir):
+    """What /api/health advertises: the guides present, in reading order.
+
+    None when there is no guides directory -- the same shape `bridge` and
+    `meshcat` use for absent, and what the page feature-detects on. Read per
+    REQUEST, like the side channels: a guide edited while the console is open
+    should show without a restart.
+    """
+    if not guides_dir or not os.path.isdir(guides_dir):
+        return None
+    try:
+        names = [n for n in os.listdir(guides_dir)
+                 if n.endswith(".md") and GUIDE_RE.match(n[:-3])]
+    except OSError:
+        return None
+    ordered = [n for n in GUIDE_ORDER if n in names]
+    ordered += sorted(n for n in names if n not in GUIDE_ORDER)
+    return [{"name": n, "title": guide_title(os.path.join(guides_dir, n))} for n in ordered]
+
+
+# ---- Markdown, rendered here and never in the page --------------------------
+#
+# The console's runtime offers its template no raw-HTML binding, and the page
+# paints only canvases through refs; putting a renderer in there would mean
+# introducing the one thing the page has never had. It renders here instead,
+# where html.escape lives, and the page frames the result exactly as it frames
+# Meshcat (dashboard.md §1.1).
+#
+# A FIXED SUBSET, stdlib only. Every run of text is escaped BEFORE any inline
+# rule runs, so nothing a guide contains can become markup; anything the subset
+# does not know becomes a paragraph rather than being passed through.
+_CODE_RE = re.compile(r"`([^`]+)`")
+_IMG_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)\)")
+_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
+_BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
+_EM_RE = re.compile(r"(?<![*\w])\*([^*\n]+)\*(?!\*)")
+_MD_LINK_RE = re.compile(r"^([a-z0-9][a-z0-9-]*)\.md(#[A-Za-z0-9_-]+)?$")
+_HTTP_RE = re.compile(r"^https?://")
+
+
+def _anchor(text):
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def _inline(text):
+    """One line of prose: escaped, then the inline subset, code spans first.
+
+    Code spans are lifted out before anything else runs, so `**not bold**`
+    inside backticks stays literal -- and so a guide can show the markup it is
+    teaching without the renderer eating it.
+    """
+    spans = []
+
+    def keep(m):
+        spans.append(html.escape(m.group(1)))
+        return "\x00%d\x00" % (len(spans) - 1)
+
+    text = _CODE_RE.sub(keep, text)
+    text = html.escape(text)
+
+    def image(m):
+        alt, src = m.group(1), m.group(2)
+        # Only the guides' own image directory. Anything else is not an image
+        # this server can serve, so it is shown as the path it is.
+        if not src.startswith("img/") or not GUIDE_IMG_RE.match(src[4:]):
+            return "<code>%s</code>" % html.escape(src)
+        return '<img src="%s" alt="%s">' % (html.escape(src), html.escape(alt))
+
+    def link(m):
+        label, href = m.group(1), m.group(2)
+        md = _MD_LINK_RE.match(href)
+        if md:
+            # Guides link to each other, and the frame navigates within them.
+            return '<a href="%s.html%s">%s</a>' % (md.group(1), md.group(2) or "", label)
+        if _HTTP_RE.match(href):
+            return '<a href="%s" target="_blank" rel="noopener">%s</a>' % (html.escape(href), label)
+        if href.startswith("#"):
+            return '<a href="%s">%s</a>' % (html.escape(href), label)
+        # A repo path. The console serves the console and the guides, and
+        # nothing else -- a link here would 404 in the frame and look like a
+        # broken guide, so it is rendered as what it is: a path to type.
+        return label if label == href else "%s (<code>%s</code>)" % (label, html.escape(href))
+
+    text = _IMG_RE.sub(image, text)
+    text = _LINK_RE.sub(link, text)
+    text = _BOLD_RE.sub(lambda m: "<strong>%s</strong>" % m.group(1), text)
+    text = _EM_RE.sub(lambda m: "<em>%s</em>" % m.group(1), text)
+    return re.sub(r"\x00(\d+)\x00", lambda m: "<code>%s</code>" % spans[int(m.group(1))], text)
+
+
+GUIDE_CSS = """
+:root{color-scheme:dark}
+body{margin:0;padding:26px 30px 60px;background:#0a0d12;color:#dbe2ea;
+  font:400 14px/1.65 'IBM Plex Sans',system-ui,sans-serif;max-width:900px}
+h1{font:600 22px 'IBM Plex Sans';margin:0 0 6px}
+h2{font:600 16px 'IBM Plex Sans';margin:30px 0 8px;padding-top:14px;border-top:1px solid #1b222c}
+h3{font:600 13px 'IBM Plex Sans';margin:20px 0 6px;color:#c3ccd6}
+p{margin:9px 0}
+a{color:#8fc9ea;text-decoration:none}
+a:hover{text-decoration:underline}
+code{font:400 12px 'IBM Plex Mono',ui-monospace,monospace;background:#12181f;
+  border:1px solid #1f2731;border-radius:3px;padding:1px 5px;color:#c3ccd6}
+pre{background:#0f141b;border:1px solid #1f2731;border-radius:6px;padding:12px 14px;
+  overflow-x:auto;margin:10px 0}
+pre code{background:none;border:0;padding:0;color:#8fc9ea;font-size:12px}
+.click{background:#101a24;border:1px solid #2f5d78;border-left-width:3px;border-radius:5px;
+  padding:10px 14px;margin:10px 0}
+.click .lead{font:500 10px 'IBM Plex Mono';letter-spacing:.06em;text-transform:uppercase;
+  color:#6f7a88;margin-bottom:5px}
+.click div.step{font:500 13px 'IBM Plex Mono';color:#dbe2ea}
+table{border-collapse:collapse;margin:12px 0;font-size:13px;display:block;overflow-x:auto}
+th{text-align:left;font:600 10px 'IBM Plex Mono';letter-spacing:.06em;text-transform:uppercase;
+  color:#9aa5b1;border-bottom:1px solid #2b3543;padding:6px 12px 6px 0}
+td{border-bottom:1px solid #161d26;padding:6px 12px 6px 0;vertical-align:top}
+blockquote{margin:12px 0;padding:2px 0 2px 14px;border-left:2px solid #2b3543;color:#a8b3c0}
+ul,ol{margin:9px 0;padding-left:22px}
+li{margin:4px 0}
+img{max-width:100%;border:1px solid #1f2731;border-radius:6px;margin:10px 0;display:block}
+hr{border:0;border-top:1px solid #1b222c;margin:26px 0}
+.nav{font:400 11px 'IBM Plex Mono';color:#6f7a88;margin-bottom:20px}
+.nav a{margin-right:14px}
+"""
+
+
+def render_md(text, name, guides):
+    """One guide as a page. The subset is fixed and everything else is a
+    paragraph -- a renderer that guessed would eventually guess wrong about a
+    document this repo asks people to follow literally."""
+    out, i = [], 0
+    lines = text.split("\n")
+    title = name
+
+    def flush_para(buf):
+        if buf:
+            out.append("<p>%s</p>" % _inline(" ".join(buf)))
+            buf.clear()
+
+    para = []
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        if stripped.startswith("```"):
+            lang = stripped[3:].strip().lower()
+            i += 1
+            body = []
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                body.append(lines[i])
+                i += 1
+            i += 1
+            flush_para(para)
+            if lang == "click":
+                # What a person does in the console rather than in a terminal.
+                # The same fence the s001 verb executes, so the reader and the
+                # audit are looking at one file (demo/scenarios.md §6).
+                steps = "".join('<div class="step">%s</div>' % html.escape(b.strip())
+                                for b in body if b.strip())
+                out.append('<div class="click"><div class="lead">in the console</div>%s</div>' % steps)
+            else:
+                out.append('<pre><code class="lang-%s">%s</code></pre>'
+                           % (html.escape(lang or "text"), html.escape("\n".join(body))))
+            continue
+
+        if stripped.startswith("|") and i + 1 < len(lines) \
+                and set(lines[i + 1].strip()) <= set("|-: "):
+            flush_para(para)
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            out.append("<table><thead><tr>%s</tr></thead><tbody>"
+                       % "".join("<th>%s</th>" % _inline(c) for c in cells))
+            i += 2
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                row = [c.strip() for c in lines[i].strip().strip("|").split("|")]
+                out.append("<tr>%s</tr>" % "".join("<td>%s</td>" % _inline(c) for c in row))
+                i += 1
+            out.append("</tbody></table>")
+            continue
+
+        m = re.match(r"^(#{1,4})\s+(.*)$", stripped)
+        if m:
+            flush_para(para)
+            level = len(m.group(1))
+            body = m.group(2).strip()
+            if level == 1 and title == name:
+                title = body
+            out.append("<h%d id=\"%s\">%s</h%d>" % (level, _anchor(body), _inline(body), level))
+            i += 1
+            continue
+
+        if re.match(r"^(-|\d+\.)\s+", stripped):
+            flush_para(para)
+            tag = "ul" if stripped.startswith("-") else "ol"
+            out.append("<%s>" % tag)
+            while i < len(lines) and re.match(r"^(-|\d+\.)\s+", lines[i].strip()):
+                out.append("<li>%s</li>" % _inline(re.sub(r"^(-|\d+\.)\s+", "", lines[i].strip())))
+                i += 1
+            out.append("</%s>" % tag)
+            continue
+
+        if stripped.startswith(">"):
+            flush_para(para)
+            quote = []
+            while i < len(lines) and lines[i].strip().startswith(">"):
+                quote.append(lines[i].strip().lstrip(">").strip())
+                i += 1
+            out.append("<blockquote>%s</blockquote>" % _inline(" ".join(quote)))
+            continue
+
+        if set(stripped) == {"-"} and len(stripped) >= 3:
+            flush_para(para)
+            out.append("<hr>")
+            i += 1
+            continue
+
+        if not stripped:
+            flush_para(para)
+        else:
+            para.append(stripped)
+        i += 1
+    flush_para(para)
+
+    nav = " ".join('<a href="%s.html">%s</a>' % (g["name"][:-3], html.escape(g["title"]))
+                   for g in (guides or []))
+    return ("<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
+            "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+            "<title>%s — Kennel guides</title>"
+            "<link href=\"../vendor/fonts/plex.css\" rel=\"stylesheet\">"
+            "<style>%s</style></head><body>\n<div class=\"nav\">%s</div>\n%s\n</body></html>\n"
+            % (html.escape(title), GUIDE_CSS, nav, "\n".join(out)))
 
 
 def host_pin():
@@ -327,6 +596,7 @@ class Handler(SimpleHTTPRequestHandler):
     out_dir = None
     pin = None
     bridge = None          # --bridge / $KENNEL_BRIDGE_URL, overriding the file
+    guides_dir = None      # --guides / $KENNEL_GUIDES; None = no Guides item (#73)
     server_version = "KennelConsoleServe/1.0"
 
     def _json(self, status, payload):
@@ -352,7 +622,11 @@ class Handler(SimpleHTTPRequestHandler):
                              # has to restart the server to see a button has been
                              # given a worse version of no button at all.
                              "bridge": self.bridge or side_channel(self.out_dir, BRIDGE_FILE),
-                             "meshcat": side_channel(self.out_dir, MESHCAT_FILE)})
+                             "meshcat": side_channel(self.out_dir, MESHCAT_FILE),
+                             # null with no guides directory, which is also what
+                             # plain http.server gives the page: no /api/health
+                             # at all. One rule, two ways of being absent (#73).
+                             "guides": guide_list(self.guides_dir)})
             return
         if self.path.split("?")[0] == "/api/runs":
             self._json(200, {"out": self.out_dir, "runs": list_runs(self.out_dir)})
@@ -360,8 +634,62 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.split("?")[0].startswith("/api/runs/"):
             self._run_file(self.path.split("?")[0][len("/api/runs/"):])
             return
+        if self.path.split("?")[0].startswith("/guides/"):
+            self._guide(self.path.split("?")[0][len("/guides/"):])
+            return
         # Anything else is a file. This is the whole of the static contract.
         SimpleHTTPRequestHandler.do_GET(self)
+
+    def _guide(self, rest):
+        """GET /guides/<name>.md | <name>.html | img/<file>.png (#73).
+
+        Three shapes and nothing else. Each segment is matched against a pattern
+        in full and the path is then BUILT from what matched -- so no separator,
+        no dot and no absolute path in the request can reach a file this was not
+        asked for, the same way _run_file is safe.
+        """
+        guides = guide_list(self.guides_dir)
+        if guides is None:
+            self._json(404, {"error": "this server has no guides directory",
+                             "detail": ["Start it with --guides <dir>, or from a checkout "
+                                        "where guides/ exists."]})
+            return
+        name, _, ext = rest.rpartition(".")
+        served = None
+        if rest.startswith("img/"):
+            leaf = rest[len("img/"):]
+            if GUIDE_IMG_RE.match(leaf):
+                served = (os.path.join(self.guides_dir, "img", leaf), "image/png", "rb")
+        elif ext == "md" and GUIDE_RE.match(name):
+            served = (os.path.join(self.guides_dir, name + ".md"),
+                      "text/markdown; charset=utf-8", "rb")
+        elif ext == "html" and GUIDE_RE.match(name):
+            served = (os.path.join(self.guides_dir, name + ".md"),
+                      "text/html; charset=utf-8", "md")
+        if served is None:
+            self._json(404, {"error": "no such guide: %s" % rest,
+                             "detail": ["GET /guides/<name>.md, /guides/<name>.html or "
+                                        "/guides/img/<file>.png, where <name> is one of: "
+                                        + ", ".join(g["name"][:-3] for g in guides)]})
+            return
+        path, ctype, mode = served
+        try:
+            with open(path, "rb") as f:
+                raw = f.read()
+        except OSError:
+            self._json(404, {"error": "no such guide file: %s" % rest})
+            return
+        if mode == "md":
+            body = render_md(raw.decode("utf-8", "replace"),
+                             os.path.basename(path), guides).encode("utf-8")
+        else:
+            body = raw
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def _run_file(self, rest):
         """GET /api/runs/<stamp>/<file> -- one file out of one run folder (#64).
@@ -443,6 +771,10 @@ def main(argv=None):
                     help="rosbridge WebSocket URL to advertise in /api/health "
                          "(default: the first line of <out>/.kennel-bridge, "
                          "which kennel-demo.sh teleop writes)")
+    ap.add_argument("--guides", default=os.environ.get("KENNEL_GUIDES")
+                    or os.path.join(REPO_ROOT, "guides"),
+                    help="the guides directory to serve and render (#73). "
+                         "Absent means no Guides item in the console at all.")
     args = ap.parse_args(argv)
 
     docroot = os.path.abspath(os.path.expanduser(args.dir))
@@ -465,6 +797,8 @@ def main(argv=None):
               file=sys.stderr)
         return 2
     Handler.bridge = args.bridge
+    guides_dir = os.path.abspath(os.path.expanduser(args.guides)) if args.guides else None
+    Handler.guides_dir = guides_dir if guides_dir and os.path.isdir(guides_dir) else None
 
     def handler(*a, **kw):
         return Handler(*a, directory=docroot, **kw)
@@ -482,6 +816,9 @@ def main(argv=None):
     print("[serve.py] stack pin     %s" % (pin or "UNKNOWN -- POST /api/runs will refuse"))
     print("[serve.py] bridge       %s" % (args.bridge or
           ("%s (when kennel-demo.sh teleop has written it)" % os.path.join(out_dir, BRIDGE_FILE))))
+    print("[serve.py] guides       %s" % (
+        "%s (%d)" % (Handler.guides_dir, len(guide_list(Handler.guides_dir) or []))
+        if Handler.guides_dir else "none -- the console will show no Guides item"))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

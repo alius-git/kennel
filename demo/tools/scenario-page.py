@@ -9,6 +9,11 @@ what the PAGE does with what the GUEST saw:
     boot                    load the console, open the Dashboard, assert the
                             controls are there and the bridge URL came from
                             /api/health
+    preset NAME             pick a preset the page ships, and read back BOTH the
+                            label and the panes it generated (#72)
+    send                    click `send to kennel-runs`, then assert the folder
+                            it names is on disk with its four artifacts
+    dashboard               open the Dashboard (what `boot` does after loading)
     connect / disconnect    the bridge button, and what the page says it is doing
     gait NAME               pick a gait, and wait for it to read back `active`
     vx V                    type a forward velocity into the Interventions field
@@ -85,6 +90,24 @@ window.__injectBtn = () => window.__btn(/^inject$/);
 window.__unpinBtn = () => window.__btn(/^unpin feed$/);
 window.__gaitSel = () => [...document.querySelectorAll('select')]
   .find(s => [...s.options].some(o => o.value === 'WALKING_TROT'));
+// The preset select and the send button (#72, #73). The select is found by the
+// one option text that is part of its contract, and an option by ITS text or
+// its slug -- so `stress` and `Stress` reach the same row of the page's data.
+window.__presetSel = () => [...document.querySelectorAll('select')]
+  .find(s => [...s.options].some(o => /load preset/.test(o.textContent)));
+window.__slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+window.__presetOpt = want => { const s = window.__presetSel(); if (!s) return null;
+  return [...s.options].find(o => o.value !== ''
+    && (o.textContent.trim() === want || window.__slug(o.textContent) === window.__slug(want))) || null; };
+window.__presetNames = () => { const s = window.__presetSel();
+  return s ? [...s.options].filter(o => o.value).map(o => o.textContent.trim()) : []; };
+window.__setSel = (s, val) => { const setter =
+  Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set;
+  setter.call(s, val); s.dispatchEvent(new Event('change', {bubbles:true})); };
+window.__sendBtn = () => [...document.querySelectorAll('div')].find(d =>
+  !d.querySelector('div') && /^send to .+ →$/.test(d.textContent.trim()));
+window.__pane = () => { const p = [...document.querySelectorAll('pre')]
+  .filter(p => /ros__parameters/.test(p.textContent)); return p.length ? p[0].textContent : ''; };
 window.__pad = () => [...document.querySelectorAll('div')]
   .find(d => /crosshair/.test(d.getAttribute('style') || ''));
 // One Interventions number input, by the label above it.
@@ -235,6 +258,51 @@ if step == "boot":
           bool(url) and A.guest in url, url)
     check("nothing is dialled before the operator asks",
           ws.js("window.__sockets.length") == 0, str(ws.js("window.__sockets")))
+
+elif step == "preset":
+    # The checklist's step 2 (#73): the newcomer picks a preset the page ships,
+    # and the page says which one it is holding. Read BOTH -- the label and the
+    # panes -- because a preset that "loaded" but left the composition at stock
+    # would satisfy a check that only looked at the select.
+    want = " ".join(rest)
+    ws.js("__click('Compose')")
+    time.sleep(0.4)
+    found = ws.js("(() => { const o = __presetOpt(%r); return o ? o.textContent.trim() : null; })()"
+                  % want)
+    check("the console offers a preset called %s" % want, bool(found),
+          found or "it ships: " + ", ".join(ws.js("__presetNames()")))
+    if found:
+        ws.js("__setSel(__presetSel(), __presetOpt(%r).value)" % want)
+        check("  and says it is holding it",
+              wait_for(lambda: ("preset · " + found) in txt(), timeout=5),
+              next((l for l in txt().split("\n") if l.startswith("preset ·")), "absent"))
+        check("  with a composition in the generated panes",
+              len(ws.js("__pane()") or "") > 200, "%d chars" % len(ws.js("__pane()") or ""))
+
+elif step == "send":
+    # Step 3: the run folder is written to the HOST, and the check is that the
+    # folder is on disk with its four artifacts -- not that the page said so.
+    before = ws.js("__txt()")
+    ok = ws.js("(() => { const b = __sendBtn(); if (!b) return false; b.click(); return true; })()")
+    check("the send button is there (it exists only under serve.py)", ok is not False)
+    got = wait_for(lambda: "saved " in txt(), timeout=20)
+    line = next((l for l in txt().split("\n") if l.strip().startswith("saved ")), "")
+    check("the strip says the server saved it", got, line or before[:0])
+    path = line.strip()[len("saved "):].strip()
+    have = [n for n in ("simulator_params_go2.yaml", "mit_controller_sim_go2.yaml",
+                        "commands.txt", "run.json")
+            if os.path.isfile(os.path.join(path, n))] if path else []
+    check("  and the folder it names holds the four artifacts on disk",
+          len(have) == 4, "%s -> %d of 4" % (path or "no path", len(have)))
+
+elif step == "dashboard":
+    ws.js("__click('Dashboard')")
+    time.sleep(0.6)
+    check("the Dashboard is open, with the Interventions row",
+          "intervention" in txt().lower())
+    url = ws.js("(() => { const i = __bridgeInput(); return i ? i.value : ''; })()")
+    check("the bridge URL was prefilled from /api/health, so teleop's hand-off works",
+          bool(url) and A.guest in url, url)
 
 elif step == "connect":
     ws.js("__connectBtn().click()")
