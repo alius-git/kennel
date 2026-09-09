@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
+# Version: 2026.09.09
 # Operator stand-in for demo-script steps 2-3 (issue #22) — deviation D1.
+#
+# WHERE IT RUNS: HOST (the machine with the browser), against a console the
+# operator is already serving.
 #
 #   p22-console-demo.sh <outdir>
 #
@@ -18,8 +22,16 @@
 #
 # Knobs (all optional):
 #   KENNEL_CONSOLE_URL   http://localhost:8000/Kennel%20Console.dc.html
-#   KENNEL_SOLVER        PARTIAL_CONDENSING_OSQP
-#   KENNEL_RATE          0.75
+#   KENNEL_PRESET        (none)   a preset the PAGE ships (#72), by its name or
+#                        its slug: stock-go2-walk, solver-benchmark-a-hpipm,
+#                        solver-benchmark-b-osqp, stress. Loaded FIRST; the
+#                        knobs below then override only what they name, and with
+#                        a preset set they default to EMPTY (= touch nothing).
+#                        A saved preset of the operator's cannot be named here:
+#                        this browser is a throwaway profile and has no
+#                        localStorage of theirs (composer-scope.md 7).
+#   KENNEL_SOLVER        PARTIAL_CONDENSING_OSQP  (empty with a preset)
+#   KENNEL_RATE          0.75                     (empty with a preset)
 #   KENNEL_CDP_PORT      9252
 #   KENNEL_MAP           (stock)  flat_plane | obstacle_terrain -- the stress
 #                        preset's map (#70). Obstacle terrain is known not to
@@ -38,8 +50,16 @@ OUT="${1:-}"
 [[ -z "$OUT" ]] && { echo "usage: p22-console-demo.sh <outdir>" >&2; exit 2; }
 
 URL="${KENNEL_CONSOLE_URL:-http://localhost:8000/Kennel%20Console.dc.html}"
-SOLVER="${KENNEL_SOLVER:-PARTIAL_CONDENSING_OSQP}"
-RATE="${KENNEL_RATE:-0.75}"
+PRESET="${KENNEL_PRESET:-}"
+# With a preset, an unset knob means "the preset's" and is passed through empty;
+# without one, the demo's own composition is the default it has always been.
+if [[ -n "$PRESET" ]]; then
+  SOLVER="${KENNEL_SOLVER:-}"
+  RATE="${KENNEL_RATE:-}"
+else
+  SOLVER="${KENNEL_SOLVER:-PARTIAL_CONDENSING_OSQP}"
+  RATE="${KENNEL_RATE:-0.75}"
+fi
 CDP_PORT="${KENNEL_CDP_PORT:-9252}"
 # Empty means "leave it at stock and do not touch the control", which is not the
 # same as setting it to the stock value: an untouched control is what every
@@ -88,7 +108,7 @@ sleep 3   # let the console boot and the mock DataSource settle (verify-export.s
 
 shot="$OUT/02-console-compose.png"
 out="$(KENNEL_MAP="$MAP" KENNEL_HPIPM_MODE="$HPIPM_MODE" KENNEL_CONDENSED="$CONDENSED" \
-       KENNEL_DISTURBANCES="$DISTURBANCES" \
+       KENNEL_DISTURBANCES="$DISTURBANCES" KENNEL_PRESET="$PRESET" \
        python3 "$DIR/p22-console-demo.py" "$CDP_PORT" "$downloads" "$SOLVER" "$RATE" "$shot")"
 rc=$?
 echo "$out"

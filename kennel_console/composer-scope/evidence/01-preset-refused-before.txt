@@ -1,0 +1,9 @@
+=== 01-preset-refused-before: the negative control, BEFORE the driver change ===
+The driver's own preset_field table is the only thing that knows a preset
+name today. A name the page ships is not one it knows.
+2026-09-09T18:13:02Z
+
+$ KENNEL_PRESET=stock-go2-walk demo/tools/kennel-demo.sh compose
+NONZERO SCRIPT EXIT: no preset 'stock-go2-walk'. The one that exists is 'stress' (stack/stress.md §4).
+  Named presets in general are issue #72.
+exit=2

@@ -8,6 +8,17 @@ and KENNEL_DISTURBANCES. Each is left ALONE when unset — an untouched control 
 what every composition before these knobs existed produced, and that is not the
 same as setting it to its stock value.
 
+KENNEL_PRESET (#72) names one of the presets the PAGE ships, by its name or its
+slug, and is loaded FIRST so the knobs above still override what they name. This
+script holds no table of what a preset composes — the page owns that data, a
+wrong name is refused by the page's own list, and the composition is read back
+out of the generated panes and printed as PRESET_<KEY>= lines. Only shipped
+presets are reachable: the browser here is a throwaway profile, so an operator's
+own saved presets do not exist in it.
+
+The solver and rate arguments may be EMPTY, which means "leave the control
+alone" — what a preset run passes, and the same meaning every knob above has.
+
 An agent has no hands, so the clicks a human performs in the Compose view are
 scripted here. What is NOT scripted is the work: every value travels through the
 console's own controls and its own download path, exactly as a person clicking
@@ -30,14 +41,31 @@ from cdp import attach  # noqa: E402
 
 CDP_PORT = int(sys.argv[1])
 DL = os.path.abspath(sys.argv[2])
+# Both may be EMPTY, which means "leave the control alone" -- the same meaning
+# every optional knob below already has. A preset composes both, so a preset run
+# passes empty strings and the page's own data decides (#72).
 SOLVER = sys.argv[3]
-RATE = float(sys.argv[4])
+RATE = float(sys.argv[4]) if sys.argv[4] != "" else None
 SHOT = os.path.abspath(sys.argv[5])
 MAP = os.environ.get("KENNEL_MAP", "")
 HPIPM_MODE = os.environ.get("KENNEL_HPIPM_MODE", "")
 CONDENSED = os.environ.get("KENNEL_CONDENSED", "")
 DISTURBANCES = os.environ.get("KENNEL_DISTURBANCES", "0") == "1"
+# A preset the PAGE ships (#72), by its name or its slug. Loaded first, so the
+# knobs above still override whatever they name. This script holds no table of
+# what a preset composes: the page owns that, and the panes are read back to say
+# what it did (composer-scope.md §7).
+PRESET = os.environ.get("KENNEL_PRESET", "")
 MAP_LABEL = {"flat_plane": "Flat plane", "obstacle_terrain": "Obstacle terrain"}
+
+
+def keyline(text, key):
+    """One KEY line out of a generated pane, never the composed block's comment
+    above it -- that comment names both keys in prose ("PARTIAL_CONDENSING_OSQP
+    reads mpc_condensed_size; mpc_hpipm_mode is declared but unused"), so a naive
+    substring match reports the note and calls it the value."""
+    return next((l.strip() for l in text.split("\n")
+                 if l.strip().startswith(key + ":")), "absent")
 
 ws = attach(CDP_PORT)
 fail = []
@@ -111,6 +139,18 @@ window.__drawerSel = label => window.__drawerField(label, 'select');
 window.__cmds = () => [...document.querySelectorAll('div')]
   .filter(d => /^source \/opt\/ros/.test(d.textContent.trim()))
   .map(d => d.textContent);
+// The preset select, by the one option text that is part of its contract (#72).
+window.__presetSel = () => [...document.querySelectorAll('select')]
+  .find(s => [...s.options].some(o => /load preset/.test(o.textContent)));
+window.__slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+// The option whose text IS the name, or whose slug is -- so KENNEL_PRESET=stress
+// and KENNEL_PRESET='Stress' land on the same row of the page's data, and a
+// driver never has to spell a name with spaces and parentheses in it.
+window.__presetOpt = want => { const s = window.__presetSel(); if (!s) return null;
+  return [...s.options].find(o => o.value !== ''
+    && (o.textContent.trim() === want || window.__slug(o.textContent) === window.__slug(want))) || null; };
+window.__presetNames = () => { const s = window.__presetSel();
+  return s ? [...s.options].filter(o => o.value).map(o => o.textContent.trim()) : []; };
 true""")
 
 
@@ -144,22 +184,56 @@ step("starts at stock solver", ws.js("__solverSel().value") == "PARTIAL_CONDENSI
 step("starts at stock rate", float(ws.js("__simNum('real-time rate').value")) == 1.0,
      ws.js("__simNum('real-time rate').value"))
 
-print(f"\n[compose] choice 1 — MPC solver -> {SOLVER}")
-ws.js(f"__setSel(__solverSel(), {SOLVER!r})")
-time.sleep(0.5)
-step("dropdown holds the choice", ws.js("__solverSel().value") == SOLVER, ws.js("__solverSel().value"))
-ctrl = pane(CTRL_TAB)
-step("controller YAML shows it", f'mpc_solver: "{SOLVER}"' in ctrl,
-     next((l.strip() for l in ctrl.split("\n") if "mpc_solver" in l), "absent"))
+if PRESET:
+    print(f"\n[compose] preset -> {PRESET} (picked in the UI by text)")
+    opt = ws.js("(() => { const o = __presetOpt(%r); return o ? o.textContent.trim() : null; })()"
+                % PRESET)
+    step("the preset is one the page ships", bool(opt),
+         opt or "not offered -- the page ships: " + ", ".join(ws.js("__presetNames()")))
+    if not opt:
+        # Refused BY THE PAGE, which is the only thing that knows what presets
+        # there are. This script holds no table to disagree with.
+        print("[p22-console] no such preset", file=sys.stderr)
+        sys.exit(1)
+    ws.js("__setSel(__presetSel(), __presetOpt(%r).value)" % PRESET)
+    # Read back BOTH the page's own statement of what it loaded and the panes it
+    # generated: a preset that "loaded" but left the composition at stock would
+    # pass a check that only looked at the select.
+    deadline = time.time() + 3
+    while time.time() < deadline and f"preset · {opt}" not in ws.js("__txt()"):
+        time.sleep(0.2)
+    step("the composer says which preset it holds", f"preset · {opt}" in ws.js("__txt()"),
+         next((l for l in ws.js("__txt()").split("\n") if l.startswith("preset ·")), "absent"))
+    sim, ctrl = pane(SIM_TAB), pane(CTRL_TAB)
+    for key, text in (("mpc_solver", ctrl), ("mpc_condensed_size", ctrl),
+                      ("mpc_hpipm_mode", ctrl), ("simulator_realtime_rate", sim),
+                      ("world_urdf", sim)):
+        print(f"  PRESET_{key.upper()}={keyline(text, key)}")
 
-print(f"\n[compose] choice 2 — real-time rate -> {RATE}")
-ws.js(f"__setNum(__simNum('real-time rate'), {RATE})")
-time.sleep(0.5)
-step("input holds the choice", float(ws.js("__simNum('real-time rate').value")) == RATE,
-     ws.js("__simNum('real-time rate').value"))
-sim = pane(SIM_TAB)
-step("simulator YAML shows it", f"simulator_realtime_rate: {RATE}" in sim,
-     next((l.strip() for l in sim.split("\n") if "simulator_realtime_rate" in l), "absent"))
+if SOLVER:
+    print(f"\n[compose] choice 1 — MPC solver -> {SOLVER}")
+    ws.js(f"__setSel(__solverSel(), {SOLVER!r})")
+    time.sleep(0.5)
+    step("dropdown holds the choice", ws.js("__solverSel().value") == SOLVER,
+         ws.js("__solverSel().value"))
+    ctrl = pane(CTRL_TAB)
+    step("controller YAML shows it", f'mpc_solver: "{SOLVER}"' in ctrl,
+         next((l.strip() for l in ctrl.split("\n") if "mpc_solver" in l), "absent"))
+else:
+    print("\n[compose] solver left to the preset — an empty knob touches no control")
+
+if RATE is not None:
+    print(f"\n[compose] choice 2 — real-time rate -> {RATE}")
+    ws.js(f"__setNum(__simNum('real-time rate'), {RATE})")
+    time.sleep(0.5)
+    step("input holds the choice", float(ws.js("__simNum('real-time rate').value")) == RATE,
+         ws.js("__simNum('real-time rate').value"))
+    sim = pane(SIM_TAB)
+    step("simulator YAML shows it", f"simulator_realtime_rate: {RATE}" in sim,
+         next((l.strip() for l in sim.split("\n") if "simulator_realtime_rate" in l), "absent"))
+else:
+    print("\n[compose] rate left to the preset — an empty knob touches no control")
+    sim = pane(SIM_TAB)
 
 if MAP:
     print(f"\n[compose] choice 3 — map -> {MAP}")
@@ -193,13 +267,6 @@ if HPIPM_MODE or CONDENSED:
     ws.js("__click('close')")
     time.sleep(0.35)
     ctrl = pane(CTRL_TAB)
-    # Read the KEY line, never the composed block's comment above it -- that
-    # comment names both keys in prose ("PARTIAL_CONDENSING_OSQP reads
-    # mpc_condensed_size; mpc_hpipm_mode is declared but unused"), so a naive
-    # substring match reports the note and calls it the value.
-    def keyline(text, key):
-        return next((l.strip() for l in text.split("\n")
-                     if l.strip().startswith(key + ":")), "absent")
     if HPIPM_MODE:
         step("controller YAML shows the hpipm mode",
              keyline(ctrl, "mpc_hpipm_mode") == f'mpc_hpipm_mode: "{HPIPM_MODE}"',

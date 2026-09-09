@@ -1,0 +1,103 @@
+=== 02-stress-by-text: KENNEL_PRESET is picked in the UI, and composes what #70 measured ===
+2026-09-09T18:15:28Z
+
+$ KENNEL_PRESET=stress demo/tools/kennel-demo.sh compose
+[kennel-demo] preset           stress -- picked in the console by text; the composition is the page's (composer-scope.md §7)
+
+[compose] the console is up and on Compose
+  [ok ] Compose view is the landing view
+  [ok ] solver dropdown present
+  [ok ] real-time rate input present
+  [ok ] starts at stock solver — PARTIAL_CONDENSING_HPIPM
+  [ok ] starts at stock rate — 1
+
+[compose] preset -> stress (picked in the UI by text)
+  [ok ] the preset is one the page ships — Stress
+  [ok ] the composer says which preset it holds — preset · Stress
+  PRESET_MPC_SOLVER=mpc_solver: "PARTIAL_CONDENSING_OSQP"
+  PRESET_MPC_CONDENSED_SIZE=mpc_condensed_size: 1
+  PRESET_MPC_HPIPM_MODE=mpc_hpipm_mode: "SPEED"
+  PRESET_SIMULATOR_REALTIME_RATE=simulator_realtime_rate: 1.0                    # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+  PRESET_WORLD_URDF=world_urdf: "src/common/model/urdf/plane.urdf"  # The URDF of the world environment
+
+[compose] solver left to the preset — an empty knob touches no control
+
+[compose] rate left to the preset — an empty knob touches no control
+
+[compose] map left at stock — transfer.md 6.3: obstacle terrain does not walk
+  [ok ] world_urdf is still the plane
+  [ok ] Compose view photographed — 195972 B
+
+[generate] generate run
+  [ok ] exactly one archive downloaded — ['run-20260909T181534Z.zip']
+
+ARCHIVE=/tmp/tmp.w6gR1oxt3Z/run-20260909T181534Z.zip
+
+[p22-console] run folder: /home/thales/kennel-runs/run-20260909T181534Z
+a83c79c99727f543b583fd38dd4f90ff33b0126a70be3af51bad50f7e98fe2a4  ./commands.txt
+02d900b51972fa2b03aa7fb98970636389ff914a7e7766c8a4b7ee163313c5f4  ./mit_controller_sim_go2.yaml
+25ab291a6c7fb63d038ca8556493bd2a6314762df6561cc21fd18c1350054b07  ./run.json
+f2674ff56f59fef00ec26ff6d6460055b7cb0872b3e07ea754c23f65fa879928  ./simulator_params_go2.yaml
+RUNDIR=/home/thales/kennel-runs/run-20260909T181534Z
+[kennel-demo] run folder       /home/thales/kennel-runs/run-20260909T181534Z
+exit=0
+
+--- the composition, against the run #70's OWN driver-side table produced
+    new: /home/thales/kennel-runs/run-20260909T181534Z
+    ref: stack/stress/evidence/red-osqp1/runs/run-20260908T184703Z   (stack/stress.md §4, run osqp1-flat-1)
+$ diff stack/stress/evidence/red-osqp1/runs/run-20260908T184703Z/simulator_params_go2.yaml <new>/simulator_params_go2.yaml
+  (identical)
+$ diff stack/stress/evidence/red-osqp1/runs/run-20260908T184703Z/mit_controller_sim_go2.yaml <new>/mit_controller_sim_go2.yaml
+  (identical)
+
+--- run.json choices
+{
+  "world_urdf": "src/common/model/urdf/plane.urdf",
+  "world_fix_link": "plane_base_link",
+  "simulator_realtime_rate": 1,
+  "publish_quad_state": true,
+  "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+  "mpc_hpipm_mode": "SPEED",
+  "mpc_condensed_size": 1
+}
+
+=== the other three probes of row 2 (composed into a scratch dir, not ~/kennel-runs) ===
+
+$ KENNEL_PRESET="Solver benchmark B (OSQP)" kennel-demo.sh compose <scratch>
+[kennel-demo] preset           Solver benchmark B (OSQP) -- picked in the console by text; the composition is the page's (composer-scope.md §7)
+[compose] preset -> Solver benchmark B (OSQP) (picked in the UI by text)
+  [ok ] the preset is one the page ships — Solver benchmark B (OSQP)
+  [ok ] the composer says which preset it holds — preset · Solver benchmark B (OSQP)
+  PRESET_MPC_SOLVER=mpc_solver: "PARTIAL_CONDENSING_OSQP"
+  PRESET_MPC_CONDENSED_SIZE=mpc_condensed_size: 5
+  PRESET_MPC_HPIPM_MODE=mpc_hpipm_mode: "SPEED"
+  PRESET_SIMULATOR_REALTIME_RATE=simulator_realtime_rate: 0.0                    # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+  PRESET_WORLD_URDF=world_urdf: "src/common/model/urdf/plane.urdf"  # The URDF of the world environment
+[compose] solver left to the preset — an empty knob touches no control
+[compose] rate left to the preset — an empty knob touches no control
+[p22-console] run folder: /tmp/claude-1000/-home-thales-kennel/1217e775-bdb6-4a85-866c-7aea8b9de90a/scratchpad/probe-runs/run-20260909T181605Z
+[kennel-demo] run folder       /tmp/claude-1000/-home-thales-kennel/1217e775-bdb6-4a85-866c-7aea8b9de90a/scratchpad/probe-runs/run-20260909T181605Z
+exit=0
+
+$ KENNEL_PRESET=nonsense kennel-demo.sh compose <scratch>   -- refused BY THE PAGE
+[kennel-demo] preset           nonsense -- picked in the console by text; the composition is the page's (composer-scope.md §7)
+[p22-console] no such preset
+[compose] preset -> nonsense (picked in the UI by text)
+  [FAIL] the preset is one the page ships — not offered -- the page ships: Stock Go2 walk, Solver benchmark A (HPIPM), Solver benchmark B (OSQP), Stress
+NONZERO SCRIPT EXIT: compose failed (p22-console-demo.sh exited 1).
+  A refused preset name is exit 1 and the page lists the four it ships.
+exit=1
+
+$ KENNEL_PRESET=stress KENNEL_RATE=0.5 kennel-demo.sh compose <scratch>   -- an explicit knob wins
+[kennel-demo] preset           stress -- picked in the console by text; the composition is the page's (composer-scope.md §7)
+[compose] preset -> stress (picked in the UI by text)
+  [ok ] the preset is one the page ships — Stress
+  [ok ] the composer says which preset it holds — preset · Stress
+  PRESET_SIMULATOR_REALTIME_RATE=simulator_realtime_rate: 1.0                    # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+[compose] solver left to the preset — an empty knob touches no control
+[compose] choice 2 — real-time rate -> 0.5
+  [ok ] input holds the choice — 0.5
+  [ok ] simulator YAML shows it — simulator_realtime_rate: 0.5                    # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+[p22-console] run folder: /tmp/claude-1000/-home-thales-kennel/1217e775-bdb6-4a85-866c-7aea8b9de90a/scratchpad/probe-runs/run-20260909T181623Z
+[kennel-demo] run folder       /tmp/claude-1000/-home-thales-kennel/1217e775-bdb6-4a85-866c-7aea8b9de90a/scratchpad/probe-runs/run-20260909T181623Z
+exit=0

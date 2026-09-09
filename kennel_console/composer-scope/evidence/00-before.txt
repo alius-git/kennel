@@ -1,0 +1,54 @@
+=== 00-before: the host and guest as this pass found them ===
+2026-09-09T18:12:53Z
+
+--- kennel-demo.sh status
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.32 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run run-20260908T232641Z
+[status] runs staged run-20260907T202843Z run-20260908T202817Z run-20260908T232641Z 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      f2674ff5  f2674ff5  f2674ff5  run-20260907T202843Z
+  mit_controller_sim_go2.yaml    8b0ffdee  8b0ffdee  8b0ffdee  run-20260908T232641Z
+
+
+[kennel-demo] console runs in /home/thales/kennel-runs (newest first):
+[kennel-demo]   run-20260908T232641Z
+[kennel-demo]   run-20260907T202843Z
+[kennel-demo]   run-20260907T151610Z
+[kennel-demo]   run-20260907T151451Z
+[kennel-demo]   run-20260907T144210Z
+
+[kennel-demo] Meshcat not reachable (simulator not running, or guest down).
+[kennel-demo] bridge not up (start it with:  demo/tools/kennel-demo.sh teleop)
+
+--- curl -s localhost:8000/api/health
+{
+  "kennel": true,
+  "out": "/home/thales/kennel-runs",
+  "pin": "dcf53c596339afd45b82f12c54b1e93e8273c2f4",
+  "bridge": null,
+  "meshcat": null
+}
+
+--- ls -t ~/kennel-runs | head -3
+run-20260908T232641Z
+02-console-compose.png
+run-20260907T202843Z
+
+--- the newest run's choices
+run-20260908T232641Z
+{
+  "world_urdf": "src/common/model/urdf/plane.urdf",
+  "world_fix_link": "plane_base_link",
+  "simulator_realtime_rate": 1,
+  "publish_quad_state": true,
+  "mpc_solver": "PARTIAL_CONDENSING_HPIPM",
+  "mpc_hpipm_mode": "SPEED",
+  "mpc_condensed_size": 5
+}
