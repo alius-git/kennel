@@ -71,7 +71,7 @@ PASSTHROUGH_ENV="KENNEL_CONTAINER KENNEL_CONTROLLER_NODE KENNEL_GAIT
   TARGET_Z VX_MIN VX_MAX X_ADVANCE_MIN_MPS Z_MIN Z_MAX TILT_MAX_RAD FALL_TOLERANCE
   STATE_HZ_MIN STATE_HZ_MAX HB_HZ_MIN HB_HZ_MAX OVERTIME_BUDGET
   CLOCK_WAIT_WALL_SECONDS KENNEL_EXPECT_SOLVER KENNEL_CONTROLLER_LOG
-  KENNEL_EXPECT_BRIDGE KENNEL_RUN KENNEL_PIN"
+  KENNEL_EXPECT_BRIDGE KENNEL_EXPECT_DISTURBER KENNEL_RUN KENNEL_PIN"
 
 usage() {
   cat <<'EOF'
@@ -93,6 +93,10 @@ Usage: kennel-verify.sh [options]        (run on the guest, kennel-vm)
                          left up reports `extra:`, which is the intended signal.
                          Never REQUIRES them. `kennel-demo.sh verify` sets it
                          when the bridge is up.
+  KENNEL_EXPECT_DISTURBER=1  tolerate /disturbance_node -- block 4 of a run
+                         composed with disturbances on (#68). Tolerated, never
+                         required, on the same terms. `kennel-demo.sh verify`
+                         sets it from the applied run's run.json.
   KENNEL_RUN / KENNEL_PIN  recorded verbatim in report.json, so a report says
                          which composed run it is of. Set by `kennel-demo.sh
                          verify` from the applied run; empty when this script is
@@ -248,8 +252,16 @@ BRIDGE_NODES="/rosapi
 /rosapi_params
 /rosbridge_websocket
 /k13_target_watchdog"
+# And the disturbance service (#68), when the applied run composed it: block 4 of
+# commands.txt is `ros2 run simulator sim_disturber`, whose node is
+# `disturbance_node` (disturbance_node.cpp:16). Tolerated on the same terms as
+# the bridge's -- never required, because its participant lingers after a stop
+# like every other, and because a run composed WITHOUT disturbances is a healthy
+# six-node session that must not be made to look like a broken seven-node one.
+DISTURBER_NODES="/disturbance_node"
 TOLERATED_NODES=""
 [ "${KENNEL_EXPECT_BRIDGE:-0}" = 1 ] && TOLERATED_NODES="$BRIDGE_NODES"
+[ "${KENNEL_EXPECT_DISTURBER:-0}" = 1 ] && TOLERATED_NODES="$(printf '%s\n%s' "$TOLERATED_NODES" "$DISTURBER_NODES")"
 
 timeout 25 ros2 node list 2>/dev/null | grep '^/' | sort > "$WORK/nodes.txt"
 printf '%s\n' "$EXPECTED_NODES" | sort > "$WORK/nodes.expected"
@@ -263,8 +275,12 @@ extra="$(comm -13 "$WORK/nodes.allowed" "$WORK/nodes.uniq" | tr '\n' ' ')"
 # (launch.md §7 trap 6); two nodes of the same name is not a healthy graph.
 dups="$(uniq -d "$WORK/nodes.txt" | tr '\n' ' ')"
 node_detail="$(tr '\n' ' ' < "$WORK/nodes.txt")"
-NODE_CRITERION="exactly the six healthy-session nodes, no duplicates"
-[ -n "$TOLERATED_NODES" ] && NODE_CRITERION="the six healthy-session nodes plus the four a teleop session adds -- three rosbridge, one target watchdog (KENNEL_EXPECT_BRIDGE=1), no duplicates"
+# The criterion is a sentence built from the knobs in effect, so a report says
+# what it actually allowed rather than what the common case allows.
+NODE_CRITERION="exactly the six healthy-session nodes"
+[ "${KENNEL_EXPECT_BRIDGE:-0}" = 1 ] && NODE_CRITERION="$NODE_CRITERION plus the four a teleop session adds -- three rosbridge, one target watchdog (KENNEL_EXPECT_BRIDGE=1)"
+[ "${KENNEL_EXPECT_DISTURBER:-0}" = 1 ] && NODE_CRITERION="$NODE_CRITERION plus the composed disturber (KENNEL_EXPECT_DISTURBER=1)"
+NODE_CRITERION="$NODE_CRITERION, no duplicates"
 if [ -n "$missing" ] || [ -n "$extra" ] || [ -n "$dups" ]; then
   record FAIL "1 node-graph" "ros2 node list" \
     "${node_detail:-<empty>}[missing: ${missing:-none}][extra: ${extra:-none}][duplicate: ${dups:-none}]" \
@@ -965,7 +981,8 @@ knob_names = ("OBSERVE_SIM_SECONDS", "TROT_SETTLE_SIM_SECONDS", "TROT_SIM_SECOND
               "TARGET_VX", "TARGET_Z", "VX_MIN", "VX_MAX", "X_ADVANCE_MIN_MPS",
               "Z_MIN", "Z_MAX", "TILT_MAX_RAD", "FALL_TOLERANCE", "STATE_HZ_MIN",
               "STATE_HZ_MAX", "HB_HZ_MIN", "HB_HZ_MAX", "OVERTIME_BUDGET",
-              "CLOCK_WAIT_WALL_SECONDS", "KENNEL_EXPECT_BRIDGE")
+              "CLOCK_WAIT_WALL_SECONDS", "KENNEL_EXPECT_BRIDGE",
+              "KENNEL_EXPECT_DISTURBER")
 report = {
     "schema": "kennel-verify/1",
     "verdict": verdict,

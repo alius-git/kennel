@@ -25,7 +25,16 @@ done
 # NB "mitcontrollerno" is not a typo: Linux caps comm at 15 chars
 # (TASK_COMM_LEN 16), so the 17-char "mitcontrollernode" is truncated and
 # `pkill -x mitcontrollernode` silently never matches.
-for n in simulator leg_driver mitcontrollerno log_cpu_power joy_linux_node ros2; do
+#
+# "sim_disturber" is block 4 (#68), and it is here for a measured reason. It is
+# started as `ros2 run simulator sim_disturber`, so the ONLY pid a launcher could
+# record is the `ros2` python wrapper's -- which the sweep below already reaps by
+# its own name. The wrapper dying does not take the binary with it: measured
+# 2026-09-08, sim_disturber survived two full relaunches with ppid 1, kept
+# serving /disturb_simulation, and showed as an unexpected /disturbance_node in
+# every `verify` (plan/two-scenarios.md §0.1). A pidfile would not have helped;
+# the executable's name is what reaps it. 13 chars, under the comm cap.
+for n in simulator leg_driver mitcontrollerno log_cpu_power joy_linux_node sim_disturber ros2; do
   pkill -KILL -x "$n" 2>/dev/null || true
 done
 # joy_to_target.py runs under `python3`, so its comm is "python3" and -x never

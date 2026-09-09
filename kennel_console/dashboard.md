@@ -455,12 +455,16 @@ wrong.
   1000 Hz and 2.6 kB a message that is 1.5 MB/s of JSON through a browser tab.
   *Retirement path:* aggregation on the bridge side, which is where the full
   rate already is.
-- **Some interventions still drive the mock.** `reset sim` is **done** —
-  [#66](https://github.com/alius-git/kennel/issues/66) calls `/reset_sim` in a
-  measured sequence ([`teleop.md` §12](teleop.md)). `inject` and the two step
-  buttons are still sim-level service calls the bridge could carry and does not:
-  [#68](https://github.com/alius-git/kennel/issues/68). Live, they say so in the
-  feed rather than doing nothing.
+- **One intervention still drives the mock.** `reset sim` is **done**
+  ([#66](https://github.com/alius-git/kennel/issues/66),
+  [`teleop.md` §12](teleop.md)) and so is `inject`
+  ([#68](https://github.com/alius-git/kennel/issues/68),
+  [`teleop.md` §13](teleop.md)) — it calls `/disturb_simulation` when the applied
+  run composed a disturber, and says which run and why when it did not. The two
+  **step** buttons remain the mock's: `manually_step_sim` is fixed at stock, so
+  the simulator never creates `/step_sim` at all
+  ([`demo/scenarios.md`](../demo/scenarios.md) §1.5 carries the bypass and its
+  retirement path). Live, they say so in the feed rather than doing nothing.
 - **Touchdown offsets are quantised to ~20 ms** by the subscription rate. Below
   that the timeline cannot distinguish early from on-time, which is why the
   threshold is 25 ms.

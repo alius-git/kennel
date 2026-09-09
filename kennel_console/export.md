@@ -123,6 +123,14 @@ the artifact #20 consumes.
 }
 ```
 
+`disturbances` is an **eighth** key, appended after those seven and written
+**only when the toggle is on** ([#68](https://github.com/alius-git/kennel/issues/68)).
+Absent is what off means: a run composed today with the toggle off has a
+`run.json` byte-identical to one composed before the toggle existed, and a
+`false` would have broken that for every run in the repo. It is the one choice
+with no YAML key at all — it composes a fourth COMMAND
+([`generate.md`](generate.md) §1.3).
+
 - **`choices` holds the seven fields the composer owns**, under their
   [`stack/mapping.md`](../stack/mapping.md) names rather than the composer's
   internal ones, so a reader can grep `run.json` against the YAMLs directly. Not
@@ -159,6 +167,7 @@ older builds) and the assertions run on the bytes that land there. Needs no
 | 1 · Fidelity | Each artifact downloads; the two YAMLs are **byte-identical to the rendered panes**; no CRLF, no BOM, trailing newline, valid UTF-8; the controller file is correct even when the simulator tab is the one on screen |
 | 2 · Archive | One Generate click → one `run-<stamp>.zip`; every CRC-32 checks out; four entries, all under `run-<stamp>/`; **every entry STORED**; archived bytes == separately downloaded bytes == the panes |
 | 3 · `run.json` | Exactly the five keys; pin SHA; ISO-8601 UTC; `run` derived from `generated_at` and equal to the folder actually used; exactly the seven choices |
+| 8 · Disturbances (#68) | Composed off, `choices` still carries exactly the seven and no `disturbances` key at all; composed on it carries eight with `disturbances: true` **last**; `commands.txt` says FOUR shells and carries the disturber while still holding exactly three `ros2 launch`; both YAMLs are byte-identical either way; and toggled back off, every file is byte-identical to the off export — which is #68's own acceptance |
 | 4 · `commands.txt` | The three UI blocks verbatim; package-form launches; source chain and `cd` in each; **no** `mpc_*:=`, `safe_start`, `config:=` or path invocation; precondition stated; not a script |
 | 5 · Composition | A non-stock solver **and** map reach all three files; `choices` equals what a YAML parser recovers from the exported YAMLs; ROS types survive the trip through disk |
 | 6 · Determinism | Two exports of one state: the three deterministic files byte-identical; `run.json` differs only in `run`, `generated_at`, `run_id` |

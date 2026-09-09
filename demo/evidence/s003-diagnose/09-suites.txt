@@ -1,0 +1,20 @@
+=== 09-suites: the eight console suites, after #68/#69/#70/#71 ===
+2026-09-08T20:04:53Z
+
+Five of them this pass did not touch; three grew appended groups.
+
+serve      exit=0 passes=17 fails=0
+scope      exit=0 passes=36 fails=0
+generate   exit=0 passes=57 fails=0
+export     exit=0 passes=72 fails=0
+send       exit=0 passes=43 fails=0
+teleop     exit=0 passes=96 fails=0
+dashboard  exit=0 passes=85 fails=0
+runs       exit=0 passes=51 fails=0
+
+--- the five untouched suites, proven untouched:
+
+--- nothing was REMOVED from the three that grew:
+  verify-teleop.py: 0 lines removed
+  verify-generate.py: 0 lines removed
+  verify-export.py: 0 lines removed

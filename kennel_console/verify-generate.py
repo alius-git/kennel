@@ -40,6 +40,16 @@ window.__pane = () => { const p = [...document.querySelectorAll('pre')]
 window.__cmds = () => [...document.querySelectorAll('div')]
   .filter(d => /^source \/opt\/ros/.test(d.textContent.trim()))
   .map(d => d.textContent);
+// A Sim options toggle, by its label. The label text lives inside a
+// <span class="sc-interp">, so the ROW -- the div with exactly two children --
+// is what to search from, exactly as verify-scope.py does for ground truth.
+window.__simToggle = label => {
+  const row = [...document.querySelectorAll('div')].filter(d =>
+    d.textContent.trim() === label && d.children.length === 2)[0];
+  if (!row) return false;
+  const t = [...row.querySelectorAll('div')].find(d =>
+    /border-radius: 10px/.test(d.getAttribute('style') || ''));
+  if (!t) return false; t.click(); return true; };
 true""")
 
 
@@ -229,6 +239,47 @@ try:
     time.sleep(0.3)
 except ImportError:
     print("  [SKIP] pyyaml not installed — textual checks above still apply")
+
+print("\n10. the fourth block — disturbances on (#68)")
+# The toggle composes a COMMAND, not a YAML key: mapping.md §4.6's sim_disturber
+# is built and installed at the pin and no launch file starts it. Off is the
+# default and off is stock -- the three blocks it generates then have to be
+# byte-identical to the ones every run before #68 carried, which is what makes
+# "a run composed with it off is unchanged byte for byte" an assertion and not a
+# hope.
+ws.js("__click('Compose')")
+time.sleep(0.4)
+before = ws.js("__cmds()")
+check("three shells with the toggle off (the default)", len(before) == 3, str(len(before)))
+check("and none of them is the disturber",
+      not any("sim_disturber" in c for c in before))
+check("the toggle is in Sim options", ws.js("__simToggle('disturbances')"))
+time.sleep(0.5)
+after = ws.js("__cmds()")
+check("four shells with it on", len(after) == 4, str(len(after)))
+check("the first three are byte-identical to the three it generated off",
+      after[:3] == before,
+      "a toggle that perturbed the launches would make every composed run a new file")
+b4 = after[3] if len(after) == 4 else ""
+check("block 4 runs the pin's own disturber, by package",
+      b4.strip().endswith("ros2 run simulator sim_disturber --ros-args -p use_sim_time:=true"),
+      b4.strip().splitlines()[-1] if b4.strip() else "absent")
+check("  with use_sim_time, so `time` is a SIM second",
+      "use_sim_time:=true" in b4,
+      "measured at rate 0.5: 0.2 s asked for is 0.200 sim-s with it, 0.100 without")
+check("it is a ros2 run, never a fourth launch", "ros2 launch" not in b4)
+check("it carries the same source chain as the other three",
+      "source /root/setup_ulab_workspace.bash" in b4 and "cd /root/ros2_ws" in b4)
+# The file's own "FOUR shells" header is not on screen -- the UI renders the
+# blocks, not commands.txt's preamble -- so it is asserted where the bytes are,
+# in verify-export.py group 8.
+check("the page says what the fourth command is for",
+      "disturb_simulation" in ws.js("__txt()"))
+check("toggling it back off restores exactly three",
+      ws.js("__simToggle('disturbances')") is not False)
+time.sleep(0.5)
+back = ws.js("__cmds()")
+check("  and the same three, byte for byte", back == before, "%d blocks" % len(back))
 
 print("\n9. no network escaped")
 ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"

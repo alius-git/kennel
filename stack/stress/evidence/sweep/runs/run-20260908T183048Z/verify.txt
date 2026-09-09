@@ -1,0 +1,17 @@
+
+=== verdict ===
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes, no duplicates
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 2.5 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 2.004, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.4 Hz per sim-second, required 900-1100 Hz per sim-second
+[FAIL] 4 controller-alive     -- /controller_heartbeat rate: measured 1.00 Hz per sim-second (5 msgs / 5.00 sim-s), required 1.50-2.50 Hz per sim-second
+[INFO]   heartbeat-counters   -- /controller_heartbeat cumulative: measured early_contacts=0 mpc_overtime=0 wbc_overtime=2 mpc_fail=0 wbc_fail=0 model_updates=0, required informative, deltas are asserted by check 7
+[FAIL] 5 gait-command         -- ros2 param set /mit_controller_node simple_gait_sequencer.gait: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 6 gait-active          -- /gait_state: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 7 solver-health        -- /controller_heartbeat counters: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_HPIPM, launch log agrees with the running value ([mitcontrollernode-1] Set hpipm mode to SPEED), required PARTIAL_CONDENSING_HPIPM
+
+pass=4 fail=6
+VERDICT: FAIL

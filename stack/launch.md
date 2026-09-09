@@ -296,6 +296,12 @@ holds.
 
 The reference for [#14](https://github.com/alius-git/kennel/issues/14).
 
+A run composed with **disturbances on** carries a seventh,
+`/disturbance_node` — block 4 of its `commands.txt`
+([mapping.md](mapping.md) §4.6, [#68](https://github.com/alius-git/kennel/issues/68)).
+`kennel-verify.sh` tolerates it under `KENNEL_EXPECT_DISTURBER=1`, which the
+driver sets from the applied run.
+
 **Nodes** — exactly these six, no more:
 
 ```
@@ -372,7 +378,15 @@ sequences, and in anything the console generates.
    (`pkill -f 'controllers/joy_to_target[.]py'`), which is specific enough not to
    match the reaping shell — the hazard that makes bare `pkill -f` unusable here,
    as [`vm/provisioning.md`](../vm/provisioning.md) §5a already records.
-7. **FastRTPS writes `RTPS_TRANSPORT_SHM` errors into captured output.** They are
+7. **A pidfile holds the process a node RUNS IN, and `ros2 run` is a wrapper.**
+   Block 4 (#68) is started as `ros2 run simulator sim_disturber`, so `$!` is the
+   `ros2` python wrapper's pid — and killing it does not take the binary with it.
+   Measured 2026-09-08: `sim_disturber` survived two full relaunches with
+   ppid 1, kept serving `/disturb_simulation`, and showed as an unexpected
+   `/disturbance_node` in every `verify`. It is reaped by NAME, in
+   `k13-stop.sh`'s sweep, like the simulator and the leg driver — `comm` is
+   `sim_disturber`, 13 characters, under the 15-character cap of trap 5.
+8. **FastRTPS writes `RTPS_TRANSPORT_SHM` errors into captured output.** They are
    benign (shared-memory port locking when several `ros2` CLI processes run at
    once) but they corrupt `ros2 topic echo --field` captures. Parse message
    fields from an rclpy subscriber rather than from CLI text.

@@ -1,0 +1,30 @@
+[
+ [
+  "32.1s",
+  "Early contact FL \u2212210 ms vs planned touchdown"
+ ],
+ [
+  "33.2s",
+  "WBC missed its 2 ms deadline \u2014 worst solve sampled 0.3 ms; torque command late"
+ ],
+ [
+  "34.7s",
+  "WBC missed its 2 ms deadline \u2014 worst solve sampled 0.2 ms; torque command late"
+ ],
+ [
+  "36.4s",
+  "Disturbance: 300 N for 0.30 s at body CoM (0, 300, 0)"
+ ],
+ [
+  "36.7s",
+  "Late contact RL +210 ms vs planned touchdown"
+ ],
+ [
+  "36.8s",
+  "Early contact FR \u2212221 ms vs planned touchdown"
+ ],
+ [
+  "37.0s",
+  "FALL: attitude \u2014 tilt over 0.5 rad in 15% of the last 2 s \u2014 controller latched to damping mode"
+ ]
+]

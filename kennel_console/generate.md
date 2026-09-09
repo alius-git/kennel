@@ -16,6 +16,8 @@ consumes. Pin: `dcf53c596339afd45b82f12c54b1e93e8273c2f4`
 ([`stack/pin.lock`](../stack/pin.lock)).
 
 Verified 2026-08-06 — 46 checks, [`verify-generate.sh`](verify-generate.sh).
+Extended 2026-09-08 for [#68](https://github.com/alius-git/kennel/issues/68)'s
+fourth block — **57 checks** (§1.3, §4 group 10).
 
 > **Generated ≠ hand-written.** The console does not compose YAML from a data
 > structure. It embeds the pin's own two config files verbatim and substitutes
@@ -52,7 +54,41 @@ These three are **absent from the stock file** — they exist only as code
 defaults (`mit_controller_node.cpp:67-69`). They are therefore *inserted*, after
 `mpc_warm_start`, under a `# --- composed by Kennel Console ---` marker.
 
-### 1.3 Types are not cosmetic
+### 1.3 The one choice that is in no YAML at all
+
+`disturbances` ([#68](https://github.com/alius-git/kennel/issues/68)) is the
+first composer choice that substitutes nothing. The disturbance service is a
+**fourth command** — `sim_disturber` is built and installed at the pin and no
+launch file starts it ([`mapping.md`](../stack/mapping.md) §4.6) — so the toggle
+travels in `commands.txt` and in `run.json` and nowhere else. Off is stock:
+
+| Toggle | `commands.txt` | `run.json` | the two YAMLs |
+|---|---|---|---|
+| **off** (default) | three blocks, header *THREE shells* — byte-identical to every run composed before this existed | the same seven `choices` | unchanged |
+| **on** | header *FOUR shells*; a fourth block, the three above it byte-identical to the off case | an **eighth** key, `disturbances: true`, appended last | unchanged |
+
+```bash
+# 4 · sim disturber — the disturbance service (composed: disturbances on). Needs block 1 up; the launcher starts it last
+<source chain>
+ros2 run simulator sim_disturber --ros-args -p use_sim_time:=true
+```
+
+Three properties, each asserted (§4 group 10, [`export.md`](export.md) §4
+group 8):
+
+- **A `ros2 run`, never a fourth launch.** `commands.txt` still holds exactly
+  three `ros2 launch` invocations, which is what the export suite counts.
+- **`use_sim_time` is measured, not decorative.** The node answers the service
+  only after sleeping for the requested `time` on its own clock
+  (`disturbance_node.cpp:60-63`); at `simulator_realtime_rate: 0.5` a 0.2 s
+  request lasts 0.200 **sim** seconds with the argument and 0.100 without. Every
+  window in this repo is a sim second.
+- **Absent means off.** The key is written only when on, so a `run.json`
+  composed today with the toggle off is byte-identical to one composed before
+  the toggle existed — which is what makes #68's *"a run composed with it off is
+  unchanged byte for byte"* an assertion rather than a hope.
+
+### 1.4 Types are not cosmetic
 
 `simulator_realtime_rate` is declared `double`. Writing `1` instead of `1.0`
 hands ROS an int for a double parameter, so the emitter forces a decimal point.
@@ -169,6 +205,7 @@ are read back from the DOM, so what is asserted is what a user would copy.
 | 7 · Round-trip | The generated pair pastes back, loads, and regenerates to the same bytes |
 | 8 · YAML validity | Both files parse; composed keys land inside `ros__parameters`; types survive parsing; the duplicate key collapses to stock's value |
 | 9 · Network | Zero non-localhost requests |
+| 10 · The fourth block (#68) | The toggle off emits three shells and none of them the disturber; on emits four, and **the first three are byte-identical to the three it emitted off**; block 4 is a `ros2 run` with the source chain and `use_sim_time`, never a fourth launch; toggling back off restores exactly those three |
 
 Template provenance, for auditing without the gitignored `dfki-quad` clone:
 

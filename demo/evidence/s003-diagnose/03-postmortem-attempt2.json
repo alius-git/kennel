@@ -1,0 +1,1 @@
+{"rows": 18, "deadline": 6, "solver_failed": 0, "contact": 11, "fall": 1, "contact_before_fall": true, "deadline_before_fall": true, "nothing_later": true, "window_span_s": 5.0, "fall_text": "FALL: body height \u2014 z median 0.200 m, outside [0.20, 0.45] m \u2014 controller latched to damping mode"}

@@ -580,4 +580,88 @@ the case that matters: a paused or dead simulator rendering a valid-looking PNG.
 
 ---
 
-Last review: 2026-09-06
+## 10. Block 4 — the disturbance service ([#68](https://github.com/alius-git/kennel/issues/68))
+
+`sim_disturber` is built and installed at the pin and **no launch file starts
+it** ([`mapping.md`](mapping.md) §4.6). Since #68 the composer emits it as a
+fourth block when its `disturbances` toggle is on, and this launcher runs it.
+
+### 10.1 The split, and what is pinned
+
+A block ends at its `ros2 launch` line **or** its `ros2 run` line — `sim_disturber`
+blocks exactly as the three launches do, because it spins. The file may
+therefore have three blocks or four, and both shapes reconstruct byte for byte
+(the check that has always been there). Block 4's command is pinned as tightly
+as the canonical three:
+
+```
+ros2 run simulator sim_disturber [--ros-args -p use_sim_time:=true]
+```
+
+Anything else in that slot is a #18 regression, and running it would report a
+green stack for the wrong stack.
+
+### 10.2 It is launched LAST, and waited for on two signals
+
+The six-node graph wait is **unchanged**: `EXPECTED_NODES` is still the six, and
+block 4 starts after that wait completes. Then two signals, both required:
+
+- **`/disturbance_node` in `ros2 node list`** — the node's name is the one the
+  C++ constructor gives it (`disturbance_node.cpp:16`), not the executable's.
+  Measured: on the graph within one 2-second poll.
+- **`/disturb_simulation` in `ros2 service list`** — because a node on the graph
+  whose service is not yet advertised answers nothing, and the console's
+  `inject` would report a race as a refusal. This is #52's shape one block
+  further on, and the same shape as the bridge's own two-signal wait
+  ([`bridge.md`](bridge.md) §3).
+
+Measured: `disturber up (1s)` and `(2s)` on the two composed runs of
+[`bridge/evidence/live/23-run-block4-rate05.txt`](bridge/evidence/live/23-run-block4-rate05.txt).
+
+The `NB the graph also carries:` line accounts for it, so a seventh node the
+file asked for is not reported as a surprise — and `verify` owns that verdict
+through `KENNEL_EXPECT_DISTURBER`, exactly as it owns the bridge's through
+`KENNEL_EXPECT_BRIDGE`.
+
+### 10.3 Reaped by NAME — a pidfile would not have worked
+
+#68 proposed a pidfile at `/tmp/k13-disturber.pid`. It was tried, and it is the
+wrong instrument. Started as `ros2 run simulator sim_disturber`, the only pid a
+launcher can record is the **`ros2` python wrapper's** — and killing the wrapper
+does not take the binary with it. Measured 2026-09-08:
+
+```
+ 181729       1 sim_disturber   /root/ros2_ws/install/simulator/lib/simulator/sim_disturber
+```
+
+ppid **1**, still serving `/disturb_simulation`, after two full relaunches — and
+showing as an unexpected `/disturbance_node` in every `verify` in between. It is
+reaped by name in `k13-stop.sh`'s sweep, like the simulator and the leg driver;
+`comm` is `sim_disturber`, 13 characters, under the 15-character cap that makes
+`mitcontrollerno` a truncation. That is [`launch.md`](launch.md) §7 trap 8.
+
+So block 4 has **no pidfile**, and neither do blocks 1–3: the launcher starts
+them all as detached `bash /tmp/p21-blockN.sh`, and `down` reaps them by name.
+
+### 10.4 `KENNEL_EXPECT_DISTURBER`
+
+The bridge pattern, one more set. Tolerated, never required — the participant
+lingers after a stop like every other, and a run composed *without* disturbances
+is a healthy six-node session that must not be made to look like a broken
+seven-node one. `kennel-demo.sh verify` sets it from the applied run's
+`choices.disturbances`, the same two-step resolution it uses for the solver
+([`runs.md`](../kennel_console/runs.md) §2).
+
+The negative control is recorded because it is the reason the knob exists
+([`bridge/evidence/live/22-verify-extra-disturber.txt`](bridge/evidence/live/22-verify-extra-disturber.txt)):
+a disturber running beside a run composed without one gives
+
+```
+[FAIL] 1 node-graph -- … [missing: none][extra: /disturbance_node ][duplicate: none]
+```
+
+and the same stack with the knob set is `[PASS]`, with the criterion naming it.
+
+---
+
+Last review: 2026-09-08

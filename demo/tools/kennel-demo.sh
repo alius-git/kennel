@@ -28,6 +28,9 @@
 #   launch     stack/composed-run/tools/p21-launch-from-commands.sh  (on guest)
 #   verify     stack/verify/kennel-verify.sh                         (on guest),
 #              then files its report in the applied run's folder as verify.json
+#   scenario   demo/tools/scenario-<name>.sh -- one verification scenario of
+#              plan/scenarios.md driven end to end and asserted (see
+#              demo/scenarios.md). A test, not a demo phase.
 #   walk       vm/test/verify-meshcat-host.sh + p21-trot-hold.sh
 #   teleop     stack/bridge/kennel-bridge.sh (on guest) + verify-bridge-host.sh,
 #              then the console: drive the robot from the browser joystick
@@ -59,6 +62,11 @@
 #     kennel-demo.sh snapshot [--yes]  # re-take the baseline from a green guest
 #     kennel-demo.sh halt              # power the guest down cleanly
 #
+#   Scenarios (tests against the running stack, not demo phases)
+#     kennel-demo.sh scenario disturb  # s004: interventions, and the process
+#                                      # set that never changes (#69)
+#     kennel-demo.sh scenario diagnose # s003: degradation, fall, post-mortem (#71)
+#
 # Knobs (all optional, environment variables):
 #   YURUNA_DIR            ~/git/yuruna       framework checkout (setup, provision)
 #   YURUNA_TAG            2026.08.04         framework release setup checks out
@@ -77,6 +85,21 @@
 #   KENNEL_SOLVER         PARTIAL_CONDENSING_OSQP   composed solver, and the
 #                                            expected one when no run.json says
 #   KENNEL_RATE           0.75               composed simulator_realtime_rate
+#   KENNEL_PRESET         (none)             a named composition for `compose`
+#                                            and `all`. The one that exists is
+#                                            `stress` (#70): the measured red
+#                                            composition -- OSQP at
+#                                            mpc_condensed_size 1 on the flat
+#                                            plane, which degrades the MPC
+#                                            margin AND falls (stack/stress.md
+#                                            §4). It fills in only what you did
+#                                            not choose. Named presets in
+#                                            general are #72; this is the one
+#                                            #71 needs
+#   KENNEL_DISTURBANCES   0                  1 composes the fourth block, the
+#                                            disturbance service (#68)
+#   KENNEL_MAP / KENNEL_HPIPM_MODE / KENNEL_CONDENSED   passed to compose; unset
+#                                            leaves the control untouched
 #   KENNEL_SNAPSHOT_ID    kennel-vm-baseline snapshot id AND persisted domain name
 #   KENNEL_VM_DOMAIN      (discovered)       libvirt domain, for up/halt/snapshot
 #   KENNEL_UP_TIMEOUT     600                bound on the boot wait in `up`
@@ -113,6 +136,16 @@ DOWNLOADS="${KENNEL_DOWNLOADS:-$HOME/Downloads}"
 PORT="${KENNEL_CONSOLE_PORT:-8000}"
 SOLVER="${KENNEL_SOLVER:-PARTIAL_CONDENSING_OSQP}"
 RATE="${KENNEL_RATE:-0.75}"
+# Whether the RATE above is a choice or a default, because a preset composes one
+# and an explicit knob must still win.
+RATE_IS_DEFAULT=0; [ -z "${KENNEL_RATE:-}" ] && RATE_IS_DEFAULT=1
+SOLVER_IS_DEFAULT=0; [ -z "${KENNEL_SOLVER:-}" ] && SOLVER_IS_DEFAULT=1
+# A named composition (#70's half of #72). `stress` is the one the sweep
+# measured: the red composition of stack/stress.md, which is the demo's own
+# solver and rate on OBSTACLE TERRAIN -- a map that is known not to walk
+# (transfer.md §6.3), which is the point of it. Anything else is refused by
+# name rather than silently ignored.
+PRESET="${KENNEL_PRESET:-}"
 
 GUEST_HOSTNAME="${KENNEL_GUEST_HOSTNAME:-kennel-vm}"
 LIBVIRT_NET="${KENNEL_LIBVIRT_NET:-default}"
@@ -433,6 +466,19 @@ solver_of_run() {   # $1 = run folder
          "$1/run.json" | head -1)"
     [ -n "$v" ] || return 1
     echo "$v"
+}
+
+# Was this run composed with disturbances on (#68)? The key is written ONLY when
+# on (kennel_console/export.md §3), so its absence is the answer for every run
+# composed before the toggle existed as well as for every run composed with it
+# off -- which is why this echoes 0/1 and never fails.
+disturbances_of_run() {   # $1 = run folder -> 1 (on) or 0
+    [ -f "$1/run.json" ] || { echo 0; return 0; }
+    if grep -q '"disturbances"[[:space:]]*:[[:space:]]*true' "$1/run.json"; then
+        echo 1
+    else
+        echo 0
+    fi
 }
 
 # The stack pin, read the way kennel-transfer.sh and serve.py read it. Recorded
@@ -1120,8 +1166,48 @@ console_stop() {
 }
 
 SERVER_PID=""
+# What a named preset composes. Refused by NAME rather than silently ignored: a
+# preset nobody implemented must not quietly produce the default composition and
+# call itself the stress preset.
+# A preset composes a WHOLE composition, and every field of it was measured.
+# `stress` is the row stack/stress.md §4 picks: PARTIAL_CONDENSING_OSQP with
+# mpc_condensed_size 1, on the FLAT PLANE at rate 1.0. It is the only composition
+# in the sweep that does both things s003 needs -- it degrades the MPC margin
+# (3.75 ms mean against 1.16 for the same solver at stock condensing, peaking at
+# 9.18 ms, over the console's 7 ms amber line) AND it falls, by the recipe's own
+# rule, while still walking. Obstacle terrain falls too and shows no degradation
+# at all, which is why the preset is a composition and not a map.
+#
+# Refused by NAME rather than silently ignored: a preset nobody implemented must
+# not quietly compose the default and call itself the stress preset.
+preset_field() {   # $1 = map | rate | solver | condensed
+    case "$PRESET" in
+        "") echo "" ;;
+        stress)
+            case "$1" in
+                map)       echo flat_plane ;;
+                rate)      echo 1.0 ;;
+                solver)    echo PARTIAL_CONDENSING_OSQP ;;
+                condensed) echo 1 ;;
+            esac ;;
+        *) fail "no preset '$PRESET'. The one that exists is 'stress' (stack/stress.md §4)." \
+                "Named presets in general are issue #72."
+           exit 2 ;;
+    esac
+}
+
 do_compose() {
     OUT="${1:-$OUT}"
+    # A preset fills in only what the operator did not choose, so every knob
+    # still wins over it.
+    PRESET_MAP="$(preset_field map)" || exit $?
+    if [ -n "$PRESET" ]; then
+        local pv
+        [ "$RATE_IS_DEFAULT" = 1 ] && { pv="$(preset_field rate)"; [ -n "$pv" ] && RATE="$pv"; }
+        [ "$SOLVER_IS_DEFAULT" = 1 ] && { pv="$(preset_field solver)"; [ -n "$pv" ] && SOLVER="$pv"; }
+        [ -z "${KENNEL_CONDENSED:-}" ] && { pv="$(preset_field condensed)"
+                                            [ -n "$pv" ] && KENNEL_CONDENSED="$pv"; }
+    fi
     mkdir -p "$OUT"
     if ! curl -sf -o /dev/null "$CONSOLE_URL"; then
         say "serving the console on port $PORT (kennel_console/serve.md §1)"
@@ -1134,7 +1220,11 @@ do_compose() {
             sleep 0.25
         done
     fi
+    [ -n "$PRESET" ] && say "preset           $PRESET -- $SOLVER, condensed ${KENNEL_CONDENSED:-stock}, rate $RATE, $PRESET_MAP (stack/stress.md §4)"
     KENNEL_CONSOLE_URL="$CONSOLE_URL" KENNEL_SOLVER="$SOLVER" KENNEL_RATE="$RATE" \
+        KENNEL_MAP="${KENNEL_MAP:-$PRESET_MAP}" \
+        KENNEL_HPIPM_MODE="${KENNEL_HPIPM_MODE:-}" KENNEL_CONDENSED="${KENNEL_CONDENSED:-}" \
+        KENNEL_DISTURBANCES="${KENNEL_DISTURBANCES:-0}" \
         "$HERE/p22-console-demo.sh" "$OUT"
     local rc=$?
     [ -n "$SERVER_PID" ] && { kill "$SERVER_PID" 2>/dev/null; SERVER_PID=""; }
@@ -1235,9 +1325,25 @@ do_verify() {
     fi
     local folder run_name=""
     folder="$(applied_run_dir)" && run_name="$(basename "$folder")"
+    # Same two-step resolution as the solver, for the same reason (runs.md §2):
+    # the run applied in THIS process if there was one, else the guest's own
+    # marker. A run composed with disturbances on launches a seventh node, and
+    # check 1 has to be told so or a healthy stack reports `extra:` and fails.
+    local expect_disturber=0 dsrc=""
+    if [ -n "$APPLIED_RUN" ]; then
+        expect_disturber="$(disturbances_of_run "$APPLIED_RUN")"
+        dsrc="$(basename "$APPLIED_RUN")/run.json"
+    elif [ -n "$folder" ]; then
+        expect_disturber="$(disturbances_of_run "$folder")"
+        dsrc="$run_name/run.json"
+    fi
+    if [ "$expect_disturber" = 1 ]; then
+        say "expect disturber 1  (from ${dsrc:-the applied run}) -- check 1 will tolerate /disturbance_node"
+    fi
     guest_stage stack/verify/kennel-verify.sh
     ssh "${SSH_OPTS[@]}" "$TARGET" \
-        "KENNEL_EXPECT_BRIDGE=$expect_bridge KENNEL_RUN='$run_name' KENNEL_PIN='$(pin_sha)' \
+        "KENNEL_EXPECT_BRIDGE=$expect_bridge KENNEL_EXPECT_DISTURBER=$expect_disturber \
+         KENNEL_RUN='$run_name' KENNEL_PIN='$(pin_sha)' \
          /tmp/kennel-verify.sh --expect-solver '$expect' --controller-log /tmp/p21-ctrl.log"
     local rc=$?
     # The report belongs WITH the run it is of (#64). kennel-verify.sh has always
@@ -1385,6 +1491,34 @@ do_teleop() {
     say "When you are done:  $0 teleop stop"
 }
 
+# --- REGION: scenarios (#69, #71)
+# A scenario is a TEST: it drives the console against the running stack and
+# asserts plan/scenarios.md's numbered steps from the guest and from the DOM.
+# This verb adds nothing but dispatch -- every knob reaches the scenario through
+# the environment, as every other verb's do.
+do_scenario() {
+    local name="${1:-}"
+    local -a available=()
+    local f
+    for f in "$HERE"/scenario-*.sh; do
+        [ -f "$f" ] || continue
+        case "$f" in *scenario-lib.sh) continue ;; esac
+        available+=("$(basename "$f" .sh | sed 's/^scenario-//')")
+    done
+    if [ -z "$name" ]; then
+        say "scenarios: ${available[*]-none}"
+        say "  $0 scenario <name>        (what each asserts: demo/scenarios.md)"
+        return 0
+    fi
+    local script="$HERE/scenario-$name.sh"
+    [ -x "$script" ] || {
+        fail "no scenario '$name'." "Available: ${available[*]-none}"              "What each one asserts: demo/scenarios.md"
+        exit 2
+    }
+    shift
+    exec "$script" "$@"
+}
+
 do_down() {
     need_guest
     ssh "${SSH_OPTS[@]}" "$TARGET" "[ -x /tmp/p21-trot-hold.sh ] && /tmp/p21-trot-hold.sh stop" \
@@ -1503,8 +1637,9 @@ case "${1:-}" in
     teleop)    shift; do_teleop "$@" ;;
     down)      shift; do_down ;;
     status)    shift; do_status ;;
+    scenario)  shift; do_scenario "$@" ;;
     all)       shift; do_all ;;
     -h|--help|help) usage ;;
-    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status"
+    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status | scenario"
        usage >&2; exit 2 ;;
 esac

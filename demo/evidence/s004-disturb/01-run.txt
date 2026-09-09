@@ -1,0 +1,23 @@
+=== 01-run: composed with disturbances on, launched cold ===
+2026-09-08T20:28:10Z
+
+  [ok ] a fourth command block appeared — 4 blocks
+  [ok ] and it is the pin's own disturber — ros2 run simulator sim_disturber --ros-args -p use_sim_time:=true
+[p22-console] run folder: /home/thales/kennel-runs/run-20260908T202817Z
+[kennel-demo] run folder       /home/thales/kennel-runs/run-20260908T202817Z
+[kennel-demo] run              /home/thales/kennel-runs/run-20260908T202817Z
+[p21-launch] split            4 shells, 40 payload lines, reconstructs the file exactly
+[p21-launch] launches         the canonical three, in order (stack/launch.md 1.1) + the disturber (#68)
+[p21-launch]   leg driver up (5s): /leg_driver in the graph, publishing /joint_cmd
+[p21-launch]   node graph complete (1s after 'Starting controller'): the six healthy-session nodes, no duplicates
+[p21-launch]   disturber up (1s): /disturbance_node in the graph, /disturb_simulation served
+[kennel-demo] expect solver    PARTIAL_CONDENSING_OSQP  (from run-20260908T202817Z/run.json)
+[kennel-demo] expect disturber 1  (from run-20260908T202817Z/run.json) -- check 1 will tolerate /disturbance_node
+pass=10 fail=0
+[kennel-demo] verify report    /home/thales/kennel-runs/run-20260908T202817Z/verify.json (verdict completed)
+[p21-trot] holding -- the robot is trotting (publisher pid 1994). Stop it with: /tmp/p21-trot-hold.sh stop
+[kennel-demo]   guest     0s
+[kennel-demo]   transfer  2s
+[kennel-demo]   launch    35s
+[kennel-demo]   verify    33s
+[kennel-demo]   walk      7s

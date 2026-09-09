@@ -1,0 +1,72 @@
+=== 23-run-block4: the launcher on a four-block commands.txt (rate 0.5) ===
+2026-09-08T16:52:37Z
+A scratch run folder, hand-built from run-20260907T202843Z: rate 0.5 and a
+fourth block. It is the launcher and the verify knob under test, before the
+console can compose one (commit 2).
+
+==== guest ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+==== transfer ====
+[kennel-demo] run              /tmp/claude-1000/-home-thales-kennel/6644dff5-4cb3-476e-aac3-06a46d96dd0f/scratchpad/scratch-block4/run-20260908T170000Z
+[kennel-demo]                  (given on the command line)
+==== launch ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-launch] commands.txt     /home/yuuser24/kennel-staging/runs/run-20260908T170000Z/commands.txt
+[p21-launch] split            4 shells, 40 payload lines, reconstructs the file exactly
+[p21-launch] launches         the canonical three, in order (stack/launch.md 1.1) + the disturber (#68)
+[p21-launch] stopping anything already running
+[p21-launch] shell 1 -> /tmp/p21-sim.log  (ros2 launch simulator simulator.launch.py sim:=go2)
+[p21-launch]   /quad_state up
+[p21-launch]   settling 10 sim-s (sim clock at 1s)
+[p21-launch]   settled at sim 11s
+[p21-launch] shell 2 -> /tmp/p21-legdrv.log  (ros2 launch drivers leg_driver_launch.py sim:=go2)
+[p21-launch]   leg driver up (5s): /leg_driver in the graph, publishing /joint_cmd
+[p21-launch] shell 3 -> /tmp/p21-ctrl.log  (ros2 launch controllers mit_controller.launch.py sim:=go2)
+[p21-launch]   controller started
+[p21-launch]   node graph complete (0s after 'Starting controller'): the six healthy-session nodes, no duplicates
+[p21-launch] shell 4 -> /tmp/p21-disturber.log  (ros2 run simulator sim_disturber --ros-args -p use_sim_time:=true)
+[p21-launch]   disturber up (6s): /disturbance_node in the graph, /disturb_simulation served
+[p21-launch] stack is up, launched from the console's generated commands.txt
+[p21-launch] logs: /tmp/p21-sim.log /tmp/p21-legdrv.log /tmp/p21-ctrl.log /tmp/p21-disturber.log (in the container)
+==== verify ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] expect solver    PARTIAL_CONDENSING_OSQP  (from run-20260908T170000Z/run.json)
+[kennel-demo] expect disturber 1  (from run-20260908T170000Z/run.json) -- check 1 will tolerate /disturbance_node
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes plus the composed disturber (KENNEL_EXPECT_DIS
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 10.0 s wall, required >= 4.50 sim-s within 40 s wall
+[PASS] 3 state-stream         -- /quad_state rate: measured 999.0 Hz per sim-second, required 900-1100 Hz per sim-second
+[PASS] 4 controller-alive     -- /controller_heartbeat rate: measured 2.00 Hz per sim-second, required 1.50-2.50 Hz per sim-second
+[PASS] 5 gait-command         -- ros2 param set/get /mit_controller_node simple_gait_sequencer.gait: measured set said 'Set parameter successful', read back 'WALKING_TROT', required 'Set par
+[PASS] 6 gait-active          -- /gait_state: measured period=0.500 duty_factor=['0.600', '0.600', '0.600', '0.600'] phase_offset=['0.000', '0.500', '0.500', '0.000'] sequencer=0, required W
+[PASS] 7 solver-health        -- /controller_heartbeat counters: measured d_mpc_fail=0 d_wbc_fail=0 d_overtime=0 (d_early_contacts=19, 30 heartbeats), required d_mpc_fail=0, d_wbc_fail=0, d_
+[PASS] 8 walking              -- /quad_control_target vs /quad_state twist: measured vx_mean=0.267 m/s, dx=4.004 m over 15.00 sim-s, advanced in all 5 sub-windows: yes, required vx_mean in [
+[PASS] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured belly_contact=0/15000 samples, z median=0.2946 m (p01=0.2595 min=0.2536 max=0.3648), max tilt=0.031 rad, til
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp li
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes plus the composed disturber (KENNEL_EXPECT_DIS
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 10.0 s wall, required >= 4.50 sim-s within 40 s wall
+[PASS] 3 state-stream         -- /quad_state rate: measured 999.0 Hz per sim-second, required 900-1100 Hz per sim-second
+[PASS] 4 controller-alive     -- /controller_heartbeat rate: measured 2.00 Hz per sim-second, required 1.50-2.50 Hz per sim-second
+[PASS] 5 gait-command         -- ros2 param set/get /mit_controller_node simple_gait_sequencer.gait: measured set said 'Set parameter successful', read back 'WALKING_TROT', required 'Set par
+[PASS] 6 gait-active          -- /gait_state: measured period=0.500 duty_factor=['0.600', '0.600', '0.600', '0.600'] phase_offset=['0.000', '0.500', '0.500', '0.000'] sequencer=0, required W
+[PASS] 7 solver-health        -- /controller_heartbeat counters: measured d_mpc_fail=0 d_wbc_fail=0 d_overtime=0 (d_early_contacts=19, 30 heartbeats), required d_mpc_fail=0, d_wbc_fail=0, d_
+[PASS] 8 walking              -- /quad_control_target vs /quad_state twist: measured vx_mean=0.267 m/s, dx=4.004 m over 15.00 sim-s, advanced in all 5 sub-windows: yes, required vx_mean in [
+[PASS] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured belly_contact=0/15000 samples, z median=0.2946 m (p01=0.2595 min=0.2536 max=0.3648), max tilt=0.031 rad, til
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_OSQP, launch log agrees with the running value ([mitcontrollernode-1] Set osqp li
+pass=10 fail=0
+VERDICT: PASS -- healthy and walking
+[kennel-demo] verify report    /tmp/claude-1000/-home-thales-kennel/6644dff5-4cb3-476e-aac3-06a46d96dd0f/scratchpad/scratch-block4/run-20260908T170000Z/verify.json (verdict completed)
+==== walk ====
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-trot] env              /tmp/p21-env.sh (written by p21-launch-from-commands.sh)
+[p21-trot] commanding WALKING_TROT at body_x_dot=0.3 world_z=0.30
+[p21-trot] holding -- the robot is trotting (publisher pid 195894). Stop it with: /tmp/p21-trot-hold.sh stop
+[kennel-demo] the robot is trotting. Watch it here:
+[kennel-demo]     http://192.168.122.32:7000/
+[kennel-demo] return it to STAND with:  demo/tools/kennel-demo.sh walk stop
+[kennel-demo] or drive it yourself:      demo/tools/kennel-demo.sh teleop
+==== done ====
+[kennel-demo]   guest     0s
+[kennel-demo]   transfer  2s
+[kennel-demo]   launch    46s
+[kennel-demo]   verify    60s
+[kennel-demo]   walk      7s

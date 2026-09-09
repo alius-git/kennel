@@ -91,7 +91,7 @@ Each line of output names the observable it read:
 
 | # | Check | Observable | Threshold | Provenance |
 |---|-------|-----------|-----------|------------|
-| 1 | `node-graph` | `ros2 node list` | exactly the six healthy-session nodes, no duplicates — plus the **four** a teleop session adds, *tolerated* when `KENNEL_EXPECT_BRIDGE=1` | [`launch.md`](launch.md) §6, [`known-good/06-healthy-graph.txt`](known-good/06-healthy-graph.txt), [`bridge.md`](bridge.md) §6, §11 |
+| 1 | `node-graph` | `ros2 node list` | exactly the six healthy-session nodes, no duplicates — plus the **four** a teleop session adds, *tolerated* when `KENNEL_EXPECT_BRIDGE=1`, and the disturber when `KENNEL_EXPECT_DISTURBER=1` | [`launch.md`](launch.md) §6, [`known-good/06-healthy-graph.txt`](known-good/06-healthy-graph.txt), [`bridge.md`](bridge.md) §6, §11 |
 | 2 | `sim-clock` | `/clock` vs monotonic wall clock | advances ≥ 90 % of the requested window within the wall budget | §1.1; realtime rate reported, never asserted |
 | 3 | `state-stream` | `/quad_state` message count ÷ sim-seconds | 900–1100 Hz | 1000 Hz measured, [`launch.md`](launch.md) §6 |
 | 4 | `controller-alive` | `/controller_heartbeat` count ÷ sim-seconds | 1.5–2.5 Hz | 2 Hz measured; `controller_heartbeat_dt` default 0.5 s |
@@ -101,6 +101,14 @@ Each line of output names the observable it read:
 | 8 | `walking` | `/quad_control_target` vs `/quad_state` twist and pose | mean vx 0.20–0.35 m/s for a 0.3 m/s command, dx ≥ 0.15 m/s × window, and advance in each fifth of the window | 0.268 m/s measured, [`launch.md`](launch.md) §5 |
 | 9 | `no-fall` | `/quad_state` `belly_contact`, `z`, attitude | `belly_contact` false in every sample, **median** z in 0.20–0.45 m, tilt > 0.5 rad in ≤ 2 % of samples | §4 — every part of this was forced by an observed failure |
 | 10 | `composed-config` | `ros2 param get mpc_solver` + controller launch log | reports the active solver; asserts equality when `--expect-solver` is given | §3 |
+
+`KENNEL_EXPECT_DISTURBER=1` does the same for `/disturbance_node`, the seventh
+node a run composed with disturbances on carries
+([#68](https://github.com/alius-git/kennel/issues/68); block 4 of that run's
+`commands.txt`). `kennel-demo.sh verify` sets it from the applied run's
+`choices.disturbances`, the same two-step resolution it uses for the solver. The
+criterion in a report is now a sentence built from the knobs that were in
+effect, so a report says what it actually allowed.
 
 `KENNEL_EXPECT_BRIDGE=1` adds `/rosapi`, `/rosapi_params`,
 `/rosbridge_websocket` and — since

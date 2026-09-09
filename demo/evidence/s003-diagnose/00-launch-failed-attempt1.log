@@ -1,0 +1,18 @@
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-launch] commands.txt     /home/yuuser24/kennel-staging/runs/run-20260908T193809Z/commands.txt
+[p21-launch] split            3 shells, 30 payload lines, reconstructs the file exactly
+[p21-launch] launches         the canonical three, in order (stack/launch.md 1.1)
+[p21-launch] stopping anything already running
+[p21-launch] shell 1 -> /tmp/p21-sim.log  (ros2 launch simulator simulator.launch.py sim:=go2)
+[p21-launch]   /quad_state up
+[p21-launch]   settling 10 sim-s (sim clock at 1s)
+[p21-launch]   settled at sim 13s
+[p21-launch] shell 2 -> /tmp/p21-legdrv.log  (ros2 launch drivers leg_driver_launch.py sim:=go2)
+[p21-launch]   leg driver up (1s): /leg_driver in the graph, publishing /joint_cmd
+[p21-launch] shell 3 -> /tmp/p21-ctrl.log  (ros2 launch controllers mit_controller.launch.py sim:=go2)
+[p21-launch]   controller started
+NONZERO SCRIPT EXIT: the node graph never completed within 120s -- still wrong: /drake_simulator 
+  /joy_to_target and /safe_start_launcher belong to shell 3:
+    sudo docker exec dfki_quad tail -40 /tmp/p21-ctrl.log
+  A DUP: entry is a stale copy from a bad teardown (launch.md 7 trap 6):
+    sudo docker exec dfki_quad /root/k13-stop.sh   and launch again.

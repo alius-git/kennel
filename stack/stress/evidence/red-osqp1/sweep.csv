@@ -1,0 +1,4 @@
+point,solver,hpipm_mode,condensed,rate,map,rtf,mpc_mean_ms,mpc_p50_ms,mpc_p95_ms,mpc_max_ms,mpc_iters,mpc_over_deadline,wbc_p95_ms,wbc_over_deadline,overtime_d,mpc_fail_d,wbc_fail_d,early_d,verify_overtime,verify_exit,verdict,walked,fell,speed_mean,dist_xy,z_median,tilt_over_frac,run
+osqp1-flat-1,PARTIAL_CONDENSING_OSQP,-,1,1.0,flat_plane,1.0001,3.555,3.213,5.186,7.734,15.47,0,0.167,0,0,0,0,67,0,1,fell,PASS,FAIL,0.255,5.0165,0.15043,0.0,run-20260908T184703Z
+osqp1-flat-2,PARTIAL_CONDENSING_OSQP,-,1,1.0,flat_plane,1.0017,3.571,3.251,4.994,10.269,18.13,1,0.165,0,1,0,7,63,0,1,fell,PASS,FAIL,0.2719,4.3006,0.17277,0.68224,run-20260908T184857Z
+osqp1-flat-3,PARTIAL_CONDENSING_OSQP,-,1,1.0,flat_plane,1.0021,3.442,3.139,5.111,7.155,15.43,0,0.154,0,0,0,0,7,0,1,fell,PASS,FAIL,0.3117,6.2105,0.16613,0.0,run-20260908T185047Z

@@ -1,0 +1,153 @@
+{
+  "active_solver": "PARTIAL_CONDENSING_HPIPM",
+  "checks": [
+    {
+      "measured": "the six expected nodes, no duplicates",
+      "n": 1,
+      "name": "node-graph",
+      "observable": "ros2 node list",
+      "required": "exactly the six healthy-session nodes, no duplicates",
+      "status": "PASS"
+    },
+    {
+      "measured": "advanced 5.00 sim-s in 2.5 s wall",
+      "n": 2,
+      "name": "sim-clock",
+      "observable": "/clock",
+      "required": ">= 4.50 sim-s within 40 s wall",
+      "status": "PASS"
+    },
+    {
+      "measured": "2.004",
+      "n": null,
+      "name": "realtime-rate",
+      "observable": "/clock vs monotonic wall clock",
+      "required": "informative, #21 runs this at 0.5",
+      "status": "INFO"
+    },
+    {
+      "measured": "998.4 Hz per sim-second",
+      "n": 3,
+      "name": "state-stream",
+      "observable": "/quad_state rate",
+      "required": "900-1100 Hz per sim-second",
+      "status": "PASS"
+    },
+    {
+      "measured": "1.00 Hz per sim-second (5 msgs / 5.00 sim-s)",
+      "n": 4,
+      "name": "controller-alive",
+      "observable": "/controller_heartbeat rate",
+      "required": "1.50-2.50 Hz per sim-second",
+      "status": "FAIL"
+    },
+    {
+      "measured": "early_contacts=0 mpc_overtime=0 wbc_overtime=2 mpc_fail=0 wbc_fail=0 model_updates=0",
+      "n": null,
+      "name": "heartbeat-counters",
+      "observable": "/controller_heartbeat cumulative",
+      "required": "informative, deltas are asserted by check 7",
+      "status": "INFO"
+    },
+    {
+      "measured": "skipped, liveness gate (checks 2-4) failed",
+      "n": 5,
+      "name": "gait-command",
+      "observable": "ros2 param set /mit_controller_node simple_gait_sequencer.gait",
+      "required": "a live stack to observe",
+      "status": "FAIL"
+    },
+    {
+      "measured": "skipped, liveness gate (checks 2-4) failed",
+      "n": 6,
+      "name": "gait-active",
+      "observable": "/gait_state",
+      "required": "a live stack to observe",
+      "status": "FAIL"
+    },
+    {
+      "measured": "skipped, liveness gate (checks 2-4) failed",
+      "n": 7,
+      "name": "solver-health",
+      "observable": "/controller_heartbeat counters",
+      "required": "a live stack to observe",
+      "status": "FAIL"
+    },
+    {
+      "measured": "skipped, liveness gate (checks 2-4) failed",
+      "n": 8,
+      "name": "walking",
+      "observable": "/quad_control_target vs /quad_state twist",
+      "required": "a live stack to observe",
+      "status": "FAIL"
+    },
+    {
+      "measured": "skipped, liveness gate (checks 2-4) failed",
+      "n": 9,
+      "name": "no-fall",
+      "observable": "/quad_state belly_contact, z, attitude",
+      "required": "a live stack to observe",
+      "status": "FAIL"
+    },
+    {
+      "measured": "PARTIAL_CONDENSING_HPIPM, launch log agrees with the running value ([mitcontrollernode-1] Set hpipm mode to SPEED)",
+      "n": 10,
+      "name": "composed-config",
+      "observable": "ros2 param get /mit_controller_node mpc_solver",
+      "required": "PARTIAL_CONDENSING_HPIPM",
+      "status": "PASS"
+    }
+  ],
+  "exit": 1,
+  "expect_solver": "PARTIAL_CONDENSING_HPIPM",
+  "fail": 6,
+  "finished_at": "2026-09-08T18:39:24Z",
+  "gait": "WALKING_TROT",
+  "headline": {
+    "early_contacts": 0,
+    "mpc_fail": 0,
+    "mpc_overtime": 0,
+    "wbc_fail": 0,
+    "wbc_overtime": 0
+  },
+  "knobs": {
+    "CLOCK_WAIT_WALL_SECONDS": "20",
+    "FALL_TOLERANCE": "0.02",
+    "HB_HZ_MAX": "2.5",
+    "HB_HZ_MIN": "1.5",
+    "KENNEL_EXPECT_BRIDGE": "0",
+    "KENNEL_EXPECT_DISTURBER": "0",
+    "OBSERVE_SIM_SECONDS": "5",
+    "OVERTIME_BUDGET": "20",
+    "STATE_HZ_MAX": "1100",
+    "STATE_HZ_MIN": "900",
+    "TARGET_VX": "0.3",
+    "TARGET_Z": "0.30",
+    "TILT_MAX_RAD": "0.5",
+    "TROT_SETTLE_SIM_SECONDS": "5",
+    "TROT_SIM_SECONDS": "15",
+    "VX_MAX": "0.35",
+    "VX_MIN": "0.20",
+    "X_ADVANCE_MIN_MPS": "0.15",
+    "Z_MAX": "0.45",
+    "Z_MIN": "0.20"
+  },
+  "metrics": {
+    "hb_hz": 1.0,
+    "observe_sim_s": 5.0,
+    "observe_wall_s": 2.49,
+    "realtime_rate": 2.0045,
+    "state_hz": 998.4
+  },
+  "pass": 4,
+  "pin": "dcf53c596339afd45b82f12c54b1e93e8273c2f4",
+  "run": "run-20260908T183048Z",
+  "schema": "kennel-verify/1",
+  "solver_log_line": "[mitcontrollernode-1] Set hpipm mode to SPEED",
+  "verdict": "fell",
+  "windows_sim_s": {
+    "observe": 5.0,
+    "settle": 5.0,
+    "trot": 15.0
+  }
+}

@@ -172,6 +172,11 @@ those plus `compose`. Timings are the single measured sample from
 Also there when needed:
 
 ```bash
+kennel-demo.sh scenario disturb   # s004 as a test: interventions on the real
+                             # robot, and the process set that never changes
+                             # (64 checks, ~6 min; demo/scenarios.md)
+kennel-demo.sh scenario diagnose  # s003: degradation, fall, post-mortem
+                             # (~15 min, up to three attempts)
 stack/bridge/verify-teleop-live.sh   # the teleop path, asserted against the real
                              # stack: 90 checks, ~10 min, leaves it in STAND
 kennel-demo.sh status        # what run is applied + is Meshcat reachable
@@ -286,6 +291,10 @@ tools that define them.
 | `KENNEL_CONSOLE_PORT` | `8000` | port `console` and `compose` serve the console on |
 | `KENNEL_WATCHDOG` | `1` | start the guest-side target watchdog beside the bridge ([`bridge.md` §11](../stack/bridge.md)). `0` leaves a killed tab's target in force — which is what the watchdog is for |
 | `KENNEL_WATCHDOG_STALE` | `1.0` | seconds without a target before the watchdog zeroes it |
+| `KENNEL_DISTURBANCES` | `0` | `1` composes the **fourth block**, the disturbance service ([#68](https://github.com/alius-git/kennel/issues/68)) — what `scenario disturb` needs |
+| `KENNEL_PRESET` | *(none)* | a named composition for `compose`/`all`. `stress` is the measured red one ([`stack/stress.md`](../stack/stress.md)); anything else is refused by name |
+| `KENNEL_MAP` | *(untouched)* | `flat_plane` / `obstacle_terrain` — an unset knob leaves the control alone, which is not the same as setting it to stock |
+| `KENNEL_HPIPM_MODE` / `KENNEL_CONDENSED` | *(untouched)* | the two solver-dependent MPC fields, for the sweep |
 | `YURUNA_DIR` | `~/git/yuruna` | framework checkout, for `setup` and `provision` |
 | `YURUNA_TAG` | `2026.08.04` | the Yuruna release `setup` checks out and validates against |
 | `YURUNA_IMAGE_DIR` | `~/yuruna/image/ubuntu.env` | where `Get-Image.ps1` puts the guest ISO |
@@ -323,6 +332,10 @@ Symptoms the dry run already met, plus the driver's own failure modes:
 | The console says `another publisher is holding /quad_control_target` | The same thing, caught before it started: the page listens for a second before it advertises, and refuses rather than joining the fight. `kennel-demo.sh teleop`, then reconnect |
 | `connect bridge` fails, or there is no bridge field at all | No field = the console is not served by `serve.py` (use `kennel-demo.sh console`). Field but no connection = the bridge is down: `kennel-demo.sh status` says so, `kennel-demo.sh teleop` starts it. It needs a **launched** stack — the script exits 2 and says so |
 | `verify` check 1 says `extra: /rosapi /rosapi_params /rosbridge_websocket /k13_target_watchdog` | A teleop session is running. That is the intended signal, not a defect. `kennel-demo.sh verify` sets `KENNEL_EXPECT_BRIDGE=1` for you when it can reach one; running `kennel-verify.sh` directly on the guest does not ([`stack/bridge.md` §6](../stack/bridge.md)). The entries also linger 10–20 s after a stop |
+| `verify` check 1 says `extra: /disturbance_node` | A run composed with disturbances on launches a seventh node ([#68](https://github.com/alius-git/kennel/issues/68)). `kennel-demo.sh verify` sets `KENNEL_EXPECT_DISTURBER=1` from the applied run's `run.json`; running `kennel-verify.sh` directly on the guest does not |
+| The console's `inject` says *disturbances off* | The run the guest launched composed no disturber, so `/disturb_simulation` is not being served. `KENNEL_DISTURBANCES=1 kennel-demo.sh compose`, then `run` ([`teleop.md` §13](../kennel_console/teleop.md)) |
+| The simulator dies right after a `reset sim`, or a push | Drake's SAP solver aborts (`sap_solver.cc:342`, exit 134) when it is asked to resolve contacts from a degenerate configuration — a robot that has been sitting collapsed, or one pushed while it is. It costs a relaunch: `kennel-demo.sh launch`. Start from a standing robot: `kennel-bridge.sh recover` ([`demo/scenarios.md` §1.3](scenarios.md)) |
+| `scenario diagnose` reports *fell 1 of 3* | A red result, and the traces are the answer — not a reason to run it again. Obstacle terrain is measured as failing differently on repeat ([`transfer.md` §6.3](../stack/transfer.md), [`stack/stress.md`](../stack/stress.md)) |
 | You closed the browser tab and the robot kept walking | Not any more: the guest-side watchdog zeroes a stale target about a second after the page goes quiet, and the robot stops. Before [#67](https://github.com/alius-git/kennel/issues/67) it walked **13.3 m in 30 sim-s and was still going** — measured ([`bridge.md` §10.6](../stack/bridge.md)). If it does keep walking, the watchdog is off (`KENNEL_WATCHDOG=0`) or was never staged: `kennel-demo.sh status` says whether one is running, and `kennel-demo.sh teleop stop` always ends it |
 | The robot coasts a metre or two after the tab dies | Expected. The watchdog commands a hard zero about a second after the page goes silent, and the robot then decelerates at the controller's own rate — two to five sim-seconds from 0.5 m/s. Nothing can shorten that from the target side ([`bridge.md` §11.2](../stack/bridge.md)) |
 | `walk stop` and the watchdog log an intervention | Correct, and not a defect. `p21-trot-hold.sh stop` kills its publisher, checks the controller is alive (seconds), and only then publishes its zeros; in between the last target is 0.3 m/s with nobody publishing it ([`bridge.md` §11.4](../stack/bridge.md)) |

@@ -58,6 +58,14 @@ window.__pane = () => { const p = [...document.querySelectorAll('pre')]
 window.__cmds = () => [...document.querySelectorAll('div')]
   .filter(d => /^source \/opt\/ros/.test(d.textContent.trim()))
   .map(d => d.textContent);
+// A Sim options toggle by its label -- the row (two children), then its switch.
+window.__simToggle = label => {
+  const row = [...document.querySelectorAll('div')].filter(d =>
+    d.textContent.trim() === label && d.children.length === 2)[0];
+  if (!row) return false;
+  const t = [...row.querySelectorAll('div')].find(d =>
+    /border-radius: 10px/.test(d.getAttribute('style') || ''));
+  if (!t) return false; t.click(); return true; };
 // An export button is <name><download>; matched structurally so it can never be
 // confused with the YAML tab that carries the same filename as its label.
 window.__exportRow = name => [...document.querySelectorAll('div')].find(d =>
@@ -267,6 +275,79 @@ moved = [k for k in rj3 if rj3[k] != rj2[k]]
 check("run.json differs only in the stamp and the manifest id",
       sorted(moved) == sorted(["run", "generated_at", "run_id"]), str(moved))
 check("the composed choices are unchanged", rj3["choices"] == rj2["choices"])
+
+print("\n8. disturbances on: an eighth choice and a fourth block (#68)")
+# The acceptance of #68 is "a run composed with it off is unchanged byte for
+# byte", so this group exports BOTH ways from the same composer state and
+# compares the bytes. The toggle must reach commands.txt and run.json and touch
+# nothing else -- it has no YAML key at all (mapping.md §4.6).
+ws.js("__click('Compose')")
+time.sleep(0.4)
+wipe()
+ws.js("__click('generate run ↓')")
+time.sleep(0.5)
+landed = settled()
+zf_off = zipfile.ZipFile(os.path.join(DL, landed[0]))
+z_off = {i.filename.split("/", 1)[1]: zf_off.read(i.filename) for i in zf_off.infolist()}
+rj_off = json.loads(z_off["run.json"])
+check("with the toggle off, choices still carries exactly the seven",
+      sorted(rj_off["choices"]) == sorted([
+          "world_urdf", "world_fix_link", "simulator_realtime_rate", "publish_quad_state",
+          "mpc_solver", "mpc_hpipm_mode", "mpc_condensed_size"]),
+      str(sorted(rj_off["choices"])))
+check("  and no disturbances key at all — absent is what off means",
+      "disturbances" not in rj_off["choices"],
+      "a false would make every pre-#68 run.json differ from a run composed today")
+check("commands.txt says THREE shells", b"THREE shells" in z_off["commands.txt"])
+
+check("the disturbances toggle is there", ws.js("__simToggle('disturbances')"))
+time.sleep(0.5)
+wipe()
+ws.js("__click('generate run ↓')")
+time.sleep(0.5)
+landed = settled()
+zf_on = zipfile.ZipFile(os.path.join(DL, landed[0]))
+z_on = {i.filename.split("/", 1)[1]: zf_on.read(i.filename) for i in zf_on.infolist()}
+rj_on = json.loads(z_on["run.json"])
+check("with it on, choices carries eight",
+      len(rj_on["choices"]) == 8, str(len(rj_on["choices"])))
+check("  the eighth is disturbances: true",
+      rj_on["choices"].get("disturbances") is True, str(rj_on["choices"].get("disturbances")))
+check("  and it is LAST, so the seven keep the order this suite pins",
+      list(rj_on["choices"])[-1] == "disturbances", str(list(rj_on["choices"])))
+check("  every other composed choice is unchanged",
+      {k: v for k, v in rj_on["choices"].items() if k != "disturbances"} == rj_off["choices"])
+txt_on = z_on["commands.txt"].decode()
+check("commands.txt says FOUR shells", "FOUR shells" in txt_on)
+check("  and carries the disturber, by package",
+      "ros2 run simulator sim_disturber --ros-args -p use_sim_time:=true" in txt_on)
+check("  as a ros2 run: there are STILL exactly three ros2 launch invocations",
+      txt_on.count("ros2 launch ") == 3, str(txt_on.count("ros2 launch ")))
+check("  with the source chain in all four blocks",
+      txt_on.count("source /root/setup_ulab_workspace.bash") == 4
+      and txt_on.count("cd /root/ros2_ws") == 4)
+check("  and it still refuses to look like a script",
+      not txt_on.startswith("#!") and "not a script" in txt_on)
+check("the two YAMLs are byte-identical with the toggle on and off",
+      z_on[NAMES[0]] == z_off[NAMES[0]] and z_on[NAMES[1]] == z_off[NAMES[1]],
+      "the toggle composes a COMMAND; it has no YAML key at this pin")
+
+# ... and back off again: the acceptance's own words.
+ws.js("__simToggle('disturbances')")
+time.sleep(0.5)
+wipe()
+ws.js("__click('generate run ↓')")
+time.sleep(0.5)
+landed = settled()
+zf_back = zipfile.ZipFile(os.path.join(DL, landed[0]))
+z_back = {i.filename.split("/", 1)[1]: zf_back.read(i.filename) for i in zf_back.infolist()}
+check("toggled back off, commands.txt is byte-identical to the off export",
+      z_back["commands.txt"] == z_off["commands.txt"])
+check("  and so are both YAMLs",
+      z_back[NAMES[0]] == z_off[NAMES[0]] and z_back[NAMES[1]] == z_off[NAMES[1]])
+check("  and choices is exactly what it was",
+      json.loads(z_back["run.json"])["choices"] == rj_off["choices"],
+      "#68's acceptance: a run composed with disturbances off is unchanged byte for byte")
 
 print("\n7. no network escaped")
 ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"

@@ -38,6 +38,9 @@ The in-depth documentation lives next to what it describes — the plan corpus i
   phase: setup → provision → console → run, and the pieces underneath
   (compose → transfer → launch → verify → walk). Its §7 is the implementation
   record of the driver's own command surface.
+- [`demo/scenarios.md`](../demo/scenarios.md) — the verification scenarios as
+  driver verbs: `scenario disturb` (s004) and `scenario diagnose` (s003), what
+  each asserts, and the bypasses each carries.
 - [`demo/dry-run.md`](../demo/dry-run.md) — the implementation record of the
   by-the-book run: measured timings, frictions found, doc fixes made.
 - [`demo/evidence/`](../demo/evidence/) — captured logs, metrics, and
@@ -67,7 +70,10 @@ The in-depth documentation lives next to what it describes — the plan corpus i
 - [`stack/verify.md`](../stack/verify.md) — the CLI walking/health verification
   recipe.
 - [`stack/composed-run.md`](../stack/composed-run.md) — the PoC moment: a
-  composed config runs the stack and the values take effect.
+  composed config runs the stack and the values take effect; the fourth block,
+  the disturbance service, and how it is reaped.
+- [`stack/stress.md`](../stack/stress.md) — the MPC solve margin measured across
+  every MVP composition, and the stress preset that came out of the table.
 - [`stack/bridge.md`](../stack/bridge.md) — the rosbridge beside the stack:
   starting it, reaching it from the host, tearing it down without leaks, the
   live regression suite that drives a browser against the real robot, and the

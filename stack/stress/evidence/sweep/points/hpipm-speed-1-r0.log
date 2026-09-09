@@ -1,0 +1,65 @@
+=== hpipm-speed-1-r0 ===
+2026-09-08T18:30:40Z
+solver=PARTIAL_CONDENSING_HPIPM hpipm=SPEED condensed=1 rate=0 map=-
+
+--- compose
+  [ok ] Compose view is the landing view
+  [ok ] solver dropdown present
+  [ok ] real-time rate input present
+  [ok ] starts at stock solver — PARTIAL_CONDENSING_HPIPM
+  [ok ] starts at stock rate — 1
+  [ok ] dropdown holds the choice — PARTIAL_CONDENSING_HPIPM
+  [ok ] controller YAML shows it — mpc_solver: "PARTIAL_CONDENSING_HPIPM"
+  [ok ] input holds the choice — 0
+  [ok ] simulator YAML shows it — simulator_realtime_rate: 0.0                    # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+  [ok ] world_urdf is still the plane
+  [ok ] hpipm mode set — the field is hidden for solvers that ignore it (composer-scope.md §2)
+  [ok ] condensed size set — the field is hidden for full-condensing solvers (composer-scope.md §2)
+  [ok ] controller YAML shows the hpipm mode — mpc_hpipm_mode: "SPEED"
+  [ok ] controller YAML shows the condensed size — mpc_condensed_size: 1
+  [ok ] Compose view photographed — 191501 B
+  [ok ] exactly one archive downloaded — ['run-20260908T183048Z.zip']
+[p22-console] run folder: /tmp/claude-1000/-home-thales-kennel/6644dff5-4cb3-476e-aac3-06a46d96dd0f/scratchpad/sweep-out/run-20260908T183048Z
+[kennel-demo] run folder       /tmp/claude-1000/-home-thales-kennel/6644dff5-4cb3-476e-aac3-06a46d96dd0f/scratchpad/sweep-out/run-20260908T183048Z
+--- transfer + launch
+[kennel-demo] run              /tmp/claude-1000/-home-thales-kennel/6644dff5-4cb3-476e-aac3-06a46d96dd0f/scratchpad/sweep-out/run-20260908T183048Z
+[p21-launch]   /quad_state up
+[p21-launch]   settling 10 sim-s (sim clock at 3s)
+[p21-launch]   settled at sim 13s
+[p21-launch]   leg driver up (9s): /leg_driver in the graph, publishing /joint_cmd
+[p21-launch]   controller started
+[p21-launch]   node graph complete (1s after 'Starting controller'): the six healthy-session nodes, no duplicates
+[p21-launch] stack is up, launched from the console's generated commands.txt
+--- verify
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes, no duplicates
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 2.5 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 2.004, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.4 Hz per sim-second, required 900-1100 Hz per sim-second
+[FAIL] 4 controller-alive     -- /controller_heartbeat rate: measured 1.00 Hz per sim-second (5 msgs / 5.00 sim-s), required 1.50-2.50 Hz per sim-second
+[INFO]   heartbeat-counters   -- /controller_heartbeat cumulative: measured early_contacts=0 mpc_overtime=0 wbc_overtime=2 mpc_fail=0 wbc_fail=0 model_updates=0, required informative, deltas are asserted by check 7
+[FAIL] 5 gait-command         -- ros2 param set /mit_controller_node simple_gait_sequencer.gait: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 6 gait-active          -- /gait_state: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 7 solver-health        -- /controller_heartbeat counters: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_HPIPM, launch log agrees with the running value ([mitcontrollernode-1] Set hpipm mode to SPEED), required PARTIAL_CONDENSING_HPIPM
+[PASS] 1 node-graph           -- ros2 node list: measured the six expected nodes, no duplicates, required exactly the six healthy-session nodes, no duplicates
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 2.5 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 2.004, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.4 Hz per sim-second, required 900-1100 Hz per sim-second
+[FAIL] 4 controller-alive     -- /controller_heartbeat rate: measured 1.00 Hz per sim-second (5 msgs / 5.00 sim-s), required 1.50-2.50 Hz per sim-second
+[INFO]   heartbeat-counters   -- /controller_heartbeat cumulative: measured early_contacts=0 mpc_overtime=0 wbc_overtime=2 mpc_fail=0 wbc_fail=0 model_updates=0, required informative, deltas are asserted by check 7
+[FAIL] 5 gait-command         -- ros2 param set /mit_controller_node simple_gait_sequencer.gait: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 6 gait-active          -- /gait_state: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 7 solver-health        -- /controller_heartbeat counters: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[PASS] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured PARTIAL_CONDENSING_HPIPM, launch log agrees with the running value ([mitcontrollernode-1] Set hpipm mode to SPEED), required PARTIAL_CONDENSING_HPIPM
+pass=4 fail=6
+[kennel-demo] verify report    /tmp/claude-1000/-home-thales-kennel/6644dff5-4cb3-476e-aac3-06a46d96dd0f/scratchpad/sweep-out/run-20260908T183048Z/verify.json (verdict fell)
+--- walk, then measure 20 sim-s
+[p21-trot] holding -- the robot is trotting (publisher pid 242153). Stop it with: /tmp/p21-trot-hold.sh stop
+[kennel-demo] the robot is trotting. Watch it here:
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[p21-trot] stopping the velocity target
+[p21-trot] gait returned to STAND, target zeroed

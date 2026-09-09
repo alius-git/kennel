@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure the teleop path from inside the stack, and print one JSON line. 2026-09-07.
+"""Measure the teleop path from inside the stack, and print one JSON line. 2026-09-08.
 
 WHERE IT RUNS: in the dfki_quad CONTAINER (rclpy, the ROS graph). It is copied in
 and run by `kennel-bridge.sh observe`, which is how stack/bridge/verify-teleop-live.sh
@@ -15,6 +15,9 @@ measures a different amount of robot at every rate -- the rule stack/verify.md
 section 1.1 established for the CLI recipe. Wall time appears in exactly one
 place: the staleness of /quad_control_target, because PUBLISHERS run on wall
 clocks whatever the sim is doing, and that is what #67's watchdog measures.
+
+SINCE #68 it also watches /simulation_disturbance, so a scenario verb can assert
+what the SIMULATOR was pushed with rather than what the page says it asked for.
 
 OUTPUT: `KENNEL_MEASURING <wall> sim=<sim>` the moment the window opens (rclpy
 takes seconds to start, and a caller that wants to act INSIDE the window must
@@ -42,9 +45,16 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 
 from rosgraph_msgs.msg import Clock
-from interfaces.msg import QuadState, GaitState, ControllerInfo, QuadControlTarget
+from interfaces.msg import (QuadState, GaitState, ControllerInfo, QuadControlTarget,
+                            SimulationDisturbance)
 
 TOPIC = "/quad_control_target"
+# What the disturbance node PUBLISHES when the console (or anyone) calls
+# /disturb_simulation (#68). The simulator subscribes to it
+# (drake_simulator.cpp:355-358, :400), so this is the wire between the
+# request and the robot -- and the only honest witness to "the exact
+# injected parameters" that is not the page under test.
+DISTURB_TOPIC = "/simulation_disturbance"
 CLOCK_WAIT = 20.0          # wall seconds to wait for the first /clock and /quad_state
 RTF_FLOOR = 0.2            # the slowest sim this will wait for before giving up
 TILT_MAX = 0.5             # rad -- check.py's TILT_MAX_RAD, so the two agree
@@ -145,6 +155,14 @@ class Monitor(Node):
         self.gait_changes = []
         self.sig = None
 
+        # /simulation_disturbance (#68): every message in the window, with the
+        # clock it arrived on. The node publishes the rotated force immediately
+        # and a zero after `time` has elapsed (disturbance_node.cpp:39-65), so a
+        # push is a PAIR and the gap between them is its duration -- measured in
+        # both clocks, because whether that sleep is sim or wall time is a
+        # property of the node's own clock, not of this monitor.
+        self.dist = []                       # [(wall, sim, [fx, fy, fz], norm)]
+
         self.create_subscription(Clock, "/clock", self.cb_clock, BEST)
         self.create_subscription(QuadState, "/quad_state", self.cb_state, RELIABLE)
         self.create_subscription(GaitState, "/gait_state", self.cb_gait, BEST)
@@ -154,6 +172,9 @@ class Monitor(Node):
         # subscription is QOS_RELIABLE_NO_DEPTH, mit_controller_node.cpp:649-651,
         # and it receives what the browser sends).
         self.create_subscription(QuadControlTarget, TOPIC, self.cb_target, RELIABLE)
+        # RELIABLE: the publisher is (disturbance_node.cpp:26-27,
+        # QOS_RELIABLE_NO_DEPTH), and so is the simulator's subscription.
+        self.create_subscription(SimulationDisturbance, DISTURB_TOPIC, self.cb_disturb, RELIABLE)
 
     def cb_clock(self, m):
         self.sim = m.clock.sec + m.clock.nanosec / 1e9
@@ -221,6 +242,12 @@ class Monitor(Node):
             # The moment somebody put the robot back to a stop: a stick release,
             # a STAND, or #67's watchdog noticing that nobody is at the controls.
             self.first_zero_after_nonzero = (now, self.sim)
+
+    def cb_disturb(self, m):
+        if not self.measuring:
+            return
+        f = [m.force[0], m.force[1], m.force[2]]
+        self.dist.append((time.time(), self.sim, f, math.sqrt(sum(c * c for c in f))))
 
 
 def row_header():
@@ -301,6 +328,45 @@ def rest_since(series, sim_now, first=True):
     return round(start, 3)
 
 
+def disturbance_summary(n):
+    """The push, as the SIMULATOR saw it -- or None if nothing was injected.
+
+    A push is a non-zero message followed by a zero one, and the gap between
+    them is how long the force was applied. Both clocks are reported because
+    disturbance_node sleeps on ITS OWN clock: with use_sim_time the gap is sim
+    seconds, without it wall seconds, and at any composed rate other than 1.0
+    those are different numbers for the same request.
+
+    `force_max` is the rotated vector on the wire, never the request: the node
+    turns the requested force into the robot's yaw frame before publishing
+    (disturbance_node.cpp:52-53), so [100, 0, 0] arrives as whatever "forward"
+    was at that instant. The MAGNITUDE is what survives the rotation, which is
+    why it is what a caller compares against.
+    """
+    if not n.dist:
+        return None
+    strongest = max(n.dist, key=lambda d: d[3])
+    first_nz = next((d for d in n.dist if d[3] > 1e-9), None)
+    zero_after = None
+    if first_nz is not None:
+        zero_after = next((d for d in n.dist
+                           if d[0] > first_nz[0] and d[3] <= 1e-9), None)
+    def gap(i):
+        if first_nz is None or zero_after is None:
+            return None
+        a, b = first_nz[i], zero_after[i]
+        return round(b - a, 3) if (a is not None and b is not None) else None
+    return {
+        "n": len(n.dist),
+        "first_sim": round(first_nz[1], 3) if first_nz and first_nz[1] is not None else None,
+        "first_wall": round(first_nz[0], 3) if first_nz else None,
+        "sim_gap": gap(1),
+        "wall_gap": gap(0),
+        "force_max_norm": round(strongest[3], 3),
+        "force_max": [round(c, 3) for c in strongest[2]],
+    }
+
+
 def summarise(n, label, sim_window, wall_window):
     def q(vals, frac):
         s = sorted(vals)
@@ -366,6 +432,7 @@ def summarise(n, label, sim_window, wall_window):
                   "sequencer": int(g.gait_sequencer),
                   "name": gait_name(g.period, list(g.duty_factor), list(g.phase_offset))}
                  if g else None),
+        "disturbance": disturbance_summary(n),
     }
     if n.vx:
         # speed_mean and dist_xy are the YAW-INVARIANT pair, and they are what

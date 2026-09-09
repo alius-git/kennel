@@ -1,0 +1,25 @@
+bash bash
+bash bash -c bash /tmp/p21-block1.sh > /tmp/p21-sim.log 2>&1
+bash bash -c bash /tmp/p21-block2.sh > /tmp/p21-legdrv.log 2>&1
+bash bash -c bash /tmp/p21-block3.sh > /tmp/p21-ctrl.log 2>&1
+bash bash -c bash /tmp/p21-block4.sh > /tmp/p21-disturber.log 2>&1
+bash bash /tmp/p21-block1.sh
+bash bash /tmp/p21-block2.sh
+bash bash /tmp/p21-block3.sh
+bash bash /tmp/p21-block4.sh
+joy_linux_node /opt/ros/humble/lib/joy_linux/joy_linux_node --ros-args -r __node:=joy_linux_node --params-file /tmp/launch_params_93pgbkjc
+leg_driver /root/ros2_ws/install/drivers/lib/drivers/leg_driver --ros-args -r __node:=leg_driver --params-file /root/ros2_ws/install/drivers/share/drivers/config/leg_param_sim.yaml --params-file /root/ros2_ws/install/common/share/common/config/common_config_go2.yaml --params-file /tmp/launch_params_btmfjfuz
+mitcontrollerno /root/ros2_ws/install/controllers/lib/controllers/mitcontrollernode --ros-args --log-level mit_controller_node:=info --ros-args -r __node:=mit_controller_node --params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml --params-file /root/ros2_ws/install/common/share/common/config/common_config_go2.yaml --params-file /tmp/launch_params__zxuprqa
+python3 python3 /opt/ros/humble/lib/rosapi/rosapi_node --ros-args -r __node:=rosapi --params-file /tmp/launch_params_2abudho_ --params-file /tmp/launch_params_1nkvx4qd --params-file /tmp/launch_params_we204tx8 --params-file /tmp/launch_params_0357ta6k --params-file /tmp/launch_params_5tzgs9ml --params-file /tmp/launch_params_59x2lpbx
+python3 python3 /opt/ros/humble/lib/rosbridge_server/rosbridge_websocket --ros-args -r __node:=rosbridge_websocket --params-file /tmp/launch_params_w3niro7z --params-file /tmp/launch_params_o2rqzy6q --params-file /tmp/launch_params_knh4pn6h --params-file /tmp/launch_params_pr1ulrjw --params-file /tmp/launch_params_4bffemux --params-file /tmp/launch_params_l_b54bx0 --params-file /tmp/launch_params_r_cp6fgl --params-file /tmp/launch_params_63g0tle8 --params-file /tmp/launch_params_hkfurwlg --params-file /tmp/launch_params__c_8my64 --params-file /tmp/launch_params_v_ua3z3r --params-file /tmp/launch_params_767sokbi --params-file /tmp/launch_params_anq_3ql5 --params-file /tmp/launch_params_jv9k93ua --params-file /tmp/launch_params_t93xqa7d --params-file /tmp/launch_params_5mxy8dws --params-file /tmp/launch_params_ionmoraj --params-file /tmp/launch_params_3pmj_z6l --params-file /tmp/launch_params_aahe5z1v --params-file /tmp/launch_params_68rg1oqg
+python3 python3 /root/k13-target-watchdog.py
+python3 python3 /root/ros2_ws/install/controllers/lib/controllers/joy_to_target.py --ros-args -r __node:=joy_to_target --params-file /root/ros2_ws/install/controllers/share/controllers/config/mit_controller_sim_go2.yaml --params-file /tmp/launch_params_kdwsg7mb
+python3 /usr/bin/python3 -c from ros2cli.daemon.daemonize import main; main() --name ros2-daemon --ros-domain-id 100 --rmw-implementation rmw_fastrtps_cpp
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch controllers mit_controller.launch.py sim:=go2
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch drivers leg_driver_launch.py sim:=go2
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=9090
+ros2 /usr/bin/python3 /opt/ros/humble/bin/ros2 launch simulator simulator.launch.py sim:=go2
+sh /bin/sh -c /root/ros2_ws/install/drivers/lib/drivers/leg_driver --ros-args -r __node:=leg_driver --params-file /root/ros2_ws/install/drivers/share/drivers/config/leg_param_sim.yaml --params-file /root/ros2_ws/install/common/share/common/config/common_config_go2.yaml --params-file /tmp/launch_params_btmfjfuz
+sh /bin/sh -c /root/ros2_ws/install/simulator/lib/simulator/simulator --ros-args -r __node:=drake_simulator --params-file /root/ros2_ws/install/simulator/share/simulator/config/simulator_params_go2.yaml
+sim_disturber /root/ros2_ws/install/simulator/lib/simulator/sim_disturber --ros-args -p use_sim_time:=true
+simulator /root/ros2_ws/install/simulator/lib/simulator/simulator --ros-args -r __node:=drake_simulator --params-file /root/ros2_ws/install/simulator/share/simulator/config/simulator_params_go2.yaml

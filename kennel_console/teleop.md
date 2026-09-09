@@ -369,6 +369,17 @@ exactly what it always was: the mock's own rewind.
 
 ### 12.2 The gait picker says `active`, or `refused`
 
+> **A defect this had, found later by a cold container** (2026-09-08,
+> [`demo/scenarios.md`](../demo/scenarios.md) §1.4). `setGait` sent the call
+> through `call()`, whose response callback says its message unconditionally —
+> so a response slower than `GAIT_SETTLE_MS` painted `sent` back over the
+> `refused` the timer had already reached, and the picker was left showing a
+> message its own state machine had abandoned. The response callback is now
+> guarded on the gait still being the one it was sent for. The no-VM suite could
+> not have caught it: the fake bridge answers instantly, so both orderings are
+> the same ordering there.
+
+
 §4 ended: *"`/gait_state` is the observable that could say active, and reading it
 is not this issue."* This is that issue.
 
@@ -414,3 +425,126 @@ five groups. **51 → 76 checks, still no VM.**
 The fake answers each service in **its own shape** — `SetParameters` returns a
 list of results, `ResetSimulation` and the Triggers return a bool. One shape for
 all three was fine while only the gait was called.
+
+## 13. The disturbance over the bridge ([#68](https://github.com/alius-git/kennel/issues/68))
+
+The Interventions row has had an `inject` button since the prototype, and it has
+always pushed a *recorded* robot. It now pushes the real one.
+
+### 13.1 The call, and why nothing waits for it
+
+`/disturb_simulation` is `interfaces/srv/DisturbSim`: three forces, three
+torques and a duration, answering a bool. The payload is what the operator
+typed, and `tau` is always zero — the row has no torque fields, and inventing a
+number nobody chose would put it on the wire as though someone had.
+
+```js
+{force: [fx, fy, fz], tau: [0, 0, 0], time: duration}
+```
+
+**The service blocks for the whole of `time` before it answers.** The node
+publishes the rotated force, sleeps, publishes a zero, and only then returns
+`success` (`disturbance_node.cpp:39-65`) — measured **0.400 s wall for a 0.2 s
+request** at `simulator_realtime_rate: 0.5`. So the page sends the call and
+forgets it: the link routes the response to a callback whenever it arrives, and
+the joystick's 20 Hz tick is never in that path. `verify-teleop.sh` group 18
+proves it with a fixture that answers two seconds late — **40 publishes in those
+two seconds, largest gap 52 ms**.
+
+The operator sees two lines, and they are different claims:
+
+```
+disturbance requested: 100 N for 0.20 s — the service answers when the push ends
+disturbance done: 100 N for 0.20 s
+```
+
+and one feed entry, in the grammar the mock already writes (s007.bridge step 6's
+*same event-feed grammar*, and the line `verify-dashboard.py` group 13 pins):
+
+```
+Disturbance: 100 N for 0.20 s at body CoM (100, 0, 0)
+```
+
+### 13.2 The guard is the applied run, not the page
+
+The service exists only if the run **the guest launched** composed block 4. The
+page cannot see the guest, so it reads the newest run of `/api/runs` — what the
+status bar already calls *the run* (#62) — and checks `choices.disturbances`.
+With the toggle off it sends nothing and says which run and what to do:
+
+```
+inject is off: the newest run (run-…Z) was composed with disturbances off, so no
+/disturb_simulation is running.  Compose with the disturbances toggle on, then
+kennel-demo.sh run
+```
+
+The button is **dimmed, never hidden and never renamed** — the suites click it
+by its exact text, and an operator who cannot see a control cannot read why it
+is off. The link fetches the run list on *connect*, because the Dashboard is
+where the button is and a visit to the Runs view should not be a precondition.
+
+A push needs no publisher, so `inject` works from a page that **refused to
+drive** (someone else is holding `/quad_control_target`): watching a colleague's
+run and pushing the robot are different privileges. If the stack answers
+`result: false` — a disturber that is not running — the page says so and names
+the toggle rather than swallowing it.
+
+### 13.3 What the simulator was actually pushed with
+
+The witness is not the page. `k13-target-monitor.py` subscribes
+`/simulation_disturbance`, the topic the node publishes and the simulator
+consumes (`drake_simulator.cpp:355-358`, `:400`), and reports the push in both
+clocks:
+
+```json
+"disturbance": {"n": 2, "first_sim": 130.957, "sim_gap": 0.2, "wall_gap": 0.399,
+                "force_max_norm": 100.0, "force_max": [99.945, -3.313, 0.0]}
+```
+
+Two things that table says out loud:
+
+- **A push is a PAIR** — the force, then a zero after `time` — so `n: 2` is what
+  a bounded disturbance looks like, and the gap between them is its duration.
+- **The magnitude survives the rotation; the components do not.** The node
+  rotates the requested force into the robot's yaw frame before publishing
+  (`disturbance_node.cpp:52-53`), so `[100, 0, 0]` arrives as whatever "forward"
+  was at that instant. A scenario compares `force_max_norm`, never the vector.
+
+### 13.4 `time` is a sim second, and that was a decision
+
+Measured at `simulator_realtime_rate: 0.5`, one stack, both ways:
+
+| block 4 | `sim_gap` | `wall_gap` | the service answered after |
+|---|---|---|---|
+| `ros2 run simulator sim_disturber` | 0.100 | 0.200 | 0.201 s |
+| `… --ros-args -p use_sim_time:=true` | **0.200** | 0.399 | 0.400 s |
+
+The node sleeps on **its own** clock. Without `use_sim_time` a 0.2 s push is
+0.2 wall seconds — which is 0.1 sim-seconds at half rate, and a different amount
+of robot at every composed rate. The composed block carries the argument, so a
+push is a sim second like every other window in this repo
+([`verify.md` §1.1](../stack/verify.md)).
+
+### 13.5 Verification
+
+`verify-teleop.sh` grows a fifth far end — the **healthy** recording replayed
+with the held trot dropped, answering `/disturb_simulation` two seconds late —
+and four groups. **76 → 96 checks, still no VM.**
+
+| Group | Asserts, from the bytes the page sent |
+|---|---|
+| 18 | the payload (`force`, `tau` zero, `time`), exactly one call, the feed's line, and **20 Hz maintained through the two seconds the answer took** |
+| 19 | the newest run composed without a disturber → no call at all, and the feed names the run and the toggle |
+| 20 | a page that refused to DRIVE still injects; a `result: false` is reported, not swallowed |
+| 21 | plain `http.server`: the mock's own disturbance, no socket, nothing thrown |
+
+The fifth fixture is not a convenience. **The Dashboard renders an event feed
+only once samples are arriving** — with none, the panels correctly show their
+empty states — so a feed assertion made against a fake that answers services and
+says nothing else fails for the fixture's reason. And the mock arrives already
+fallen, with its feed pinned to the post-mortem window, so group 21 rewinds it
+first.
+
+Live: [`demo/scenarios.md`](../demo/scenarios.md) §1 drives the whole path
+against the real robot — 100 N staggers it, 300 N fells it, and the process set
+never changes.
