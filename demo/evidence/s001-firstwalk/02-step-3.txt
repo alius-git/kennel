@@ -1,0 +1,3 @@
+  [PASS] the send button is there (it exists only under serve.py)
+  [PASS] the strip says the server saved it -- saved /home/thales/kennel-runs/run-20260909T184456Z
+  [PASS]   and the folder it names holds the four artifacts on disk -- /home/thales/kennel-runs/run-20260909T184456Z -> 4 of 4

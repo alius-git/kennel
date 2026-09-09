@@ -1,0 +1,1 @@
+  [PASS] the gait picker reports WALKING_TROT ACTIVE from /gait_state -- ['gait WALKING_TROT active — /gait_state period 0.500 s, duty 0.60, offsets [0.00, 0.50, 0.50, 0.00] after 0.04 s']

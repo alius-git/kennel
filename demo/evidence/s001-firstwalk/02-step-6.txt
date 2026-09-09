@@ -1,0 +1,4 @@
+  [PASS] the Dashboard is open, with the Interventions row
+  [PASS] the bridge URL was prefilled from /api/health, so teleop's hand-off works -- ws://192.168.122.32:9090/
+  [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
+  [PASS] the panels are on the live stack, and the page says so -- live

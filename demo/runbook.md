@@ -12,6 +12,10 @@ into the guest over SSH by itself.
 
 ## 1. The short path
 
+**New here?** [`guides/first-run.md`](../guides/first-run.md) is the checklist —
+eight steps, each one command or one click, from a provisioned guest to a robot
+walking under your command. This page is the reference behind it.
+
 Five commands, two of which you run once per host and never again:
 
 ```bash
@@ -177,6 +181,9 @@ kennel-demo.sh scenario disturb   # s004 as a test: interventions on the real
                              # (64 checks, ~6 min; demo/scenarios.md)
 kennel-demo.sh scenario diagnose  # s003: degradation, fall, post-mortem
                              # (~15 min, up to three attempts)
+kennel-demo.sh scenario firstwalk # s001: guides/first-run.md performed and timed
+                             # (~2 min; needs the stack DOWN and port 8000 free,
+                             # because step 1 of the checklist starts the console)
 stack/bridge/verify-teleop-live.sh   # the teleop path, asserted against the real
                              # stack: 90 checks, ~10 min, leaves it in STAND
 kennel-demo.sh status        # what run is applied + is Meshcat reachable
@@ -202,7 +209,13 @@ do not.
 
 ### 3.1 What gets composed
 
-By default the composition proven in [`dry-run.md` §1](dry-run.md): `mpc_solver`
+The console ships four named presets — **Stock Go2 walk**, **Solver benchmark A
+(HPIPM)**, **Solver benchmark B (OSQP)** and **Stress** — and `KENNEL_PRESET`
+picks one of them in the UI by name or slug
+([`composer-scope.md` §7](../kennel_console/composer-scope.md)). Each is a
+measured row of [`stack/stress.md`](../stack/stress.md) §2.
+
+By default, with no preset, the composition proven in [`dry-run.md` §1](dry-run.md): `mpc_solver`
 = `PARTIAL_CONDENSING_OSQP` (controller YAML) and `simulator_realtime_rate` =
 `0.75` (simulator YAML), map left at stock — obstacle terrain is known not to
 walk ([`transfer.md` §6.3](../stack/transfer.md)). Override with knobs (§4).
@@ -292,7 +305,10 @@ tools that define them.
 | `KENNEL_WATCHDOG` | `1` | start the guest-side target watchdog beside the bridge ([`bridge.md` §11](../stack/bridge.md)). `0` leaves a killed tab's target in force — which is what the watchdog is for |
 | `KENNEL_WATCHDOG_STALE` | `1.0` | seconds without a target before the watchdog zeroes it |
 | `KENNEL_DISTURBANCES` | `0` | `1` composes the **fourth block**, the disturbance service ([#68](https://github.com/alius-git/kennel/issues/68)) — what `scenario disturb` needs |
-| `KENNEL_PRESET` | *(none)* | a named composition for `compose`/`all`. `stress` is the measured red one ([`stack/stress.md`](../stack/stress.md)); anything else is refused by name |
+| `KENNEL_PRESET` | *(none)* | one of the presets the **console ships**, picked in the UI by its name or its slug: `stock-go2-walk`, `solver-benchmark-a-hpipm`, `solver-benchmark-b-osqp`, `stress` ([`composer-scope.md` §7](../kennel_console/composer-scope.md)). The composition is the page's data, not the driver's; a name the page does not ship is refused **by the page**, which lists the four. It fills in only what you did not choose — an explicit `KENNEL_SOLVER` or `KENNEL_RATE` still wins. A preset *you* saved is not reachable here: the scripted compose drives a throwaway browser profile |
+| `KENNEL_S001_BUDGET` / `KENNEL_S001_TARGET` | `600` / `300` | seconds — s001's hard ceiling and its target, for `scenario firstwalk` |
+| `KENNEL_S001_VMAX` / `KENNEL_S001_VX_TOL` | `0.5` / `0.2` | what a fully-pushed stick asks for, and the ± band on it |
+| `KENNEL_S001_GUIDE` / `KENNEL_S001_EVIDENCE` | `guides/first-run.md` / `demo/evidence/s001-firstwalk` | the page `scenario firstwalk` performs, and where its transcripts land |
 | `KENNEL_MAP` | *(untouched)* | `flat_plane` / `obstacle_terrain` — an unset knob leaves the control alone, which is not the same as setting it to stock |
 | `KENNEL_HPIPM_MODE` / `KENNEL_CONDENSED` | *(untouched)* | the two solver-dependent MPC fields, for the sweep |
 | `YURUNA_DIR` | `~/git/yuruna` | framework checkout, for `setup` and `provision` |
@@ -305,6 +321,12 @@ tools that define them.
 | `KENNEL_UP_TIMEOUT` | `600` | bound on `up`'s wait for the lease and sshd, and on `halt`'s wait for the shutdown |
 
 ## 5. Troubleshooting
+
+| Symptom | What it means |
+|---|---|
+| `compose` says *"the preset is one the page ships — not offered"* and exits 1 | `KENNEL_PRESET` names something the console does not ship. The message lists the four it does; the composition lives in the page, not in the driver (§4) |
+| `scenario firstwalk` exits 2 with *"a stack is already running"* | that verb measures how long a first run takes **from nothing**, so a running stack is the precondition that must not hold. `kennel-demo.sh down` first |
+| `scenario firstwalk` exits 2 with *"something is already serving the console"* | step 1 of the checklist starts it, and the verb performs step 1. `kennel-demo.sh console stop` |
 
 Symptoms the dry run already met, plus the driver's own failure modes:
 

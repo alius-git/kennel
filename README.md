@@ -12,6 +12,10 @@ in [`plan/design.md`](plan/design.md).
 
 ## Quick start
 
+**New here?** [`guides/first-run.md`](guides/first-run.md) is the checklist —
+eight steps to a robot walking under your command, and the console serves it
+under **Guides**.
+
 One prerequisite is yours: the [Yuruna host
 installer](demo/runbook.md), then a re-login. `setup` does the rest — the
 release checkout, the three patches, the config, the guest ISO, the gate

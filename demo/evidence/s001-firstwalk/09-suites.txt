@@ -1,0 +1,15 @@
+=== 09-suites: the nine console suites on the host, after the user-surface pass ===
+No VM, no ROS, no stack. Each is run in full; the counts are its own.
+2026-09-09T18:55:00Z
+
+verify-serve      exit=0  pass=17  fail=0
+verify-scope      exit=0  pass=78  fail=0
+verify-generate   exit=0  pass=57  fail=0
+verify-export     exit=0  pass=72  fail=0
+verify-send       exit=0  pass=43  fail=0
+verify-teleop     exit=0  pass=96  fail=0
+verify-dashboard  exit=0  pass=85  fail=0
+verify-runs       exit=0  pass=84  fail=0
+verify-guides     exit=0  pass=62  fail=0
+
+594 checks across nine suites, no VM.

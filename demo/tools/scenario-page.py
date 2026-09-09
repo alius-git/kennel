@@ -25,6 +25,7 @@ what the PAGE does with what the GUEST saw:
     feed FILE               dump the event feed as JSON (t, text) pairs
     health FILE             dump the six pipeline blocks with their tint levels
     runs FILE               open the Runs view, dump its rows, come back
+    dom                     print the page's text, for a caller to assert about
     shot FILE               photograph the page
     errors                  no uncaught errors, and nothing fetched from anywhere
                             but localhost and the guest
@@ -420,6 +421,12 @@ elif step == "simt":
     if len(rest) and m:
         check("the sim clock restarted (under %s s)" % rest[0],
               float(m.group(1)) < float(rest[0]), v)
+
+elif step == "dom":
+    # The page's text, printed and asserted about by the CALLER. No checks of
+    # its own: s001 uses it to ask whether the console said what the checklist
+    # promised it would, and that assertion belongs to the checklist.
+    print(txt())
 
 elif step == "errors":
     check("no uncaught errors anywhere in the session",

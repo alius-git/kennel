@@ -126,6 +126,13 @@ Two more things the table says out loud:
 `mpc_condensed_size: 1`, `simulator_realtime_rate: 1.0`, flat plane**. It fills
 in only what the operator did not choose, so every knob still wins over it.
 
+Since [#72](https://github.com/alius-git/kennel/issues/72) this composition
+**ships in the console** as the preset *Stress*, and `KENNEL_PRESET=stress` picks
+it there by name or slug -- the driver holds no table of its own. The two are the
+same bytes, and that was checked rather than assumed: the run folder composed by
+name diffs empty against `red-osqp1/runs/run-20260908T184703Z` below
+([`kennel_console/composer-scope.md`](../kennel_console/composer-scope.md) §7.2).
+
 Three runs, `stress/evidence/red-osqp1/`:
 
 | run | mean ms | max ms | verdict | check 8 | check 9 | travelled | z median |

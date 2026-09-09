@@ -1,0 +1,176 @@
+=== 03-scenario-cold: the checklist performed from a freshly reset guest ===
+The run demo/scenarios.md §6 quotes. A cold container, the stack down, the
+console port free -- a newcomer's starting line.
+2026-09-09T18:43:11Z
+
+$ demo/tools/kennel-demo.sh down
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] stack stopped in container 'dfki_quad'. The container itself is left running.
+
+$ demo/tools/kennel-demo.sh reset
+==== reset: workload.guest.ubuntu.server.24.kennel.reset.ssh (warm path -- revert to 'kennel-vm-baseline') ====
+Guest key (from baseline): guest.ubuntu.server.24
+  Stopping concurrent VM 'kennel-vm-baseline' before the cycle starts.
+Chain: start.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.stack.ssh -> workload.guest.ubuntu.server.24.kennel.baseline.ssh -> workload.guest.ubuntu.server.24.kennel.reset.ssh
+requiresSnapshot: snapshot 'kennel-vm-baseline' present on persisted VM 'kennel-vm-baseline' -- skipping baseline chain (warm path).
+VM 'kennel-vm-baseline' already exists. Reusing.
+VM 'kennel-vm-baseline': skipping pre-sequence start -- first step is loadDiskSnapshot (handler will start the VM after the restore).
+  VM:       kennel-vm-baseline
+  >> [1] loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+  >> [5] sshExec: Assert the restored guest carries the baseline record at the stack pin
+  >> [11] sshExec: Assert no composed run is applied (a baseline is stock)
+    Sequence: Kennel (SSH): revert the kennel-vm guest to the 'kennel-vm-baseline' disk snapshot and prove what came back is the appliance -- stock at the pin, container running, workspace built, simulator launchable.
+       1 s [1/12] PASS loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+      11 s [2/12] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+       0 s [3/12] PASS sshExec: Smoke test: whoami/hostname
+       0 s [4/12] PASS sshExec: Assert the guest that came back is kennel-vm
+       0 s [5/12] PASS sshExec: Assert the restored guest carries the baseline record at the stack pin
+       0 s [6/12] PASS sshExec: Assert the clone sits at the stack pin
+       0 s [7/12] PASS sshExec: Assert no tracked file differs from the pin (configs are stock)
+       1 s [8/12] PASS sshExec: Start the dfki_quad container and assert it is running
+       0 s [9/12] PASS sshExec: Assert the go2 workspace survived the revert
+      56 s [10/12] PASS sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+       0 s [11/12] PASS sshExec: Assert no composed run is applied (a baseline is stock)
+       0 s [12/12] PASS sshExec: Record what the reset returned (feeds vm/snapshot.md)
+[kennel-demo] the guest is back at the baseline: stock configs at the pin, container running,
+==== baseline record ====
+
+$ demo/tools/kennel-demo.sh scenario firstwalk
+=== scenario s001.firstwalk -- guides/first-run.md, performed and timed (#73) ===
+2026-09-09T18:44:46Z
+guest        kennel-vm at 192.168.122.32
+checklist    guides/first-run.md
+evidence     /home/thales/kennel/demo/evidence/s001-firstwalk
+budget       600s ceiling, 300s target -- s001's own numbers
+
+the checklist, as this verb reads it:
+  1  bash   1 · Serve the console       demo/tools/kennel-demo.sh console          want Kennel%20Console.dc.html
+  2  click  2 · Load the stock preset   preset Stock Go2 walk                      want preset · Stock Go2 walk
+  3  click  3 · Send the run to the host send                                       want saved
+  4  bash   4 · Run it                  demo/tools/kennel-demo.sh run              want pass=10 fail=0
+  5  bash   5 · Take the controls       demo/tools/kennel-demo.sh teleop           want ws://
+  6  click  6 · Connect                 dashboard\nconnect                         want driving
+  7  click  7 · Choose a gait           gait WALKING_TROT                          want gait WALKING_TROT active
+  8  click  8 · Drive                   stick -1\nhold 10\nrelease                 want driving · 20 Hz
+
+[clock] [p22-clock] measuring RAW vs adjusted over 5s of true time...
+[clock]   CLOCK_MONOTONIC_RAW  5.022 s   100.0 %  (reference)
+[clock]   CLOCK_MONOTONIC      5.022 s   100.0 %
+[clock]   CLOCK_REALTIME       5.022 s   100.0 %
+
+---- step 1 · 1 · Serve the console ----
+[scenario] $ demo/tools/kennel-demo.sh console
+[scenario]   [kennel-demo]   * click 'send to kennel-runs' -- it writes the run folder straight into /home/thales/kennel-runs
+[scenario]   [kennel-demo]   * or click 'generate run' and let the archive land in /home/thales/Downloads
+[scenario]   [kennel-demo] then, in this terminal:
+[scenario]   [kennel-demo]     demo/tools/kennel-demo.sh run
+[scenario]   [kennel-demo] it finds whichever of the two is newer by itself -- no unzip, no path.
+[scenario]   [kennel-demo] stop the server with:  demo/tools/kennel-demo.sh console stop
+  [PASS] step 1 ran: demo/tools/kennel-demo.sh console -- exit 0
+  [PASS]   and said what the checklist promises -- found: Kennel%20Console.dc.html
+
+---- step 2 · 2 · Load the stock preset ----
+[scenario]     [PASS] the console offers a preset called Stock Go2 walk -- Stock Go2 walk
+[scenario]     [PASS]   and says it is holding it -- preset · Stock Go2 walk
+[scenario]     [PASS]   with a composition in the generated panes -- 3693 chars
+  [PASS]   the page says what the checklist promises -- found: preset · Stock Go2 walk
+
+---- step 3 · 3 · Send the run to the host ----
+[scenario]     [PASS] the send button is there (it exists only under serve.py)
+[scenario]     [PASS] the strip says the server saved it -- saved /home/thales/kennel-runs/run-20260909T184456Z
+[scenario]     [PASS]   and the folder it names holds the four artifacts on disk -- /home/thales/kennel-runs/run-20260909T184456Z -> 4 of 4
+  [PASS]   the page says what the checklist promises -- found: saved
+
+---- step 4 · 4 · Run it ----
+[scenario] $ demo/tools/kennel-demo.sh run
+[scenario]   ==== done ====
+[scenario]   [kennel-demo]   guest     0s
+[scenario]   [kennel-demo]   transfer  2s
+[scenario]   [kennel-demo]   launch    30s
+[scenario]   [kennel-demo]   verify    37s
+[scenario]   [kennel-demo]   walk      6s
+  [PASS] step 4 ran: demo/tools/kennel-demo.sh run -- exit 0
+  [PASS]   and said what the checklist promises -- found: pass=10 fail=0
+
+---- step 5 · 5 · Take the controls ----
+[scenario] $ demo/tools/kennel-demo.sh teleop
+[scenario]   [kennel-demo] The velocity target is published while the page is connected; releasing the
+[scenario]   [kennel-demo] stick ramps it back to zero. STAND and E-STOP are beside the gait picker.
+[scenario]   [kennel-demo] A guest-side watchdog is running: if this page dies without warning, the
+[scenario]   [kennel-demo] robot's target is zeroed 1.0s later. It is the only thing that
+[scenario]   [kennel-demo] catches a killed tab -- JavaScript cannot (kennel_console/teleop.md §5).
+[scenario]   [kennel-demo] When you are done:  demo/tools/kennel-demo.sh teleop stop
+  [PASS] step 5 ran: demo/tools/kennel-demo.sh teleop -- exit 0
+[scenario] reloading the page so it sees the bridge URL teleop just published
+  [PASS] the console booted against the scenario's own serve.py
+  [PASS] the bridge URL was prefilled from /api/health, so teleop's hand-off works -- ws://192.168.122.32:9090/
+  [PASS] nothing is dialled before the operator asks -- []
+  [PASS]   and said what the checklist promises -- found: ws://
+
+---- step 6 · 6 · Connect ----
+[scenario]     [PASS] the Dashboard is open, with the Interventions row
+[scenario]     [PASS] the bridge URL was prefilled from /api/health, so teleop's hand-off works -- ws://192.168.122.32:9090/
+[scenario]     [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
+[scenario]     [PASS] the panels are on the live stack, and the page says so -- live
+  [PASS]   the page says what the checklist promises -- found: driving
+
+---- step 7 · 7 · Choose a gait ----
+[scenario]     [PASS] the gait picker reports WALKING_TROT ACTIVE from /gait_state -- ['gait WALKING_TROT active — /gait_state period 0.500 s, duty 0.60, offsets [0.00, 0.50, 0.50, 0.00] after 0.04 s']
+  [PASS]   the page says what the checklist promises -- found: gait WALKING_TROT active
+
+---- step 8 · 8 · Drive ----
+[scenario]     [PASS] the stick is pushed (ny=-1.0)
+[scenario] holding the stick for 10 sim-s, measured on the guest
+[scenario]     [PASS] the stick is released
+  [PASS]   the page says what the checklist promises -- found: driving · 20 Hz
+
+---- the walk itself, from the guest ----
+  [PASS] the robot went somewhere -- x_travel 4.6436 m
+  [PASS] at about the commanded 0.5 m/s -- vx_mean 0.4647, band 0.4000..0.6000
+  [PASS] on its feet the whole way -- z_median 0.31151 m
+  [PASS] and upright -- tilt_over_frac 0.0
+  [PASS] no fall banner
+  [PASS] the six pipeline blocks report a tint a suite can read -- [['Gait Sequencer', 'green'], ['MPC', 'green'], ['WBC', 'green'], ['Swing Leg Ctrl', 'green'], ['Contact Logic', 'green'], ['Model Adaptation', 'off']]
+  [PASS] no panel is in an error state at timer stop -- none red -- s001's TVP
+
+---- the checklist was sufficient ----
+  [PASS] no uncaught errors anywhere in the session -- []
+  [PASS] nothing was fetched from anywhere but localhost and the guest -- []
+  [PASS] photographed 05-renders/05-walking.png -- 245573 B
+[scenario]   CMD_EXTRA=[]
+[scenario]   PAGE_EXTRA=[]
+[scenario]   CMD_RAN=3 PAGE_RAN=9
+  [PASS] every command executed came from the checklist -- []
+  [PASS] every page action came from the checklist -- []
+
+---- the time it took ----
+[clock] phase          raw (true)     adjusted   ratio   started (UTC)
+[clock] ------------------------------------------------------------------------
+[clock] start                  0s           0s   1.000   18:44:51
+[clock] step-1                 4s           4s   1.000   18:44:51
+[clock] step-2                 1s           1s   1.000   18:44:55
+[clock] step-3                 0s           0s   1.000   18:44:55
+[clock] step-4              1m15s        1m15s   1.000   18:44:56
+[clock] step-5                18s          18s   1.000   18:46:11
+[clock] step-6                 2s           2s   1.000   18:46:29
+[clock] step-7                 0s           0s   1.000   18:46:31
+[clock] step-8                13s          13s   1.000   18:46:31
+[clock] ------------------------------------------------------------------------
+[clock] TOTAL               1m53s        1m53s   1.000
+[clock] 
+[clock] Total elapsed, true time (CLOCK_MONOTONIC_RAW): 113.1 s = 1m53s
+[clock] Same interval on the adjusted clock:            113.1 s = 1m53s
+[clock] The adjusted clock lost 0.0 s over the run (0.0 % slow) — vm/provisioning.md 6a.
+[clock] Every duration above is the raw column. Quote no other.
+  [PASS] first boot to sustained commanded walking, inside the 600s ceiling -- 113.1 s on CLOCK_MONOTONIC_RAW
+  [NOTE] and inside the 300s target -- 113.1 s
+
+pass=40 fail=0 bypass=0
+ALL CHECKS PASSED
+
+[scenario] leaving the stack UP and standing -- the checklist ends with a walking robot
+[scenario]   [kennel-bridge] watchdog stopped (interventions this session: 1)
+[scenario]   [kennel-bridge] bridge stopped
+[scenario]   [kennel-demo] teleop stopped. The console will report the bridge as unreachable.
+[scenario]   [kennel-demo] stopped the console server (pid 1225892)
+exit=0

@@ -1,0 +1,62 @@
+=== 10-after: the host and guest as this pass leaves them ===
+2026-09-09T19:02:20Z
+
+$ demo/tools/kennel-demo.sh console --no-open
+[kennel-demo] serving          kennel_console/ on port 8000 (pid 1232224)
+[kennel-demo] console          http://localhost:8000/Kennel%20Console.dc.html
+
+[kennel-demo] compose the run in the browser, then either:
+
+$ curl -s localhost:8000/api/health
+{
+  "kennel": true,
+  "out": "/home/thales/kennel-runs",
+  "pin": "dcf53c596339afd45b82f12c54b1e93e8273c2f4",
+  "bridge": null,
+  "meshcat": null,
+  "guides": [
+    {
+      "name": "first-run.md",
+      "title": "First run \u2014 a walking robot in eight steps"
+    },
+    {
+      "name": "walkthrough.md",
+      "title": "Walkthrough \u2014 what the first run was actually doing"
+    },
+    {
+      "name": "diagnosis.md",
+      "title": "Diagnosis \u2014 reading the Dashboard"
+    }
+  ]
+}
+
+$ demo/tools/kennel-demo.sh status
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.32 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run run-20260909T184456Z
+[status] runs staged run-20260909T184456Z 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      f2674ff5  f2674ff5  f2674ff5  run-20260909T184456Z
+  mit_controller_sim_go2.yaml    8b0ffdee  8b0ffdee  8b0ffdee  run-20260909T184456Z
+
+
+[kennel-demo] console runs in /home/thales/kennel-runs (newest first):
+[kennel-demo]   run-20260909T184456Z
+[kennel-demo]   run-20260909T183948Z
+[kennel-demo]   run-20260909T183701Z
+[kennel-demo]   run-20260908T232641Z
+[kennel-demo]   run-20260907T202843Z
+
+[kennel-demo] Meshcat reachable:  http://192.168.122.32:7000/
+[kennel-demo] bridge not up (start it with:  demo/tools/kennel-demo.sh teleop)
+
+$ ls -t ~/kennel-runs | head -3
+run-20260909T184456Z
+run-20260909T184456Z.zip
+run-20260909T183948Z

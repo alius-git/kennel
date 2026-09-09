@@ -30,7 +30,9 @@
 #              then files its report in the applied run's folder as verify.json
 #   scenario   demo/tools/scenario-<name>.sh -- one verification scenario of
 #              plan/scenarios.md driven end to end and asserted (see
-#              demo/scenarios.md). A test, not a demo phase.
+#              demo/scenarios.md). A test, not a demo phase. `firstwalk`
+#              performs guides/first-run.md itself, so its subject is a
+#              document rather than the stack.
 #   walk       vm/test/verify-meshcat-host.sh + p21-trot-hold.sh
 #   teleop     stack/bridge/kennel-bridge.sh (on guest) + verify-bridge-host.sh,
 #              then the console: drive the robot from the browser joystick
@@ -66,6 +68,10 @@
 #     kennel-demo.sh scenario disturb  # s004: interventions, and the process
 #                                      # set that never changes (#69)
 #     kennel-demo.sh scenario diagnose # s003: degradation, fall, post-mortem (#71)
+#     kennel-demo.sh scenario firstwalk # s001: guides/first-run.md performed and
+#                                      # timed. Needs the stack DOWN and the
+#                                      # console port free -- step 1 of the
+#                                      # checklist is what starts it (#73)
 #
 # Knobs (all optional, environment variables):
 #   YURUNA_DIR            ~/git/yuruna       framework checkout (setup, provision)

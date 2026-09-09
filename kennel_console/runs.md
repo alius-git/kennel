@@ -279,6 +279,6 @@ and in [`dashboard/evidence/`](dashboard/evidence/):
 | Issue | What it takes from here |
 |---|---|
 | [#69](https://github.com/alius-git/kennel/issues/69), [#71](https://github.com/alius-git/kennel/issues/71) | a scenario verb can assert a verdict from a file instead of scraping stdout |
-| [#72](https://github.com/alius-git/kennel/issues/72) | named presets have a real history to be compared against |
+| [#72](https://github.com/alius-git/kennel/issues/72) — **done** | named presets have a real history to be compared against; and this suite's group 7 is where their round trip is asserted, because only here is there a real server writing real run folders ([`composer-scope.md`](composer-scope.md) §7) |
 | [#24](https://github.com/alius-git/kennel/issues/24) | the Yuruna sequence can read `verify.json` rather than parsing the report |
 | [#74](https://github.com/alius-git/kennel/issues/74) | `report.json` already carries the pin; a version manifest is the next field |

@@ -252,6 +252,21 @@ property from the other direction and always runs.
 - **Copy buttons rely on the clipboard API**, which browsers gate on a user
   gesture; the panes are selectable as a fallback.
 
+## 6.1 Presets generate through these emitters, and nothing else
+
+A named preset ([#72](https://github.com/alius-git/kennel/issues/72),
+[`composer-scope.md`](composer-scope.md) §7) is composer state and nothing more:
+loading one sets `cfg`, and the files come out of the emitters above exactly as
+they do for a hand-made composition. Nothing preset-specific reaches a YAML, and
+`run.json` records the composition rather than the preset's name -- a run folder
+says what was composed, which is the only thing the stack can be checked against.
+
+The `preset · <name> (modified)` label is these emitters used as a comparator:
+the composer is still holding the preset when `emitSimYaml` and `emitCtrlYaml`
+produce byte-identical text for both states. It is the same comparison the
+`load YAML` round-trip makes, so "still the preset" means what
+[`export.md`](export.md) §2.1 means by identical.
+
 ## 7. What this feeds
 
 | Issue | What it takes from here |
