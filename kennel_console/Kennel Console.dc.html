@@ -71,7 +71,15 @@ select{appearance:none}
             </select>
             <div onClick="{{ onPresetSave }}" style="padding:6px 12px;border:1px solid #232b36;border-radius:4px;font:500 11px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757;color:#dbe2ea">save preset</div>
             <div onClick="{{ onOpenYaml }}" style="padding:6px 12px;border:1px solid #232b36;border-radius:4px;font:500 11px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757;color:#dbe2ea">load YAML</div>
+            <input type="text" value="{{ presetInput }}" onChange="{{ onPresetInput }}" placeholder="preset name" style="width:150px;background:#0a0e14;border:1px solid #232b36;color:#dbe2ea;font-size:11px;padding:5px 8px;border-radius:4px">
+            <div onClick="{{ onPresetDuplicate }}" style="padding:6px 12px;border:1px solid #232b36;border-radius:4px;font:500 11px 'IBM Plex Mono';color:#a8b3c0;cursor:pointer" style-hover="border-color:#3b4757;color:#dbe2ea">duplicate</div>
+            <div onClick="{{ onPresetDelete }}" title="{{ deleteWhy }}" style="padding:6px 12px;border:1px solid #232b36;border-radius:4px;font:500 11px 'IBM Plex Mono';color:{{ deleteFg }};cursor:pointer" style-hover="border-color:#3b4757">delete</div>
           </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:baseline;margin:-8px 0 14px">
+          <div style="font:500 11px 'IBM Plex Mono';color:#8fc9ea">{{ presetLabel }}</div>
+          <div style="font:400 10px 'IBM Plex Mono';color:{{ presetFg }}">{{ presetMsg }}</div>
         </div>
 
         <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start">
@@ -1010,6 +1018,83 @@ function normalizeCfg(cfg) {
   });
   return out;
 }
+
+// ─── Named presets (issue #72) ───────────────────────────────────────────────
+//
+// Presets that SHIP with the page. Read-only and duplicable, never written to
+// localStorage -- kennel.presets stays the operator's own list, so a poisoned
+// or pre-#17 entry there (verify-scope.py group 8) is still that list's problem
+// and not this one's.
+//
+// Every cfg is a WHOLE composer state built from defaultCfg() and passed
+// through normalizeCfg(), so a load has nothing to invent; and every one is a
+// measured row of stack/stress.md §2 -- a preset nobody has run is a guess with
+// a name. The rows, with what was measured on the reference guest:
+//
+//   Stock Go2 walk            hpipm-speed-5-r1   0.685 ms mean, walked
+//   Solver benchmark A        hpipm-speed-5-r0   0.67  ms, rtf 2.15, walked
+//   Solver benchmark B        osqp-5-r0          1.151 ms, rtf 2.06, walked
+//   Stress                    osqp-1-r1          3.75  ms, fell 3 of 3
+//
+// A and B sit at rate 0 deliberately: at rate 1.0 A would be byte-identical to
+// Stock Go2 walk under a second name, and the Runs diff would show the pair as
+// no difference at all. Rate 0 is also what a solver benchmark is for -- the
+// deadline is a wall-clock budget per sim-time cycle, so "as fast as possible"
+// is 2.1x the solves per wall second (stress.md §1).
+function shippedCfg(o) {
+  const c = defaultCfg();
+  if (o.rate !== undefined) c.sim.real_time_rate = o.rate;
+  if (o.solver) c.blocks.mpc.impl = o.solver;
+  if (o.condensed !== undefined) c.blocks.mpc.params.mpc_condensed_size = o.condensed;
+  return normalizeCfg(c);
+}
+const SHIPPED_PRESETS = [
+  {name: 'Stock Go2 walk',
+   why: 'every choice at its stock value — the pin’s own files, byte for byte (generate.md §4 group 2); stress.md §2 hpipm-speed-5-r1',
+   cfg: shippedCfg({})},
+  {name: 'Solver benchmark A (HPIPM)',
+   why: 'PARTIAL_CONDENSING_HPIPM · SPEED · condensed 5, flat plane, rate 0 (as fast as possible: 2.1× the solves per wall second, stress.md §1); stress.md §2 hpipm-speed-5-r0',
+   cfg: shippedCfg({rate: 0})},
+  {name: 'Solver benchmark B (OSQP)',
+   why: 'A with the solver changed and nothing else — the pair s005.compare diffs; stress.md §2 osqp-5-r0',
+   cfg: shippedCfg({rate: 0, solver: 'PARTIAL_CONDENSING_OSQP'})},
+  {name: 'Stress',
+   why: 'PARTIAL_CONDENSING_OSQP · condensed 1, flat plane, rate 1.0 — the red composition: 3 of 3 fell, 3 of 3 crossed the 7 ms amber line (stress.md §4). What kennel-demo.sh scenario diagnose composes',
+   cfg: shippedCfg({solver: 'PARTIAL_CONDENSING_OSQP', condensed: 1})}
+];
+const SHIPPED_NAMES = SHIPPED_PRESETS.map(p => p.name);
+// "stock-go2-walk", "solver-benchmark-a-hpipm", ... -- what KENNEL_PRESET may
+// say instead of the exact name (p22-console-demo.py matches either, so the
+// driver never has to spell a name with spaces and parentheses in it).
+function presetSlug(name) {
+  return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+// Is the composer still holding what the preset holds? A BYTE comparison of
+// what the two states EMIT, never a walk over their fields: the emitters are
+// deterministic (generate.md §2.2) and they are what a run folder carries, so
+// this is the same question `load YAML`'s round-trip asks. The disturbances
+// toggle is compared separately because it is the one choice that reaches no
+// YAML at all (#68, generate.md §1.3).
+function samePreset(a, b) {
+  return !!a && !!b && emitSimYaml(a) === emitSimYaml(b) && emitCtrlYaml(a) === emitCtrlYaml(b)
+         && !!a.sim.disturbances === !!b.sim.disturbances;
+}
+// The name a save falls back to: the friendly solver label, not the
+// 26-character canonical string. Unchanged from before #72.
+function autoPresetName(cfg) {
+  const solver = (BY_ID.mpc.impls.find(x => x[0] === cfg.blocks.mpc.impl) || [0, cfg.blocks.mpc.impl])[1];
+  return cfg.map + ' / ' + solver + ' · ' + new Date().toISOString().slice(5, 16).replace('T', ' ');
+}
+function persistPresets(list) {
+  try { localStorage.setItem('kennel.presets', JSON.stringify(list)); } catch (e) {}
+}
+function uniquePresetName(base, taken) {
+  let name = base, k = 2;
+  while (taken.some(p => p.name === name)) name = base + ' (' + (k++) + ')';
+  return name;
+}
+function presetMsg(text, err) { return {presetMsg: text, presetErr: !!err}; }
 
 function yamlVal(v) { return typeof v === 'boolean' ? (v ? 'true' : 'false') : String(v); }
 
@@ -2566,6 +2651,14 @@ class Component extends DCLogic {
       yamlTab: 'sim', copied: '', runs: seedRuns(), sel: [], detail: null, pinFall: false,
       yamlModal: false, simText: '', pipeText: '', roundTrip: null, presets: [], presetSel: '',
       saved: '', lastExport: '',
+      // Named presets (#72). `presets` above is the OPERATOR's list, read from
+      // localStorage; SHIPPED_PRESETS is the page's own and is never written
+      // there. presetName/presetOwn say which one the composer is holding and
+      // whose it is; presetCfg is that preset's normalized state, kept so the
+      // label's `(modified)` can be a BYTE comparison of the emitted pair
+      // rather than a guess about what the operator touched.
+      presetName: '', presetOwn: '', presetCfg: null,
+      presetInput: '', presetMsg: '', presetErr: false,
       // Null until /api/health answers (componentDidMount). Null is the normal
       // state: served by plain http.server there is no such endpoint, and the
       // console must then be exactly what it was before serve.py existed.
@@ -3366,20 +3459,97 @@ class Component extends DCLogic {
           runSeq: s.runSeq + 1, lastExport: stamp.dir + '.zip'
         }));
       },
-      presets: st.presets.map((p, i) => ({v:String(i), label:p.name})),
+      // ---- Named presets (#72) -------------------------------------------
+      //
+      // Two lists, one select: the four the page ships (values 's0'..'s3') and
+      // the operator's own (values 'u0'..), shipped first. The `load preset…`
+      // option keeps its text and its empty value -- verify-scope.py group 8
+      // finds this select by that text, finds an option by ITS text, and sets
+      // .value directly, so the scheme is free and the two texts are not.
+      presets: SHIPPED_PRESETS.map((p, i) => ({v: 's' + i, label: p.name}))
+        .concat(st.presets.map((p, i) => ({v: 'u' + i, label: p.name}))),
       presetSel: st.presetSel,
-      onPresetSave: () => {
-        // friendly solver label, not the 26-character canonical string
-        const solver = (BY_ID.mpc.impls.find(x => x[0] === cfg.blocks.mpc.impl) || [0, cfg.blocks.mpc.impl])[1];
-        const name = cfg.map + ' / ' + solver + ' · ' + new Date().toISOString().slice(5, 16).replace('T', ' ');
-        const next = st.presets.concat([{name, cfg: clone(cfg)}]);
-        try { localStorage.setItem('kennel.presets', JSON.stringify(next)); } catch (e) {}
-        this.setState({presets: next});
-      },
       onPresetLoad: e => {
-        const i = e.target.value; if (i === '') return;
-        this.setState({cfg: normalizeCfg(st.presets[Number(i)].cfg), presetSel: ''});
+        const v = e.target.value; if (v === '') return;
+        const src = v[0] === 's' ? SHIPPED_PRESETS[Number(v.slice(1))] : st.presets[Number(v.slice(1))];
+        if (!src) return;
+        // Shipped or saved, a preset is untrusted input like a pasted YAML or a
+        // loaded run: it goes through the same funnel (composer-scope.md §3).
+        const next = normalizeCfg(clone(src.cfg));
+        this.setState(Object.assign(
+          {cfg: next, presetSel: '', presetName: src.name,
+           presetOwn: v[0] === 's' ? 'shipped' : 'user',
+           presetCfg: clone(next), presetInput: ''},
+          presetMsg('loaded ' + src.name + (v[0] === 's'
+            ? ' — ships with the console; duplicate it to edit under your own name' : ''), false)));
       },
+      onPresetInput: e => this.setState({presetInput: e.target.value}),
+      onPresetSave: () => {
+        const typed = st.presetInput.trim();
+        // The typed name, else the LOADED preset's -- whosever it is. Falling
+        // back to the auto-name when a shipped preset is loaded would quietly
+        // save a copy of it under a machine-made name, which is the one thing
+        // "read-only" has to prevent; naming it here is what makes the refusal
+        // below reachable.
+        const name = typed || st.presetName || autoPresetName(cfg);
+        if (SHIPPED_NAMES.indexOf(name) >= 0) {
+          this.setState(presetMsg('“' + name + '” ships with the console and is read-only'
+            + ' — duplicate it, or type another name', true));
+          return;
+        }
+        const next = st.presets.slice();
+        const k = next.findIndex(p => p.name === name);
+        if (k >= 0) next[k] = {name: name, cfg: clone(cfg)}; else next.push({name: name, cfg: clone(cfg)});
+        persistPresets(next);
+        this.setState(Object.assign(
+          {presets: next, presetName: name, presetOwn: 'user', presetCfg: clone(cfg), presetInput: ''},
+          presetMsg((k >= 0 ? 'saved over ' : 'saved ') + name, false)));
+      },
+      onPresetDuplicate: () => {
+        const typed = st.presetInput.trim();
+        // Duplicating a copy names the next one from the ROOT, so a third press
+        // gives `X (copy) (3)` and not `X (copy) (copy) (copy)`. Only the copy
+        // suffix this function itself writes is stripped -- a user's own
+        // `run (2)` keeps its number.
+        const root = (st.presetName || autoPresetName(cfg)).replace(/ \(copy\)( \(\d+\))?$/, '');
+        const base = typed || (root + ' (copy)');
+        const name = uniquePresetName(base, st.presets.concat(SHIPPED_PRESETS));
+        const next = st.presets.concat([{name: name, cfg: clone(cfg)}]);
+        persistPresets(next);
+        this.setState(Object.assign(
+          {presets: next, presetName: name, presetOwn: 'user', presetCfg: clone(cfg), presetInput: ''},
+          presetMsg('duplicated as ' + name, false)));
+      },
+      onPresetDelete: () => {
+        if (st.presetOwn !== 'user') {
+          this.setState(presetMsg(st.presetOwn === 'shipped'
+            ? '“' + st.presetName + '” ships with the console and cannot be deleted'
+            : 'no saved preset is loaded', true));
+          return;
+        }
+        const gone = st.presetName;
+        const next = st.presets.filter(p => p.name !== gone);
+        persistPresets(next);
+        this.setState(Object.assign(
+          {presets: next, presetName: '', presetOwn: '', presetCfg: null},
+          presetMsg('deleted ' + gone, false)));
+      },
+      presetInput: st.presetInput,
+      // What the composer is holding, and whether it still IS that. The
+      // comparison is the emitted bytes, not a field-by-field walk: it is the
+      // same question `load YAML`'s round-trip asks, so "still the preset"
+      // means what export.md §2.1 means by identical.
+      presetLabel: st.presetName
+        ? 'preset · ' + st.presetName + (samePreset(cfg, st.presetCfg) ? '' : ' (modified)') : '',
+      presetMsg: st.presetMsg,
+      presetFg: st.presetErr ? '#d98a84' : '#8fc9ea',
+      // Always present, dimmed when inert -- the `inject` guard's shape. A
+      // conditional control would move document order between renders, and
+      // every suite clicks the FIRST element whose text matches.
+      deleteFg: st.presetOwn === 'user' ? '#a8b3c0' : '#4b5563',
+      deleteWhy: st.presetOwn === 'user' ? 'delete ' + st.presetName
+        : (st.presetOwn === 'shipped' ? 'shipped presets cannot be deleted'
+                                      : 'load a saved preset to delete it'),
       onOpenYaml: () => this.setState({yamlModal:true, simText, pipeText, roundTrip:null}),
       onCloseYaml: () => this.setState({yamlModal:false}),
       yamlModal: st.yamlModal, simText: st.simText, pipeText: st.pipeText,

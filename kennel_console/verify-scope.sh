@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# Verify the composer exposes only the MVP scope (issue #17).
+# Version: 2026.09.09
+# Verify the composer exposes only the MVP scope (#17), and its named presets (#72).
 #
 #   ./kennel_console/verify-scope.sh [httpPort] [cdpPort]
 #
-# Serves the console, drives it in a throwaway headless Chrome profile with all
-# external DNS blocked, and asserts every acceptance criterion of #17: the map
-# picker offers two cards, the solver select emits the canonical parameter
-# strings, solver-dependent fields appear only where the pin consumes them,
-# out-of-scope stages are visible-but-fixed, and a pre-#17 preset cannot smuggle
-# a removed option back in. See composer-scope.md §4.
+# Runs on the HOST. NO VM, NO ROS, NO STACK. Serves the console, drives it in a
+# throwaway headless Chrome profile with all external DNS blocked, and asserts
+# every acceptance criterion of #17 -- the map picker offers two cards, the
+# solver select emits the canonical parameter strings, solver-dependent fields
+# appear only where the pin consumes them, out-of-scope stages are
+# visible-but-fixed, and a pre-#17 preset cannot smuggle a removed option back
+# in -- plus group 11 for #72: the four presets the page SHIPS, and save, load,
+# duplicate and delete of the operator's own. See composer-scope.md §4 and §7.
 #
-# Requires google-chrome. Exit 0 = every check passed.
+# 78 checks. Requires google-chrome. Exit 0 = every check passed.
 
 set -uo pipefail
 
