@@ -58,7 +58,11 @@ SSH_OPTS=(-i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/n
           -o LogLevel=ERROR -o ConnectTimeout=10 -o BatchMode=yes)
 
 # --- REGION: preconditions, each naming its fix (#45)
-scenario_preflight() {   # $1 = scenario name, for the messages
+# $2 = "nostack" for a scenario that must start with the stack DOWN. Every other
+# verb drives a stack that is already up; s001 starts one from nothing and times
+# how long that takes, so for that one a running stack is the precondition that
+# must NOT hold (#73).
+scenario_preflight() {   # $1 = scenario name, $2 = "" | nostack
     command -v google-chrome >/dev/null || {
         fail "google-chrome is required to drive the console."; exit 2; }
     [ -f "$REPO_ROOT/kennel_console/cdp.py" ] || {
@@ -83,9 +87,16 @@ scenario_preflight() {   # $1 = scenario name, for the messages
     TARGET="$GUEST_USER@$GUEST_IP"
     ssh "${SSH_OPTS[@]}" "$TARGET" true 2>/dev/null || {
         fail "cannot reach the guest over SSH at $TARGET." "Key: $SSH_KEY"; exit 2; }
-    "$REPO_ROOT/vm/test/verify-meshcat-host.sh" --quiet >/dev/null 2>&1 || {
-        fail "the simulator is not reachable -- there is no stack to drive." \
-             "Bring one up:  demo/tools/kennel-demo.sh run"; exit 2; }
+    if [ "${2:-}" = "nostack" ]; then
+        "$REPO_ROOT/vm/test/verify-meshcat-host.sh" --quiet >/dev/null 2>&1 && {
+            fail "a stack is already running, and this scenario starts one itself." \
+                 "Its whole measurement is how long a first run takes from nothing." \
+                 "Stop it:  demo/tools/kennel-demo.sh down"; exit 2; }
+    else
+        "$REPO_ROOT/vm/test/verify-meshcat-host.sh" --quiet >/dev/null 2>&1 || {
+            fail "the simulator is not reachable -- there is no stack to drive." \
+                 "Bring one up:  demo/tools/kennel-demo.sh run"; exit 2; }
+    fi
 }
 
 # The run the guest actually applied, read from ITS OWN marker -- the same
