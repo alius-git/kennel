@@ -1,0 +1,27 @@
+# Yuruna fetch-and-execute log
+# script:    project/test/ubuntu.server.24/ubuntu.server.24.kennel-mvp-stage.sh
+# url:       http://192.168.122.1:8080/yuruna-repo/project/test/ubuntu.server.24/ubuntu.server.24.kennel-mvp-stage.sh
+# source:    host
+# bytes:     6813
+# started:   2026-09-10T03:59:11Z
+# profile:   /tmp/yuruna-fae-profile.pkNmlh
+# ---
+==== fixture run-20260910T025021Z ====
+  1715821fea8922b8af83de4f32cfc2506af521708db0d16809b0dbdf0693df99  test/fixtures/run-20260910T025021Z/simulator_params_go2.yaml
+  3c69d87ff866dd3910a29ed0ff17e16da26ad5a36e874a424ea17e4562476962  test/fixtures/run-20260910T025021Z/mit_controller_sim_go2.yaml
+  a83c79c99727f543b583fd38dd4f90ff33b0126a70be3af51bad50f7e98fe2a4  test/fixtures/run-20260910T025021Z/commands.txt
+  f58ba1ad3152c7ee58bcc6d9b8c9cd805433b43710560941729f82ebedee3bfb  test/fixtures/run-20260910T025021Z/run.json
+==== stack tools ====
+  d8d735256c0b36f2d171c3acd23a8f58a4daeaa9ab62878c5a347af3f34aeb28  stack/transfer/guest-apply-config.sh
+  d00b0a56147e1b8396ae4b8ad04cb3921c834245a5a7fc188f0efda892334995  stack/known-good/tools/k13-stop.sh
+  f69c916eb55b8ae50b14675a19175e2de6659f66b6babe481fd58db61562f84e  stack/composed-run/tools/p21-launch-from-commands.sh
+  0b563f3d3d4e10404b18034a7ad7ba732d4bfb47edf3354ec7f2c51d89e9a975  stack/verify/kennel-verify.sh
+==== staged ====
+  fixture   /home/yuuser24/kennel-staging/runs/run-20260910T025021Z
+  applier   /home/yuuser24/kennel-staging/guest-apply-config.sh
+  launcher  /tmp/p21-launch-from-commands.sh
+  recipe    /tmp/kennel-verify.sh
+  stopper   dfki_quad:/root/k13-stop.sh
+# ---
+# exit code: 0
+# ended:     2026-09-10T03:59:11Z

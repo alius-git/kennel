@@ -149,6 +149,17 @@ See §4.3: `makestep` corrects the offset for roughly twenty minutes, then the
 
 ### 3.2 Install the kennel sequences
 
+> **RETIRED 2026-09-10 by [#23](https://github.com/alius-git/kennel/issues/23).**
+> The copy below is gone: `repositories.projectUrl` points at this repository and
+> the sequences are discovered in [`test/`](../test/), where they now live.
+> `demo/tools/kennel-demo.sh` clones this checkout into `$YURUNA_DIR/project`
+> before every verb that runs a sequence. The paragraph after the code block
+> called this exactly right, two months early — the only thing it got wrong is
+> "with no move": the files did move, from `vm/test/` to `test/`, so that a
+> project's sequences sit where a reader of a Yuruna project expects them.
+> See [`test/README.md`](../test/README.md) and
+> [`test/harness.md`](../test/harness.md) §2.
+
 The two sequence files live in this repo at [`vm/test/`](test/) and must be
 copied into the Yuruna clone, the same way `vm/patches/` is applied there:
 

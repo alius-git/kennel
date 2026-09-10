@@ -49,6 +49,14 @@ browser its URL, and the stick then publishes `/quad_control_target` at 20 Hz â€
 gait picker, STAND and E-STOP beside it
 ([`stack/bridge.md`](stack/bridge.md), [`kennel_console/teleop.md`](kennel_console/teleop.md)).
 
+This repository is also a **Yuruna project**: point a host's
+`repositories.projectUrl` at it and the runner clones it, discovers the
+sequences in [`test/`](test/), and runs the whole demo unattended â€” provision,
+configure, launch, and assert the robot walking on a composed config
+([`test/README.md`](test/README.md)). `kennel-demo.sh mvp` runs that sequence
+against the baseline in about a hundred seconds; `kennel-demo.sh cycle` runs a
+full cycle from cold.
+
 `provision` ends by freezing the guest as a **baseline snapshot**, so no mistake
 ever costs 35 minutes again: `reset` returns to it in about ninety seconds and
 proves the guest came back intact ([`vm/snapshot.md`](vm/snapshot.md)). Each

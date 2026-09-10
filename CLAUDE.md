@@ -18,7 +18,7 @@ record before deviating from the rule.
 | [`guides/`](guides/) | the pages a newcomer reads — [`first-run.md`](guides/first-run.md) (the checklist, *performed* by `scenario firstwalk`), `walkthrough.md`, `diagnosis.md`; `img/` is copies and crops of renders that exist elsewhere, built by `guides/tools/make-img.sh` |
 | [`stack/`](stack/) | running the pinned stack: [`stack/launch.md`](stack/launch.md), `transfer/`, `verify/` (the recipe, the `k14-*` sweep and its probe, [`stack/stress.md`](stack/stress.md)), `composed-run/tools/` (the `p21-*` tools), `bridge/` (the rosbridge, its live suite `verify-teleop-live.sh`, and the target watchdog), `known-good/` |
 | [`vm/`](vm/) | the appliance: [`vm/host-baseline.md`](vm/host-baseline.md), [`vm/provisioning.md`](vm/provisioning.md), [`vm/snapshot.md`](vm/snapshot.md), `vm/patches/`, and the two host-side reachability checks in `vm/test/` |
-| [`test/`](test/) | the repo **as a Yuruna project** ([`test/README.md`](test/README.md)): the sequences the runner discovers, `test.runner.yml`, and the guest scripts under `test/ubuntu.server.24/` |
+| [`test/`](test/) | the repo **as a Yuruna project** ([`test/README.md`](test/README.md), [`test/harness.md`](test/harness.md)): the six sequences the runner discovers, `test.runner.yml`, the guest scripts under `test/ubuntu.server.24/`, the MVP `fixtures/` run folder, `evidence/` |
 | [`demo/`](demo/) | the driver [`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh), the [runbook](demo/runbook.md), the [dry run](demo/dry-run.md), the [scenario verbs](demo/scenarios.md) (`scenario disturb`, `scenario diagnose`, `scenario firstwalk`) |
 | `dfki-quad/` | the pinned upstream clone — **gitignored, never edited**; read it at the pin with `git show <PIN>:path` |
 
@@ -26,6 +26,7 @@ Driver verbs ([`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh) `help`):
 
 - once per host — `setup`, `provision`
 - each session — `up`, `console`, `run`, `teleop [stop]`, `walk [stop]`, `down`, `reset`
+- the harness — `mvp` (the MVP Yuruna sequence), `cycle` (a whole cycle from cold)
 - the scenarios as tests — `scenario disturb`, `scenario diagnose`, `scenario firstwalk`
 - the pieces underneath — `all`, `compose`, `transfer`, `launch`, `verify`, `status`, `snapshot`, `halt`
 
@@ -75,6 +76,17 @@ and every copy must be identical — a shell that sources
 [`stack/known-good/tools/prelude.sh`](stack/known-good/tools/prelude.sh). The
 copies that must change with it are named in
 [`stack/composed-run.md`](stack/composed-run.md) §9.2.
+
+**Everything under `test/` is live to Yuruna, and a verb runs *committed*
+HEAD.** A cycle clones this repo into the framework's `project/`, treats **every
+directory named `test`** as a sequence directory, and its pre-cycle gate parses
+each `.yml` in one — so a plain YAML scalar carrying `": "` (perfectly readable
+to a person) refuses the whole cycle four seconds in, and a stray sequence-shaped
+file there is a second definition of a sequence. `verify-runs.py` group 8 parses
+them all for exactly that reason. And because the driver *clones* rather than
+copying, an uncommitted edit under `test/` does not run — the verb warns, but
+the warning is easy to read past
+([`test/harness.md`](test/harness.md) §2, §6 F12).
 
 **Yuruna step `command:` strings** carry no `${…}` — Yuruna substitutes it
 first ([`test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml`](test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml)

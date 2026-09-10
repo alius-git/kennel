@@ -1465,9 +1465,14 @@ if lf:
 PY
     cyc="$(ls -dt "$YURUNA_DIR"/test/status/log/[0-9]*/ 2>/dev/null | head -1)"
     [ -n "$cyc" ] || return 0
-    local wr
-    wr="$(grep -c warm_resume "$cyc/cycle.events.ndjson" 2>/dev/null || echo 0)"
-    if [ "$wr" = 0 ]; then
+    # `grep -c` PRINTS 0 and EXITS 1 when nothing matches, so `|| echo 0` appends
+    # a second line and the count becomes "0\n0" -- which is not the string 0,
+    # and every clean cycle was then reported as flaky. Let grep print its own
+    # count and only default when the file is missing.
+    local wr=0
+    [ -f "$cyc/cycle.events.ndjson" ] \
+        && wr="$(grep -c warm_resume "$cyc/cycle.events.ndjson" 2>/dev/null)"
+    if [ "${wr:-0}" = 0 ]; then
         say "  warm_resume events: 0 (the cycle passed without re-running a failed sequence)"
     else
         warn "  warm_resume events: $wr -- this cycle went green only after resuming a failed"

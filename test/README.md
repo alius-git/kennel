@@ -20,9 +20,12 @@ test/
 ├── workload.guest.ubuntu.server.24.kennel.stack.ssh.yml     provision the stack (#10)
 ├── workload.guest.ubuntu.server.24.kennel.baseline.ssh.yml  freeze the baseline (#51)
 ├── workload.guest.ubuntu.server.24.kennel.reset.ssh.yml     revert to it, prove it (#51)
+├── workload.guest.ubuntu.server.24.kennel.mvp.ssh.yml       the demo, asserted (#24)
 ├── ubuntu.server.24/                           guest scripts, by guest key
 │   ├── ubuntu.server.24.dfki-quad.sh
-│   └── ubuntu.server.24.kennel-baseline-prep.sh
+│   ├── ubuntu.server.24.kennel-baseline-prep.sh
+│   └── ubuntu.server.24.kennel-mvp-stage.sh
+├── fixtures/run-<stamp>/                       the composition the MVP applies (§6)
 └── evidence/                                   transcripts of the validated runs
 ```
 
@@ -153,6 +156,34 @@ Three things about those commands that are easy to get wrong:
   Yuruna 2026.08.04 it is `Invoke-TestProject.ps1`; the older name does not
   exist.
 
-The driver wraps the two everyday paths, with preflight and evidence
-collection: `kennel-demo.sh reset` (warm) and `kennel-demo.sh provision`
-(cold). See [`demo/runbook.md`](../demo/runbook.md) §3.
+The driver wraps all of it, with preflight and evidence collection:
+
+| | |
+|---|---|
+| `kennel-demo.sh mvp` | the MVP sequence — warm (~100 s) on a host that holds the baseline, the whole cold chain on one that does not |
+| `kennel-demo.sh cycle [--yes]` | one full cycle from cold, sweeping the guest **and its baseline** first; `KENNEL_CYCLES=2` for two in a row |
+| `kennel-demo.sh reset` / `provision` | the warm and cold paths of the baseline sequence, unchanged since #51 |
+
+Each of them clones this checkout into `$YURUNA_DIR/project` first and then
+runs its sequence with `-NoProjectClone`, so what runs is the branch you are on
+— its **committed** head. See [`demo/runbook.md`](../demo/runbook.md) §3.
+
+## 6. The fixture
+
+`test/fixtures/run-<stamp>/` is a run folder the **console exported**: the
+composition the MVP sequence applies to the guest (flat plane, realtime rate
+0.75, `PARTIAL_CONDENSING_OSQP`). It is a *bypass* — issue #24 wanted the
+harness to drive the browser, and driving the browser from a Yuruna sequence is
+the full POC harness's job (s001).
+
+Two rules, and the second is the one that bites:
+
+1. **Never edit a file in it.** Regenerate the whole folder:
+   `demo/tools/kennel-demo.sh compose` (no knobs), then copy the new
+   `~/kennel-runs/run-<stamp>/` in and delete the old one.
+2. **The sequence restates it** — the folder name, the pin, the solver and the
+   sha256 of each YAML — so a regenerated fixture needs those four updated in
+   `workload.guest.ubuntu.server.24.kennel.mvp.ssh.yml` too. Otherwise the run
+   goes red at the apply step, which is the intended failure and not a
+   mystery. `kennel_console/verify-runs.sh` group 8 checks all of it without a
+   VM; run it after any change here.

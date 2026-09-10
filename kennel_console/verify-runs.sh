@@ -29,7 +29,7 @@
 # to stay equal to it. Regenerate the fixture with `kennel-demo.sh compose`,
 # never by editing a file.
 #
-# 117 checks.
+# 119 checks.
 #
 # Requires google-chrome.
 #

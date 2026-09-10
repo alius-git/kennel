@@ -280,5 +280,43 @@ and in [`dashboard/evidence/`](dashboard/evidence/):
 |---|---|
 | [#69](https://github.com/alius-git/kennel/issues/69), [#71](https://github.com/alius-git/kennel/issues/71) | a scenario verb can assert a verdict from a file instead of scraping stdout |
 | [#72](https://github.com/alius-git/kennel/issues/72) — **done** | named presets have a real history to be compared against; and this suite's group 7 is where their round trip is asserted, because only here is there a real server writing real run folders ([`composer-scope.md`](composer-scope.md) §7) |
-| [#24](https://github.com/alius-git/kennel/issues/24) | the Yuruna sequence can read `verify.json` rather than parsing the report |
+| [#24](https://github.com/alius-git/kennel/issues/24) — **done** | the Yuruna sequence keeps `report.json` beside the run it is of, and this suite gained **group 8** to keep its fixture honest (§9) |
 | [#74](https://github.com/alius-git/kennel/issues/74) | `report.json` already carries the pin; a version manifest is the next field |
+
+## 9. Group 8 — the harness fixture (#24)
+
+[`test/fixtures/run-<stamp>/`](../test/fixtures/) is the composition the MVP
+Yuruna sequence applies to the guest: a run folder the console exported,
+committed, and never hand-edited
+([`test/harness.md`](../test/harness.md) §3.1). Two things have to stay true of
+it, and neither is visible by reading it — so **35 checks** live in this suite
+rather than beside the sequence, because only here is there a real `serve.py`
+writing real run folders and a real Runs table to load one back from.
+
+**It is still a console export.** Statically: one folder, the four files an
+export carries and nothing else, the pin equal to `stack/pin.lock`'s, the
+composition as literals (OSQP at rate 0.75 — non-stock on both, which is what
+makes the sequence's assert a real one), and `commands.txt` splitting into
+exactly the canonical three shells under `p21-launch-from-commands.sh`'s own
+rule. Then live: copied into the suite's out directory it appears in the Runs
+table, its `load` control puts it back in the composer, and the emitters
+reproduce its two YAMLs **byte for byte** — after which a fresh **send** writes
+the same bytes again. That last step is the one that matters: it makes the
+fixture a *fixed point* of the console rather than an old export the emitters
+have since drifted away from.
+
+**The sequence still restates it correctly.** The MVP sequence carries the
+fixture's name, the pin, the expected solver and the sha256 of each YAML, so
+that a fixture regenerated on its own is a red run at the apply step instead of
+a quietly different experiment. Group 8 compares all four against the fixture,
+and `test.runner.yml`'s top-level against the sequence.
+
+It also parses **every `.yml` under `test/`**, which is not decoration: Yuruna's
+pre-cycle gate parses each one and refuses to start the cycle over a single bad
+file — and a plain YAML scalar carrying `": "` reads perfectly well to a human
+while being invalid. That is exactly how it was found
+([`test/harness.md`](../test/harness.md) §6, F12).
+
+Regenerate the fixture with `demo/tools/kennel-demo.sh compose` (no knobs) and
+copy the folder in. Editing one of its files is the one thing that must never
+happen.

@@ -1,0 +1,268 @@
+guest 192.168.122.32
+
+############ P5 — class 1: the stack is up but not healthy (kill the controller)
+container processes now:
+      1 leg_driver
+      1 simulator
+
+--- step 10: Run the verification recipe against the composed solver (its exit code is classified next)
+=== kennel-verify -- CLI walking/health recipe (issue #14) ===
+container=dfki_quad node=/mit_controller_node gait=WALKING_TROT
+windows(sim s): observe=5 settle=5 trot=15
+target: body_x_dot=0.3 world_z=0.30
+
+[FAIL] 1 node-graph           -- ros2 node list: measured /drake_simulator /joy_linux_node /joy_to_target /leg_driver /safe_start_launcher [missing: /mit_controller_node ][extra: none][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+       waiting for /clock ...
+       observing 5 sim-s (wall budget 40 s) ...
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 6.7 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 0.752, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.2 Hz per sim-second, required 900-1100 Hz per sim-second
+[FAIL] 4 controller-alive     -- /controller_heartbeat rate: measured 0.00 Hz per sim-second (0 msgs / 5.00 sim-s), required 1.50-2.50 Hz per sim-second
+
+       liveness gate failed -- not commanding a gait at a stack that is not answering
+[FAIL] 5 gait-command         -- ros2 param set /mit_controller_node simple_gait_sequencer.gait: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 6 gait-active          -- /gait_state: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 7 solver-health        -- /controller_heartbeat counters: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured no value, launch log said '[mitcontrollernode-1] Set osqp linear system solver to qdldl', required PARTIAL_CONDENSING_OSQP
+
+=== verdict ===
+[FAIL] 1 node-graph           -- ros2 node list: measured /drake_simulator /joy_linux_node /joy_to_target /leg_driver /safe_start_launcher [missing: /mit_controller_node ][extra: none][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 6.7 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 0.752, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.2 Hz per sim-second, required 900-1100 Hz per sim-second
+[FAIL] 4 controller-alive     -- /controller_heartbeat rate: measured 0.00 Hz per sim-second (0 msgs / 5.00 sim-s), required 1.50-2.50 Hz per sim-second
+[FAIL] 5 gait-command         -- ros2 param set /mit_controller_node simple_gait_sequencer.gait: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 6 gait-active          -- /gait_state: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 7 solver-health        -- /controller_heartbeat counters: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured no value, launch log said '[mitcontrollernode-1] Set osqp linear system solver to qdldl', required PARTIAL_CONDENSING_OSQP
+
+pass=2 fail=8
+kennel-verify: verdict 'fell' -- /tmp/kennel-verify/report.json
+VERDICT: FAIL
+kennel-verify: report in /tmp/kennel-verify (exit 1)
+verify_rc=1
+--- step 10 EXIT=0
+
+--- step 11: Classify: the recipe could look at the stack (any other exit is an infrastructure error, not a stack verdict)
+the recipe ran and reported (exit 1)
+--- step 11 EXIT=0
+
+--- step 12: Assert healthy and walking on PARTIAL_CONDENSING_OSQP (an assert failed = red run, with the three process logs above)
+
+=== verdict ===
+[FAIL] 1 node-graph           -- ros2 node list: measured /drake_simulator /joy_linux_node /joy_to_target /leg_driver /safe_start_launcher [missing: /mit_controller_node ][extra: none][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 6.7 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 0.752, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.2 Hz per sim-second, required 900-1100 Hz per sim-second
+[FAIL] 4 controller-alive     -- /controller_heartbeat rate: measured 0.00 Hz per sim-second (0 msgs / 5.00 sim-s), required 1.50-2.50 Hz per sim-second
+[FAIL] 5 gait-command         -- ros2 param set /mit_controller_node simple_gait_sequencer.gait: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 6 gait-active          -- /gait_state: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 7 solver-health        -- /controller_heartbeat counters: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured no value, launch log said '[mitcontrollernode-1] Set osqp linear system solver to qdldl', required PARTIAL_CONDENSING_OSQP
+
+pass=2 fail=8
+VERDICT: FAIL
+ASSERT_FAILED: kennel-verify.sh exit 1 -- the stack is up but not healthy/walking
+--- /tmp/p21-sim.log (tail) ---
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-09-10-03-12-31-942456-kennel-vm-414
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [simulator-1]: process started with pid [425]
+[simulator-1] [2026-09-10 03:12:32.072] [console] [warning] The std::array<Eigen::Vector3d,4ul> class is incompatible with the typename hasher that provides the type-erasure checking for AbstractValue casts, most likely because the problematic class mixes template parameters with nested classes or non-type template parameters. As a result, operations on Value<std::array<Eigen::Vector3d,4ul>> will suffer from slightly impaired performance. If the problem relates to nested classes, you may be able to resolve it by un-nesting the class in question. If the problem relates to a single non-type template parameter, you may be able to resolve it by adding 'using NonTypeTemplateParameter = ...'. See drake/common/test/value_test.cc for an example. This is the first instance of an impaired T within this process. Additional instances will not be warned about, but you may set the drake::log() level to 'debug' to see all instances.
+[simulator-1] (0) go2_description_base_link_qw, (1) go2_description_base_link_qx, (2) go2_description_base_link_qy, (3) go2_description_base_link_qz, (4) go2_description_base_link_x, (5) go2_description_base_link_y, (6) go2_description_base_link_z, (7) go2_description_fl_abad_q, (8) go2_description_fl_shoulder_q, (9) go2_description_fl_knee_q, (10) go2_description_fr_abad_q, (11) go2_description_fr_shoulder_q, (12) go2_description_fr_knee_q, (13) go2_description_bl_abad_q, (14) go2_description_bl_shoulder_q, (15) go2_description_bl_knee_q, (16) go2_description_br_abad_q, (17) go2_description_br_shoulder_q, (18) go2_description_br_knee_q, (19) go2_description_base_link_wx, (20) go2_description_base_link_wy, (21) go2_description_base_link_wz, (22) go2_description_base_link_vx, (23) go2_description_base_link_vy, (24) go2_description_base_link_vz, (25) go2_description_fl_abad_w, (26) go2_description_fl_shoulder_w, (27) go2_description_fl_knee_w, (28) go2_description_fr_abad_w, (29) go2_description_fr_shoulder_w, (30) go2_description_fr_knee_w, (31) go2_description_bl_abad_w, (32) go2_description_bl_shoulder_w, (33) go2_description_bl_knee_w, (34) go2_description_br_abad_w, (35) go2_description_br_shoulder_w, (36) go2_description_br_knee_w, 
+[simulator-1] [2026-09-10 03:12:32.081] [console] [info] Meshcat listening for connections at http://localhost:7000
+[simulator-1] [INFO] [1789009952.089459103] [drake_simulator]: COM in body frame: [0.021112, 0.000000, -0.005366]
+[simulator-1] [INFO] [1789009952.089811494] [drake_simulator]: Inertia   0.202755 0.00012166 -0.0143742
+[simulator-1] 0.00012166   0.490926  -3.12e-05
+[simulator-1] -0.0143742  -3.12e-05    0.52697
+[simulator-1] [INFO] [1789009952.089821132] [drake_simulator]: Mass  15.019
+[simulator-1] [INFO] [1789009952.089825831] [drake_simulator]: Joint [0]: Head_upper_joint
+[simulator-1] [INFO] [1789009952.089830259] [drake_simulator]: Joint [1]: Head_lower_joint
+[simulator-1] [INFO] [1789009952.089833805] [drake_simulator]: Joint [2]: fl_abad
+[simulator-1] [INFO] [1789009952.089837372] [drake_simulator]: Joint [3]: fl_shoulder
+[simulator-1] [INFO] [1789009952.089840979] [drake_simulator]: Joint [4]: fl_knee
+[simulator-1] [INFO] [1789009952.089844245] [drake_simulator]: Joint [5]: FL_calflower_joint
+[simulator-1] [INFO] [1789009952.089847812] [drake_simulator]: Joint [6]: FL_calflower1_joint
+[simulator-1] [INFO] [1789009952.089851408] [drake_simulator]: Joint [7]: fl_contact_frame
+[simulator-1] [INFO] [1789009952.089854835] [drake_simulator]: Joint [8]: fr_abad
+[simulator-1] [INFO] [1789009952.089858171] [drake_simulator]: Joint [9]: fr_shoulder
+[simulator-1] [INFO] [1789009952.089861477] [drake_simulator]: Joint [10]: fr_knee
+[simulator-1] [INFO] [1789009952.089864944] [drake_simulator]: Joint [11]: FR_calflower_joint
+[simulator-1] [INFO] [1789009952.089868460] [drake_simulator]: Joint [12]: FR_calflower1_joint
+[simulator-1] [INFO] [1789009952.089871907] [drake_simulator]: Joint [13]: fr_contact_frame
+[simulator-1] [INFO] [1789009952.089875514] [drake_simulator]: Joint [14]: bl_abad
+[simulator-1] [INFO] [1789009952.089878860] [drake_simulator]: Joint [15]: bl_shoulder
+[simulator-1] [INFO] [1789009952.089882106] [drake_simulator]: Joint [16]: bl_knee
+[simulator-1] [INFO] [1789009952.089885472] [drake_simulator]: Joint [17]: RL_calflower_joint
+[simulator-1] [INFO] [1789009952.089888849] [drake_simulator]: Joint [18]: RL_calflower1_joint
+[simulator-1] [INFO] [1789009952.089892165] [drake_simulator]: Joint [19]: bl_contact_frame
+[simulator-1] [INFO] [1789009952.089895521] [drake_simulator]: Joint [20]: br_abad
+[simulator-1] [INFO] [1789009952.089898867] [drake_simulator]: Joint [21]: br_shoulder
+[simulator-1] [INFO] [1789009952.089902073] [drake_simulator]: Joint [22]: br_knee
+[simulator-1] [INFO] [1789009952.089905370] [drake_simulator]: Joint [23]: RR_calflower_joint
+[simulator-1] [INFO] [1789009952.089908656] [drake_simulator]: Joint [24]: RR_calflower1_joint
+[simulator-1] [INFO] [1789009952.089912082] [drake_simulator]: Joint [25]: br_contact_frame
+[simulator-1] [INFO] [1789009952.089915318] [drake_simulator]: Joint [26]: joint_imu
+[simulator-1] [INFO] [1789009952.089918735] [drake_simulator]: Joint [27]: joint_belly_bottom
+[simulator-1] [INFO] [1789009952.089922091] [drake_simulator]: Joint [28]: radar_joint
+[simulator-1] [INFO] [1789009952.089925327] [drake_simulator]: Joint [29]: world_welds_to_plane_base_link
+[simulator-1] [INFO] [1789009952.089928874] [drake_simulator]: Joint [30]: base_link
+--- /tmp/p21-legdrv.log (tail) ---
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-09-10-03-12-51-105743-kennel-vm-949
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [leg_driver-1]: process started with pid [962]
+[leg_driver-1] Loaded URDF model_ with 19 joints and 18 degrees of freedom.
+[leg_driver-1] data mass -1
+[leg_driver-1] data inertia 0 0 0
+[leg_driver-1] 0 0 0
+[leg_driver-1] 0 0 0
+[leg_driver-1] Joint names:
+[leg_driver-1] - universe
+[leg_driver-1] - root_joint
+[leg_driver-1] - bl_abad
+[leg_driver-1] - bl_shoulder
+[leg_driver-1] - bl_knee
+[leg_driver-1] - br_abad
+[leg_driver-1] - br_shoulder
+[leg_driver-1] - br_knee
+[leg_driver-1] - fl_abad
+[leg_driver-1] - fl_shoulder
+[leg_driver-1] - fl_knee
+[leg_driver-1] - fr_abad
+[leg_driver-1] - fr_shoulder
+[leg_driver-1] - fr_knee
+[leg_driver-1] Joint 8: fl_abad
+[leg_driver-1] Joint 9: fl_shoulder
+[leg_driver-1] Joint 10: fl_knee
+[leg_driver-1] Joint 11: fr_abad
+[leg_driver-1] Joint 12: fr_shoulder
+[leg_driver-1] Joint 13: fr_knee
+[leg_driver-1] Joint 2: bl_abad
+[leg_driver-1] Joint 3: bl_shoulder
+[leg_driver-1] Joint 4: bl_knee
+[leg_driver-1] Joint 5: br_abad
+[leg_driver-1] Joint 6: br_shoulder
+[leg_driver-1] Joint 7: br_knee
+[leg_driver-1] Inertia element idx: 8
+[leg_driver-1] Inertia element idx: 9
+[leg_driver-1] Inertia element idx: 10
+[leg_driver-1] Inertia element idx: 11
+[leg_driver-1] Inertia element idx: 12
+[leg_driver-1] Inertia element idx: 13
+[leg_driver-1] Inertia element idx: 2
+[leg_driver-1] Inertia element idx: 3
+[leg_driver-1] Inertia element idx: 4
+[leg_driver-1] Inertia element idx: 5
+[leg_driver-1] Inertia element idx: 6
+[leg_driver-1] Inertia element idx: 7
+[leg_driver-1] [INFO] [1789009971.185058517] [leg_driver]: Registered subscribers according to operation mode 2
+[leg_driver-1] [WARN] [1789009973.609057399] [leg_driver]: Waiting for first leg cmd message
+[leg_driver-1] [INFO] [1789010460.965351119] [leg_driver]: Switching operation mode to 0
+[leg_driver-1] [INFO] [1789010460.967125355] [leg_driver]: Registered subscribers according to operation mode 0
+[leg_driver-1] [INFO] [1789010460.985260519] [leg_driver]: First leg cmd message and quadt state received, switching to operation
+[leg_driver-1] [INFO] [1789010460.985677070] [leg_driver]: Switch to OPERATE
+[leg_driver-1] [WARN] [1789010483.579812827] [leg_driver]: Watch dog triggered damping
+[leg_driver-1] [INFO] [1789010483.579846961] [leg_driver]: Switch to DAMPING
+[leg_driver-1] [WARN] [1789010483.581163359] [leg_driver]: No leg cmd messages, sending damping
+[leg_driver-1] [WARN] [1789010490.248144884] [leg_driver]: No leg cmd messages, sending damping
+--- /tmp/p21-ctrl.log (tail) ---
+[mitcontrollernode-1] Inertia element idx: 12
+[mitcontrollernode-1] Inertia element idx: 13
+[mitcontrollernode-1] Inertia element idx: 2
+[mitcontrollernode-1] Inertia element idx: 3
+[mitcontrollernode-1] Inertia element idx: 4
+[mitcontrollernode-1] Inertia element idx: 5
+[mitcontrollernode-1] Inertia element idx: 6
+[mitcontrollernode-1] Inertia element idx: 7
+[mitcontrollernode-1] [INFO] [1789010460.947053411] [mit_controller_node]: Early contact detection is activated
+[mitcontrollernode-1] [INFO] [1789010460.947131818] [mit_controller_node]: Controller running in JOINT_CONTROL or JOINT_TORQUE_CONTROL mode
+[mitcontrollernode-1] [INFO] [1789010460.960732041] [mit_controller_node]: Waiting for first quad state message to properly initialize controller
+[mitcontrollernode-1] [INFO] [1789010460.961083640] [mit_controller_node]: First quad_state received, initializing controller
+[mitcontrollernode-1] [INFO] [1789010460.961216168] [mit_controller_node]: Creating simple gait sequencer
+[mitcontrollernode-1] [INFO] [1789010460.961228221] [mit_controller_node]: Create gait of type [STAND]
+[mitcontrollernode-1] Set condensing to 5
+[mitcontrollernode-1] Set osqp linear system solver to qdldl
+[mitcontrollernode-1]  ---> Original problem dimensions: 
+[mitcontrollernode-1] k	nx	nu	nb	nbx	nbu	ng	ns
+[mitcontrollernode-1] 0	13	12	25	13	12	16	0	
+[mitcontrollernode-1] 1	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 2	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 3	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 4	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 5	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 6	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 7	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 8	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 9	13	12	12	0	12	16	0	
+[mitcontrollernode-1] 10	13	0	0	0	0	0	0	
+[mitcontrollernode-1]  <--- 
+[mitcontrollernode-1]  ---> Partial condensed problem dimensions: 
+[mitcontrollernode-1] k	nx	nu	nb	nbx	nbu	ng	ns
+[mitcontrollernode-1] 0	13	24	37	13	24	32	0	
+[mitcontrollernode-1] 1	13	24	24	0	24	32	0	
+[mitcontrollernode-1] 2	13	24	24	0	24	32	0	
+[mitcontrollernode-1] 3	13	24	24	0	24	32	0	
+[mitcontrollernode-1] 4	13	24	24	0	24	32	0	
+[mitcontrollernode-1] 5	13	0	0	0	0	0	0	
+[mitcontrollernode-1]  <--- 
+[mitcontrollernode-1] Loading URDF from src/common/model/urdf/go2/urdf/go2_description.urdf
+[mitcontrollernode-1] [INFO] [1789010460.963336323] [mit_controller_node]: Choosing Kalman Filter for Model Adaptation
+[mitcontrollernode-1] com weights: 10, 10, 10, 10, 10, 10 
+[mitcontrollernode-1] joint [0, 0] fl_abad [6]
+[mitcontrollernode-1] joint [0, 1] fl_shoulder [7]
+[mitcontrollernode-1] joint [0, 2] fl_knee [8]
+[mitcontrollernode-1] joint [1, 0] fr_abad [9]
+[mitcontrollernode-1] joint [1, 1] fr_shoulder [10]
+[mitcontrollernode-1] joint [1, 2] fr_knee [11]
+[mitcontrollernode-1] joint [2, 0] bl_abad [0]
+[mitcontrollernode-1] joint [2, 1] bl_shoulder [1]
+[mitcontrollernode-1] joint [2, 2] bl_knee [2]
+[mitcontrollernode-1] joint [3, 0] br_abad [3]
+[mitcontrollernode-1] joint [3, 1] br_shoulder [4]
+[mitcontrollernode-1] joint [3, 2] br_knee [5]
+[mitcontrollernode-1] [INFO] [1789010460.965121539] [mit_controller_node]: Waiting for leg driver service to become available
+[mitcontrollernode-1] [INFO] [1789010460.967250119] [mit_controller_node]: Starting controller
+[log_cpu_power-2] [ERROR] [1789010460.995030242] [cpu_power_logging_node]: Could not open energy_uj file.
+[INFO] [log_cpu_power-2]: process has finished cleanly [pid 1200]
+[mitcontrollernode-1] [INFO] [1789010483.312473857] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [mitcontrollernode-1]: process has finished cleanly [pid 1198]
+--- step 12 EXIT=1
+
+P5 RESULT: classify(step 11) exit=0   assert(step 12) exit=1
+P5 EXPECTED: classify 0 (the recipe DID look), assert 1 (ASSERT_FAILED)
+
+############ P6 — class 2: the recipe cannot even look (stop the container)
+exited
+
+--- step 10: Run the verification recipe against the composed solver (its exit code is classified next)
+kennel-verify: container 'dfki_quad' is not running
+verify_rc=2
+--- step 10 EXIT=0
+
+--- step 11: Classify: the recipe could look at the stack (any other exit is an infrastructure error, not a stack verdict)
+INFRASTRUCTURE: kennel-verify.sh exit 2 -- it could not even look. 2 is its own 'no container, broken source chain, unusable arguments'; 126/127 mean the shell could not run it at all. This is NOT a verdict about the stack.
+
+=== verdict ===
+[FAIL] 1 node-graph           -- ros2 node list: measured /drake_simulator /joy_linux_node /joy_to_target /leg_driver /safe_start_launcher [missing: /mit_controller_node ][extra: none][duplicate: none], required exactly the six healthy-session nodes, no duplicates
+[PASS] 2 sim-clock            -- /clock: measured advanced 5.00 sim-s in 6.7 s wall, required >= 4.50 sim-s within 40 s wall
+[INFO]   realtime-rate        -- /clock vs monotonic wall clock: measured 0.752, required informative, #21 runs this at 0.5
+[PASS] 3 state-stream         -- /quad_state rate: measured 998.2 Hz per sim-second, required 900-1100 Hz per sim-second
+[FAIL] 4 controller-alive     -- /controller_heartbeat rate: measured 0.00 Hz per sim-second (0 msgs / 5.00 sim-s), required 1.50-2.50 Hz per sim-second
+[FAIL] 5 gait-command         -- ros2 param set /mit_controller_node simple_gait_sequencer.gait: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 6 gait-active          -- /gait_state: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 7 solver-health        -- /controller_heartbeat counters: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 8 walking              -- /quad_control_target vs /quad_state twist: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 9 no-fall              -- /quad_state belly_contact, z, attitude: measured skipped, liveness gate (checks 2-4) failed, required a live stack to observe
+[FAIL] 10 composed-config     -- ros2 param get /mit_controller_node mpc_solver: measured no value, launch log said '[mitcontrollernode-1] Set osqp linear system solver to qdldl', required PARTIAL_CONDENSING_OSQP
+
+pass=2 fail=8
+VERDICT: FAIL
+--- step 11 EXIT=2
+
+P6 RESULT: classify(step 11) exit=2
+P6 EXPECTED: classify 2 (INFRASTRUCTURE), and step 12 never runs

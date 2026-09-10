@@ -31,8 +31,8 @@ prerequisites for anything here.
 
 | Artifact | Purpose |
 |----------|---------|
-| [`vm/guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh`](guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh) | The provisioning script — the actual work |
-| [`vm/test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml`](test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml) | Yuruna sequence: runs the script, then asserts acceptance |
+| [`test/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh`](../test/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh) | The provisioning script — the actual work |
+| [`test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml`](../test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml) | Yuruna sequence: runs the script, then asserts acceptance |
 
 The sequence chains onto #9's sizing sequence, so one command walks the whole
 thing from nothing:
@@ -275,6 +275,26 @@ defect is **not** fixed by `chronyc makestep`, it re-converges to the same
 offset; it remains an open operator action).
 
 ### 4.2 Install the kennel files into the Yuruna clone
+
+> **RETIRED 2026-09-10 by [#23](https://github.com/alius-git/kennel/issues/23)**
+> ([`test/harness.md`](../test/harness.md) §2). Nothing is copied into the
+> framework tree any more: this repository *is* a Yuruna project, and the
+> sequences live in [`test/`](../test/) where the runner discovers them once
+> `repositories.projectUrl` points here. `kennel-demo.sh` clones this checkout
+> into `$YURUNA_DIR/project` before every verb that runs a sequence, and
+> `setup` deletes the copies an older kennel left behind (7 files on this
+> host). **The yellow warning below is gone with it** — measured absent across
+> two cold cycles, `test/evidence/`; `project/` is gitignored in the framework
+> clone, so the working-tree-vs-HEAD check that emitted it now has nothing to
+> report ([`test/harness.md`](../test/harness.md) §2.1). The section is kept as written because it
+> is what the run it records was performed against.
+>
+> ```bash
+> # then                                      # now
+> cp vm/test/*.kennel*.yml   ~/git/yuruna/test/sequences/
+> cp vm/guest/…/*.sh         ~/git/yuruna/guest/ubuntu.server.24/
+> #                                           demo/tools/kennel-demo.sh setup
+> ```
 
 Both the sequence **and the guest script** must be copied into the framework
 clone. This is the same bypass guest-sizing.md §3.2 describes, extended to the

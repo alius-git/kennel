@@ -1,0 +1,140 @@
+
+==== setup: the once-per-host prerequisites (demo/runbook.md §2) ====
+[kennel-demo] ok     yuruna clone     /home/thales/git/yuruna
+[kennel-demo] ok     groups           libvirt kvm
+[kennel-demo] ok     yuruna tag       2026.08.04
+[kennel-demo] ok     patch            yuruna-no-password-expiry.patch
+[kennel-demo] ok     patch            yuruna-save-ocrsidecar-export.patch
+[kennel-demo] ok     patch            yuruna-ssh-autoinstall-confirm.patch
+[kennel-demo] ok     test.config      guestSequence: guest.ubuntu.server.24
+[kennel-demo] info   projectUrl       file:///home/thales/kennel  (this checkout -- a cycle runs the branch you are on)
+[kennel-demo] ok     automation       host settings already captured
+[kennel-demo] ok     guest ISO        /home/thales/yuruna/image/ubuntu.env/host.ubuntu.kvm.guest.ubuntu.server.24.iso
+[kennel-demo] did    retired copies   removed 7 pre-#23 file(s) from the framework tree
+[kennel-demo]        They were copies of this repo's sequences and guest scripts; the project
+[kennel-demo]        clone below is where Yuruna reads them from now (test/README.md §1).
+[kennel-demo] did    project clone    cloned file:///home/thales/kennel at 3610981
+
+==== gate: Test-Config (read the findings, not the PASS/WARN totals -- provisioning.md §4.3) ====
+
+=== Config file ===
+  [PASS] Config file found: /home/thales/git/yuruna/test/test.config.yml
+
+=== YAML structure ===
+  [PASS] YAML is valid and parsed successfully.
+
+=== Config key names ===
+  [PASS] No retired config keys.
+
+=== Config schema vs template ===
+  [PASS] test.config.yml reconciled to the template: sorted to alphabetical order.
+
+=== Host requirements (quick) ===
+  [PASS] Host type detected: host.ubuntu.kvm
+There may be more host-health recommendations available. For a deeper report (config files, transports, framework/project staleness, RAM/CPU, host-specific feature state) run: pwsh test/Test-Config.ps1
+  [PASS] Host requirements quick check passed.
+
+=== Host clock ===
+  [WARN] Host clock is 480.3s behind real time (limit 120s). Guests inherit this clock at power-on and get stepped to real time mid-boot; a Kubernetes guest then comes up with pods Running but never Ready and every NodePort refusing.
+          Fix with: pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1  (elevated / with sudo)
+
+=== Host capacity ===
+  [PASS] RAM = 28.2 GiB.
+  [PASS] Logical CPUs = 16 (AMD Ryzen 7 8845HS w/ Radeon 780M Graphics).
+
+=== Host-specific feature state ===
+  [PASS] qemu-system-x86_64 found on PATH.
+  [PASS] libvirtd: active.
+  [PASS] /dev/kvm present.
+
+=== Framework / project staleness ===
+        framework (/home/thales/git/yuruna): no upstream tracking branch -- skipping ahead/behind.
+  [PASS] project (/home/thales/git/yuruna/project): up to date with 36109812811c986c9656f5cdba89e8dc8010726d.
+  [PASS] projectUrl resolves to local git repo: /home/thales/kennel
+  [WARN] projectUrl is a file:// URL -- only the host can resolve it. Guests that hit the tarball-fallback path (status service 404 on /yuruna-project-archive.tar.gz) will attempt 'git clone file:///home/thales/kennel' on their OWN Linux filesystem and fail. Use an HTTPS/SSH URL guests can reach if you rely on the guest fallback.
+
+=== GitHub connectivity ===
+  [PASS] DNS resolved 'github.com' -> 4.228.31.150
+  [PASS] TCP connection to github.com:443 succeeded.
+
+=== Top-level settings ===
+  [PASS] 'notification' block is present.
+  [PASS] 'vmImage.alwaysRedownload' = False
+  [PASS] 'vmStart.testVmNamePrefix' = 'test-'
+  [PASS] 'testCycle.recentDisplayCount' = 30
+  [PASS] 'statusService' block present (enabled=True, port=8080).
+  [PASS] 'repositories.frameworkUrl' = 'https://github.com/alissonsol/yuruna'
+  [PASS] 'repositories.projectUrl' = 'file:///home/thales/kennel'
+  [PASS] 'testCycle.stopOnFailure' = False
+
+=== Extension configs ===
+  [PASS] authentication/authentication.config.yml: schema-valid (/home/thales/git/yuruna/test/extension/authentication/authentication.config.yml)
+  [PASS] notification/notification.config.yml: schema-valid (/home/thales/git/yuruna/test/extension/notification/notification.config.yml)
+  [WARN] status/extension/notification/transports.yml missing -- copy from transports.yml.template and populate before the next cycle: /home/thales/git/yuruna/test/extension/notification/transports.yml.template -> /home/thales/git/yuruna/test/status/extension/notification/transports.yml
+  [PASS] vault.yml: schema-valid (/home/thales/git/yuruna/test/status/extension/authentication/vault.yml)
+
+=== Authentication users mapping (users.yml) ===
+  [PASS] users.yml: schema-valid (/home/thales/git/yuruna/test/status/extension/authentication/users.yml)
+  [PASS] users.yml: strict=True, 14 logical user(s) declared.
+  [PASS] users.yml strict mode: every sequence-referenced logical username is declared (scanned: /home/thales/git/yuruna/test/sequences, /home/thales/git/yuruna/project/test, /home/thales/git/yuruna/project/vm/test).
+
+=== Sequence files (parse + snippets) ===
+  [PASS] _snippets.yml: 1 snippet(s) in /home/thales/git/yuruna/test/sequences.
+  [PASS] Sequence files loaded + snippet-expanded OK: 23 file(s) across 3 dir(s).
+
+=== networkStorage: pool (ypool-nas) replication ===
+        pool.networkReplicate = false and networkStorage poolStorageNetworkPath / poolStorageNetworkUser / poolStorageLocalPath are not all set -- replication is off (optional). Populate all three to pre-validate the share before enabling.
+
+=== networkStorage: stash (stash service) ===
+        networkStorage stash* not fully set -- the stash service is off (optional). Set stashStorageNetworkPath / stashStorageNetworkUser / stashStorageLocalPath to enable it.
+
+=== Extension services (pool registry) ===
+        No caching-proxy service address is known, so there is no pool aggregator to ask -- this host resolves extension services locally (or by pin) only.
+
+=== pool (intent sync) ===
+        pool.enabled = false and pool.intentGitUrl is empty -- pool intent sync is off (optional). Populate intentGitUrl to pre-validate the store before enabling.
+
+=== Resend transport settings ===
+  [WARN] transports.resend not configured in transports.yml -- email transport will warn at runtime.
+
+=== Resend API connectivity ===
+  [PASS] DNS resolved 'api.resend.com' -> 104.20.29.242
+  [PASS] TCP connection to api.resend.com:443 succeeded.
+
+=== Live smoke notification (config.smoke) ===
+  [WARN] Skipping live send (-SkipSend was specified).
+
+=== Bootstrap script encoding (ASCII, no BOM) ===
+  [PASS] irm|iex installer and guest scripts are BOM-less 7-bit ASCII.
+
+-----------------------------------------
+  PASS:  34   WARN:   5   FAIL:   0
+-----------------------------------------
+
+============================================================
+  WARNINGS (5) -- advisory; the cycle can still start:
+============================================================
+
+  [1/5] in section: Host clock
+        Host clock is 480.3s behind real time (limit 120s). Guests inherit this clock at power-on and get stepped to real time mid-boot; a Kubernetes guest then comes up with pods Running but never Ready and every NodePort refusing.
+
+  [2/5] in section: Framework / project staleness
+        projectUrl is a file:// URL -- only the host can resolve it. Guests that hit the tarball-fallback path (status service 404 on /yuruna-project-archive.tar.gz) will attempt 'git clone file:///home/thales/kennel' on their OWN Linux filesystem and fail. Use an HTTPS/SSH URL guests can reach if you rely on the guest fallback.
+
+  [3/5] in section: Extension configs
+        status/extension/notification/transports.yml missing -- copy from transports.yml.template and populate before the next cycle: /home/thales/git/yuruna/test/extension/notification/transports.yml.template -> /home/thales/git/yuruna/test/status/extension/notification/transports.yml
+
+  [4/5] in section: Resend transport settings
+        transports.resend not configured in transports.yml -- email transport will warn at runtime.
+
+  [5/5] in section: Live smoke notification (config.smoke)
+        Skipping live send (-SkipSend was specified).
+
+============================================================
+  END OF WARNINGS (5)
+============================================================
+[kennel-demo] ok     config gate      0 FAIL
+[kennel-demo] ok     google-chrome    present (needed only by 'compose')
+
+==== setup ====
+[kennel-demo] this host is ready. Next:  demo/tools/kennel-demo.sh provision   (~35 min, once per host)

@@ -1,0 +1,86 @@
+[kennel-demo] project clone    168e25d  feat(test): workload…kennel.mvp.ssh — revert, stage, apply, launch, assert the composed solver, keep the logs, stop; kennel-demo.sh mvp (#24)
+
+==== mvp: workload.guest.ubuntu.server.24.kennel.mvp.ssh (warm path -- the baseline is on this host) ====
+[kennel-demo] revert -> stage the fixture -> apply -> launch -> assert walking (~4 min)
+Project clone: skipped (-NoProjectClone); reusing existing <RepoRoot>/project.
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Host type: host.ubuntu.kvm
+[33;1mWARNING: ===================================================================[0m
+[33;1mWARNING:  Host clock is 480.4s behind real time (limit: 120s).[0m
+[33;1mWARNING:  Guests take this clock from their virtual RTC at power-on, and[0m
+[33;1mWARNING:  their own NTP client steps them to real time seconds into the[0m
+[33;1mWARNING:  boot. That step lands mid-startup: a Kubernetes guest comes up[0m
+[33;1mWARNING:  with its pods Running but never Ready and every NodePort[0m
+[33;1mWARNING:  refusing, hours before anything blames a clock.[0m
+[33;1mWARNING: [0m
+[33;1mWARNING:  This cycle continues. Fix the clock from a console that can[0m
+[33;1mWARNING:  answer for Administrator / sudo -- run from the repo root:[0m
+[33;1mWARNING:    pwsh test/Test-Config.ps1[0m
+[33;1mWARNING:    pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1[0m
+[33;1mWARNING: ===================================================================[0m
+Track directory: /home/thales/git/yuruna/test/status/runtime
+Log directory:   /home/thales/git/yuruna/test/status/log
+OCR engines: tesseract | combine: Or
+Guest key (from baseline): guest.ubuntu.server.24
+  Stopping concurrent VM 'kennel-vm-baseline' before the cycle starts.
+Chain: start.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.ssh -> workload.guest.ubuntu.server.24.kennel.stack.ssh -> workload.guest.ubuntu.server.24.kennel.baseline.ssh -> workload.guest.ubuntu.server.24.kennel.reset.ssh -> workload.guest.ubuntu.server.24.kennel.mvp.ssh
+requiresSnapshot: snapshot 'kennel-vm-baseline' present on persisted VM 'kennel-vm-baseline' -- skipping baseline chain (warm path).
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Caching-proxy service: none -- guest will download directly.
+VM 'kennel-vm-baseline' already exists. Reusing.
+VM 'kennel-vm-baseline': skipping pre-sequence start -- first step is loadDiskSnapshot (handler will start the VM after the restore).
+Log file: /home/thales/git/yuruna/test/status/log/000041.2026-09-10.03-10-26.4230bb0f56694b6582bdfe6388bff892.incomplete/000041.2026-09-10.03-10-26.4230bb0f56694b6582bdfe6388bff892.html
+
+=============================================
+  Sequence: workload.guest.ubuntu.server.24.kennel.mvp.ssh
+  Chain:    6 sequence(s), 14 total step(s)
+  Range:    starting at step 1
+  VM:       kennel-vm-baseline
+  Guest:    guest.ubuntu.server.24
+=============================================
+
+Step list:
+  --- workload.guest.ubuntu.server.24.kennel.mvp.ssh (14 step(s))
+  >> [1] loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+  >> [2] sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+  >> [3] sshExec: Smoke test: whoami/hostname
+  >> [4] sshExec: Assert the restored guest carries the baseline record at the stack pin
+  >> [5] sshExec: Start the dfki_quad container and assert it is running
+  >> [6] sshFetchAndExecute: Stage the fixture and the four stack tools from the project tree (through the host)
+  >> [7] sshExec: Assert the staged fixture's run.json is the pin and the solver this sequence expects
+  >> [8] sshExec: Apply the fixture to the container's config paths and prove the bytes landed (repo -> guest -> container)
+  >> [9] sshExec: Launch the three stack processes from the fixture's commands.txt and wait for the six-node graph
+  >> [10] sshExec: Run the verification recipe against the composed solver (its exit code is classified next)
+  >> [11] sshExec: Classify: the recipe could look at the stack (any other exit is an infrastructure error, not a stack verdict)
+  >> [12] sshExec: Assert healthy and walking on PARTIAL_CONDENSING_OSQP (an assert failed = red run, with the three process logs above)
+  >> [13] sshExec: Keep this run's record on the guest -- the report and the three process logs -- for the host to collect
+  >> [14] sshExec: Stop the stack in the container
+
+Running steps 1 to 14...
+
+
+--- workload.guest.ubuntu.server.24.kennel.mvp.ssh: local steps 1-14 of 14 (global 1-14) ---
+    Sequence: Kennel (SSH): the MVP -- revert to the baseline, stage the console-exported fixture from the project tree, apply it, launch the stack from its commands.txt, assert healthy and walking on the composed solver, keep the logs, stop the stack.
+       2 s [1/14] PASS loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+      11 s [2/14] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+       0 s [3/14] PASS sshExec: Smoke test: whoami/hostname
+       0 s [4/14] PASS sshExec: Assert the restored guest carries the baseline record at the stack pin
+       1 s [5/14] PASS sshExec: Start the dfki_quad container and assert it is running
+       1 s [6/14] PASS sshFetchAndExecute: Stage the fixture and the four stack tools from the project tree (through the host)
+       0 s [7/14] PASS sshExec: Assert the staged fixture's run.json is the pin and the solver this sequence expects
+       1 s [8/14] PASS sshExec: Apply the fixture to the container's config paths and prove the bytes landed (repo -> guest -> container)
+      32 s [9/14] PASS sshExec: Launch the three stack processes from the fixture's commands.txt and wait for the six-node graph
+      41 s [10/14] PASS sshExec: Run the verification recipe against the composed solver (its exit code is classified next)
+       0 s [11/14] PASS sshExec: Classify: the recipe could look at the stack (any other exit is an infrastructure error, not a stack verdict)
+       0 s [12/14] PASS sshExec: Assert healthy and walking on PARTIAL_CONDENSING_OSQP (an assert failed = red run, with the three process logs above)
+       0 s [13/14] PASS sshExec: Keep this run's record on the guest -- the report and the three process logs -- for the host to collect
+       0 s [14/14] PASS sshExec: Stop the stack in the container
+      90 s [All 14 steps completed in 2 min and 30 s]
+
+Chain completed successfully (14 step(s) across 6 sequence(s)).
+[kennel-demo] mvp in 1m39s
+[kennel-demo] collected        the guest's run record -> /tmp/claude-1000/-home-thales-kennel/b810292e-8d2e-4970-8bb8-49a1944de648/scratchpad/ev-mvp/mvp-20260910T031157Z/kennel-mvp/
+[kennel-demo] collected        000041.2026-09-10.03-10-26.4230bb0f56694b6582bdfe6388bff892 -> /tmp/claude-1000/-home-thales-kennel/b810292e-8d2e-4970-8bb8-49a1944de648/scratchpad/ev-mvp/mvp-20260910T031157Z/cycle/
+[kennel-demo] evidence         /tmp/claude-1000/-home-thales-kennel/b810292e-8d2e-4970-8bb8-49a1944de648/scratchpad/ev-mvp/mvp-20260910T031157Z
+[kennel-demo] the stack ran the fixture and walked on it. The run stays applied;
+[kennel-demo] return the guest to stock with:  demo/tools/kennel-demo.sh reset

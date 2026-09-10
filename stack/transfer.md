@@ -96,6 +96,22 @@ stages a fixture into the staging directory and `sshExec`s it; the host wrapper
 is for operators. §3 is that contract, and evidence group D exercises it — the
 applier runs there over plain SSH with no wrapper in sight.
 
+**As built, 2026-09-10** ([#24](https://github.com/alius-git/kennel/issues/24),
+[`test/harness.md`](../test/harness.md) §3). The sequence
+`workload.guest.ubuntu.server.24.kennel.mvp.ssh` is exactly that consumer, and
+the contract needed no change. Two notes for anyone reading it beside this
+document:
+
+- **The staging is a guest script, not the host.** One `sshFetchAndExecute` runs
+  `project/test/ubuntu.server.24/ubuntu.server.24.kennel-mvp-stage.sh`, which
+  pulls the fixture *and this applier* from the host's serving of the project
+  clone into `~/kennel-staging/`. So the applier that runs is the revision under
+  test, fetched fresh, rather than whatever a previous run left on the guest.
+- **The sequence restates the two sha256s** as `KENNEL_EXPECT_SIM_SHA` /
+  `KENNEL_EXPECT_CTRL_SHA`, which is what §5's chain turns into a single
+  measurement: repo bytes → guest bytes → container bytes, in one step, against
+  a number written down in the file that asked for them.
+
 ### 2.3 "Stock" means the pin's blob, not whatever was there first
 
 The backup is materialized with `git show <pin>:<path>` and checked against

@@ -1,0 +1,27 @@
+=================== probe: main  (1c9a2ab)
+--- sequence dirs discovered under project/:
+<root>/project/vm/test
+--- Resolve-SequencePath (reset):
+<root>/project/vm/test/workload.guest.ubuntu.server.24.kennel.reset.ssh.yml
+--- chain:
+start.guest.ubuntu.server.24.kennel.ssh
+workload.guest.ubuntu.server.24.kennel.ssh
+workload.guest.ubuntu.server.24.kennel.stack.ssh
+workload.guest.ubuntu.server.24.kennel.baseline.ssh
+workload.guest.ubuntu.server.24.kennel.reset.ssh
+--- Get-CycleConfig (project/test/test.runner.yml):
+Runner config not found: <root>/project/test/test.runner.yml (set test.config.yml's repositories.projectUrl, or place the file under <repo>/project/test/)
+=================== probe: branch  (3610981)
+--- sequence dirs discovered under project/:
+<root>/project/test
+<root>/project/vm/test
+--- Resolve-SequencePath (reset):
+<root>/project/test/workload.guest.ubuntu.server.24.kennel.reset.ssh.yml
+--- chain:
+start.guest.ubuntu.server.24.kennel.ssh
+workload.guest.ubuntu.server.24.kennel.ssh
+workload.guest.ubuntu.server.24.kennel.stack.ssh
+workload.guest.ubuntu.server.24.kennel.baseline.ssh
+workload.guest.ubuntu.server.24.kennel.reset.ssh
+--- Get-CycleConfig (project/test/test.runner.yml):
+workload.guest.ubuntu.server.24.kennel.reset.ssh

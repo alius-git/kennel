@@ -26,7 +26,7 @@ Builds directly on [`vm/provisioning.md`](provisioning.md)
 | Artifact | Purpose |
 |----------|---------|
 | [`vm/test/verify-meshcat-host.sh`](test/verify-meshcat-host.sh) | Host-side check: discovers the guest, the port and the binding, curls Meshcat, prints the URL to open |
-| A new step in [`vm/test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml`](test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml) | In-cycle assertion of hop 1 (see §2) |
+| A new step in [`test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml`](../test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml) | In-cycle assertion of hop 1 (see §2) |
 | §3 and §4 of this document | The URL recipe and the reboot recipe — the written-down artifact the issue asks for, feeding [#27](https://github.com/alius-git/kennel/issues/27) |
 
 ## 2. The two hops

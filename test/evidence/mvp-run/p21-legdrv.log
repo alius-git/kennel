@@ -1,0 +1,54 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-09-10-03-11-04-847395-kennel-vm-949
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [leg_driver-1]: process started with pid [962]
+[leg_driver-1] Loaded URDF model_ with 19 joints and 18 degrees of freedom.
+[leg_driver-1] data mass -1
+[leg_driver-1] data inertia 0 0 0
+[leg_driver-1] 0 0 0
+[leg_driver-1] 0 0 0
+[leg_driver-1] Joint names:
+[leg_driver-1] - universe
+[leg_driver-1] - root_joint
+[leg_driver-1] - bl_abad
+[leg_driver-1] - bl_shoulder
+[leg_driver-1] - bl_knee
+[leg_driver-1] - br_abad
+[leg_driver-1] - br_shoulder
+[leg_driver-1] - br_knee
+[leg_driver-1] - fl_abad
+[leg_driver-1] - fl_shoulder
+[leg_driver-1] - fl_knee
+[leg_driver-1] - fr_abad
+[leg_driver-1] - fr_shoulder
+[leg_driver-1] - fr_knee
+[leg_driver-1] Joint 8: fl_abad
+[leg_driver-1] Joint 9: fl_shoulder
+[leg_driver-1] Joint 10: fl_knee
+[leg_driver-1] Joint 11: fr_abad
+[leg_driver-1] Joint 12: fr_shoulder
+[leg_driver-1] Joint 13: fr_knee
+[leg_driver-1] Joint 2: bl_abad
+[leg_driver-1] Joint 3: bl_shoulder
+[leg_driver-1] Joint 4: bl_knee
+[leg_driver-1] Joint 5: br_abad
+[leg_driver-1] Joint 6: br_shoulder
+[leg_driver-1] Joint 7: br_knee
+[leg_driver-1] Inertia element idx: 8
+[leg_driver-1] Inertia element idx: 9
+[leg_driver-1] Inertia element idx: 10
+[leg_driver-1] Inertia element idx: 11
+[leg_driver-1] Inertia element idx: 12
+[leg_driver-1] Inertia element idx: 13
+[leg_driver-1] Inertia element idx: 2
+[leg_driver-1] Inertia element idx: 3
+[leg_driver-1] Inertia element idx: 4
+[leg_driver-1] Inertia element idx: 5
+[leg_driver-1] Inertia element idx: 6
+[leg_driver-1] Inertia element idx: 7
+[leg_driver-1] [INFO] [1789009864.921268631] [leg_driver]: Registered subscribers according to operation mode 2
+[leg_driver-1] [WARN] [1789009864.922117672] [leg_driver]: Waiting for first leg cmd message
+[leg_driver-1] [WARN] [1789010352.483064865] [leg_driver]: Waiting for first leg cmd message
+[leg_driver-1] [INFO] [1789010353.967451929] [leg_driver]: Switching operation mode to 0
+[leg_driver-1] [INFO] [1789010353.968220951] [leg_driver]: Registered subscribers according to operation mode 0
+[leg_driver-1] [INFO] [1789010353.988505945] [leg_driver]: First leg cmd message and quadt state received, switching to operation
+[leg_driver-1] [INFO] [1789010353.988539337] [leg_driver]: Switch to OPERATE

@@ -48,6 +48,21 @@ The `1` / `2` split is for #24: a failed assert means collect the stack logs and
 report a red run; an infrastructure error means the step never got as far as
 looking, which is a different bug in a different place.
 
+**How #24 wired it, 2026-09-10** ([`test/harness.md`](../test/harness.md) §3.2).
+A Yuruna step carries **one** failure class and the failing step's description
+is what `status.json` and the dashboard show, so the MVP sequence runs this
+recipe once — recording its code and exiting 0 — and then classifies it in two
+further steps: *"Classify: the recipe could look at the stack"* and *"Assert
+healthy and walking on PARTIAL_CONDENSING_OSQP"*. Which of the two goes red is
+therefore readable without opening a transcript.
+
+One correction that came out of the negative control, and it is about this
+table: the classifier must ask whether the code is one **this script produces**,
+not whether it equals 2. A `127` from the shell — the recipe missing entirely —
+is not a verdict about the robot, and an earlier version reported it as
+*ASSERT_FAILED, the stack is up but not healthy/walking*. Anything that is not
+`0` or `1` is now the infrastructure class.
+
 ```
 --expect-solver NAME    assert mpc_solver == NAME (check 10 asserts instead of reporting)
 --controller-log PATH   in-container path to the controller launch log, for the
