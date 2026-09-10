@@ -1432,7 +1432,10 @@ harness_collect() {   # $1 = label
     if guest_reachable; then
         scp "${SSH_OPTS[@]}" -qr "$TARGET:kennel-mvp" "$dest/" 2>/dev/null \
             && say "collected        the guest's run record -> $dest/kennel-mvp/"
-        scp "${SSH_OPTS[@]}" -q "$TARGET:kennel-manifest.json" "$TARGET:kennel-drift.json" "$dest/" 2>/dev/null
+        # The guest's version manifest (#74). Not a drift report: the reset
+        # sequence writes one, and the MVP sequence's own loadDiskSnapshot reverts
+        # it away before anything could collect it.
+        scp "${SSH_OPTS[@]}" -q "$TARGET:kennel-manifest.json" "$dest/" 2>/dev/null
     else
         warn "the guest is not reachable -- its run record was left on it."
     fi
@@ -2062,8 +2065,33 @@ do_console() {
         *) fail "console takes no argument, or --no-open, or stop."; exit 2 ;;
     esac
     mkdir -p "$OUT"
+    # A console that answers is not necessarily THIS checkout's (F24, vm/manifest.md):
+    # a serve.py keeps serving the code it started with -- for days, across a
+    # branch switch -- and its /api/health then lacks whatever the checkout added.
+    # Compare the version it reports with the checkout's literal. One this driver
+    # started (its pidfile names a live process) is restarted; anyone else's is
+    # only warned about, because stopping a process this script did not start is
+    # not its call (console_stop's rule).
     if console_alive; then
-        say "already served on port $PORT"
+        local want have
+        want="$(sed -n 's/^KENNEL_CONSOLE_VERSION *= *"\([^"]*\)".*/\1/p' "$REPO_ROOT/kennel_console/serve.py" | head -n 1)"
+        have="$(curl -sf "$CONSOLE_ORIGIN/api/health" 2>/dev/null \
+                | python3 -c 'import json, sys; print(json.load(sys.stdin).get("console_version") or "")' 2>/dev/null)"
+        if [ -z "$want" ] || [ "$have" = "$want" ]; then
+            say "already served on port $PORT (console ${have:-unknown})"
+        elif [ -f "$CONSOLE_PIDFILE" ] && kill -0 "$(cat "$CONSOLE_PIDFILE")" 2>/dev/null; then
+            say "port $PORT serves console '${have:-none}', this checkout is '$want' -- restarting the one this driver started"
+            console_stop >/dev/null
+            local t0=$SECONDS
+            while console_alive && [ $((SECONDS - t0)) -lt 15 ]; do sleep 0.25; done
+        else
+            warn "port $PORT is served by console '${have:-none}', but this checkout is '$want':"
+            warn "its /api/health and its page are not this checkout's. This driver did not start it,"
+            warn "so it will not stop it. Find it with:  lsof -i :$PORT"
+        fi
+    fi
+    if console_alive; then
+        :
     else
         # serve.py is `python3 -m http.server --directory kennel_console` plus a
         # POST endpoint, so the console it serves can write the run folder into
