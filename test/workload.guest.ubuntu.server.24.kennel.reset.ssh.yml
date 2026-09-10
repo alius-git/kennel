@@ -34,6 +34,13 @@
 # values in the start sequence -- a mismatch means the sizing that reaches a
 # cold-path guest is not the sizing the baseline was built at.
 #
+# THE LAST STEP IS THE DRIFT CHECK (#75). A reset that returned anything but
+# the environment the baseline's version manifest describes is not a reset, so
+# the sequence ends by running vm/guest/ubuntu.server.24/kennel-drift.sh against
+# ~/kennel-manifest.json and fails on any finding. On the cold path it runs a
+# minute after the baseline was frozen -- the first proof that the check is
+# quiet on a clean guest (vm/drift.md).
+#
 # LOADDISKSNAPSHOT MUST BE THE FIRST STEP. The runner skips its pre-sequence
 # `Start-VM` when the first executed step is a loadDiskSnapshot, because the
 # handler starts the VM itself after the restore (Invoke-TestSequence.ps1,
@@ -42,7 +49,7 @@
 # runner starting the VM first and reverting a running guest.
 
 sequenceGuid: 42bd09f0-fcbe-42fd-a002-7b3e4541fc48
-sequenceRevision: 1
+sequenceRevision: 2
 
 description: "Kennel (SSH): revert the kennel-vm guest to the 'kennel-vm-baseline' disk snapshot and prove what came back is the appliance -- stock at the pin, container running, workspace built, simulator launchable."
 keystrokeMechanism: ssh
@@ -164,3 +171,13 @@ workload:
     command: "echo '--- version manifest ---'; cat \"$HOME/kennel-manifest.json\"; sha256sum \"$HOME/kennel-manifest.json\"; echo '--- disk ---'; df -h /; echo '--- container ---'; sudo docker ps --format '{{.Names}} {{.Status}}'"
     description: "Record what the reset returned (feeds vm/snapshot.md)"
 
+  # --- The appliance's own drift check, last (#75). It is fetched from the
+  # project tree like the prep script, and it judges the live guest against the
+  # manifest this revert brought back: exit 1 is a finding -- each one a DRIFT
+  # line in the output Yuruna keeps on failure -- and exit 2 is a guest it could
+  # not even look at (no manifest). An applied composed run cannot be the cause
+  # here: the revert removed it, and the assert above proved no run is current.
+  - action: sshFetchAndExecute
+    command: "/usr/local/lib/yuruna/fetch-and-execute.sh project/vm/guest/ubuntu.server.24/kennel-drift.sh"
+    timeoutSeconds: 300
+    description: "Assert the drift check finds nothing (the guest is its manifest's environment)"
