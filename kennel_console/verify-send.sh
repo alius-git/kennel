@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Version: 2026.08.30
-# Verify that the console writes its run folder where the driver reads (#56).
+# Version: 2026.09.10
+# Verify that the console writes its run folder where the driver reads (#56),
+# and -- group 7, since #74/#75 -- that the guest's version manifest and drift
+# report reach the page and run.json references the manifest.
 #
 #   ./kennel_console/verify-send.sh [servePort] [plainPort] [cdpPort]
 #

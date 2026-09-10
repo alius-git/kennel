@@ -312,6 +312,12 @@ select{appearance:none}
                 <sc-if value="{{ pinDiffers }}" hint-placeholder-val="{{ true }}">
                   <div style="font:500 9px 'IBM Plex Mono';color:#d98a84;width:100%">{{ pinDiffersLabel }}</div>
                 </sc-if>
+                <sc-if value="{{ guestLine }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:400 9px 'IBM Plex Mono';color:#7c8794;width:100%">{{ guestLine }}</div>
+                </sc-if>
+                <sc-if value="{{ guestWarn }}" hint-placeholder-val="{{ true }}">
+                  <div style="font:500 9px 'IBM Plex Mono';color:#e0a63c;width:100%">{{ guestWarn }}</div>
+                </sc-if>
               </div>
             </div>
           </div>
@@ -1129,6 +1135,11 @@ function yamlVal(v) { return typeof v === 'boolean' ? (v ? 'true' : 'false') : S
 // See composer-scope.md and generate.md.
 
 const PIN_SHA = 'dcf53c596339afd45b82f12c54b1e93e8273c2f4';   // stack/pin.lock
+// The console's version (#74): a date, bumped BY HAND whenever this page or
+// serve.py changes, and equal to serve.py's KENNEL_CONSOLE_VERSION --
+// verify-send.py group 7 compares the two files. A guest's version manifest
+// records the one serve.py carried when its baseline was built.
+const KENNEL_CONSOLE_VERSION = '2026.09.10';
 
 // The source chain every container shell needs, verbatim from
 // stack/known-good/tools/prelude.sh (issue #13). Its explanatory comments live
@@ -1442,10 +1453,11 @@ function emitCommandsTxt(cfg) {
 
 // Deliberately minimal (tracking-issue #4): composed choices, pin SHA and a
 // timestamp — enough provenance for the demo, and explicitly NOT the Run
-// Manifests & Config Schema foundation. `choices` holds the seven fields the
+// Manifests & Config Schema foundation. Since #74, also the manifest_ref of the
+// guest the console knew about, when it knew about one. `choices` holds the seven fields the
 // composer owns, under their mapping.md names rather than the composer's
 // internal ones, so a reader can grep run.json against the YAMLs directly.
-function emitRunJson(cfg, runId, stamp) {
+function emitRunJson(cfg, runId, stamp, manifestRef) {
   const w = MAP_WORLD[cfg.map] || MAP_WORLD.flat_plane;
   const c = cfg.blocks.mpc;
   return JSON.stringify({
@@ -1467,7 +1479,13 @@ function emitRunJson(cfg, runId, stamp) {
       // fourth COMMAND, not a YAML key -- which is why it is here and in
       // commands.txt and in neither config file.
       ...(cfg.sim.disturbances ? {disturbances: true} : {})
-    }
+    },
+    // #74, and ONLY when the page knows the guest's version manifest (serve.py's
+    // /api/health carried one). Spread last, for the reason `disturbances` is:
+    // a run composed with no manifest known -- every export under plain
+    // http.server -- stays byte-identical to one composed before this key
+    // existed, and export.md's five keys stay five.
+    ...(manifestRef ? {manifest_ref: manifestRef} : {})
   }, null, 2) + '\n';
 }
 
@@ -1490,13 +1508,41 @@ function shortPath(p) {
 
 const ARTIFACT_NAMES = ['simulator_params_go2.yaml', 'mit_controller_sim_go2.yaml',
                         'commands.txt', 'run.json'];
-function artifacts(cfg, runId, stamp) {
+function artifacts(cfg, runId, stamp, manifestRef) {
   return [
     {name: 'simulator_params_go2.yaml',   text: emitSimYaml(cfg)},
     {name: 'mit_controller_sim_go2.yaml', text: emitCtrlYaml(cfg)},
     {name: 'commands.txt',                text: emitCommandsTxt(cfg)},
-    {name: 'run.json',                    text: emitRunJson(cfg, runId, stamp)}
+    {name: 'run.json',                    text: emitRunJson(cfg, runId, stamp, manifestRef)}
   ];
+}
+
+// The export strip's two lines about the guest (#74, #75), from /api/health:
+// what the guest is, and what about it does not agree with this page.
+function guestLineOf(k) {
+  const m = k.manifest || {};
+  const bits = ['guest ' + String(m.pin || '?').slice(0, 7)];
+  if (m.os && m.os.pretty_name) bits.push(m.os.pretty_name);
+  if (m.ros_distro) bits.push('ROS ' + m.ros_distro);
+  if (m.drake) bits.push('Drake ' + String(m.drake).split(' ')[0]);
+  if (k.manifest_ref) bits.push('manifest ' + k.manifest_ref.slice(0, 7));
+  if (k.console_version) bits.push('console ' + k.console_version);
+  return bits.join(' · ');
+}
+function guestWarnOf(k) {
+  const out = [];
+  const m = k.manifest;
+  if (m && m.pin && m.pin !== PIN_SHA)
+    out.push('guest pin differs from this console (guest ' + m.pin.slice(0, 12)
+             + ', console ' + PIN_SHA.slice(0, 12) + ')');
+  if (k.console_version && k.console_version !== KENNEL_CONSOLE_VERSION)
+    out.push('server console version differs (server ' + k.console_version
+             + ', page ' + KENNEL_CONSOLE_VERSION + ')');
+  const d = k.drift;
+  if (d && Array.isArray(d.findings) && d.findings.length)
+    out.push('environment drifted: ' + d.findings.length + ' finding' + (d.findings.length === 1 ? '' : 's')
+             + (d.checked ? ' (checked ' + String(d.checked).slice(11) + ')' : ''));
+  return out.join(' · ');
 }
 
 // ─── A minimal store-only ZIP writer ────────────────────────────────────────
@@ -3000,6 +3046,9 @@ class Component extends DCLogic {
     setTimeout(() => this.setState(s => (s.copied === key ? {copied: ''} : null)), 1400);
   }
   runId() { return 'RUN-2026-0724-' + String(1400 + this.state.runSeq).padStart(4, '0'); }
+  // The guest's manifest_ref when serve.py reported one (#74): what run.json
+  // references, so a run names the environment it was composed against.
+  manifestRef() { return (this.state.kennel && this.state.kennel.manifest_ref) || null; }
   commands(cfg, id) { return commandBlocks(cfg); }   // three, or four with disturbances on (#68)
 
   // Hand a Blob to the browser's downloader. An anchor click is the only route
@@ -3031,7 +3080,7 @@ class Component extends DCLogic {
   send(cfg) {
     const stamp = stampNow();
     const id = this.runId();
-    const files = artifacts(cfg, id, stamp);
+    const files = artifacts(cfg, id, stamp, this.manifestRef());
     const blob = buildZip(files.map(f => ({name: stamp.dir + '/' + f.name, text: f.text})),
                           new Date(stamp.iso));
     this.setState({sendMsg: 'sending ' + stamp.dir + ' …', sendErr: false});
@@ -3460,7 +3509,7 @@ class Component extends DCLogic {
         fg: st.saved === name ? '#8fc9ea' : '#8b93a0',
         // Built at click, not at render: the bytes must be current, and
         // stamping every frame would spin run.json's timestamp at 10 Hz.
-        onSave: () => this.save(name, artifacts(cfg, this.runId(), stampNow())
+        onSave: () => this.save(name, artifacts(cfg, this.runId(), stampNow(), this.manifestRef())
           .filter(f => f.name === name)[0].text)})),
       lastExport: st.lastExport,
       lastExportLabel: st.lastExport ? 'saved ' + st.lastExport : '',
@@ -3479,6 +3528,14 @@ class Component extends DCLogic {
         ? 'server pin differs — this export will be refused (server ' + st.kennel.pin.slice(0, 12)
           + ', console ' + PIN_SHA.slice(0, 12) + ')'
         : '',
+      // The guest this console composes for (#74), from the version manifest the
+      // driver left beside the run folders -- and what about it disagrees with
+      // this page: its pin, the server's console version, the last drift report
+      // (#75). Warnings, never refusals: a run composed here still sends, and
+      // kennel-transfer.sh says the same at apply time. A different question from
+      // pinDiffers above, which is this host's checkout against the page.
+      guestLine: (st.kennel && st.kennel.manifest) ? guestLineOf(st.kennel) : '',
+      guestWarn: st.kennel ? guestWarnOf(st.kennel) : '',
 
       // Generate run does both halves of its name: it stages the manifest and
       // writes the run folder out as an archive. It no longer jumps to the Runs
@@ -3487,7 +3544,7 @@ class Component extends DCLogic {
       onGenerate: () => {
         const stamp = stampNow();
         const id = this.runId();
-        const files = artifacts(cfg, id, stamp);
+        const files = artifacts(cfg, id, stamp, this.manifestRef());
         this.save(stamp.dir + '.zip', buildZip(
           files.map(f => ({name: stamp.dir + '/' + f.name, text: f.text})),
           new Date(stamp.iso)));

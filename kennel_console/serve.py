@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serve the Kennel Console, accept the run folder it exports, and serve the guides. 2026-09-09.
+"""Serve the Kennel Console, accept the run folder it exports, and serve the guides. 2026-09-10.
 
 WHERE IT RUNS: HOST (the machine with the browser), from the repository root or
 anywhere -- it resolves its own directory.
@@ -16,7 +16,13 @@ same URLs, same directory listing, same %20 in the page name (serve.md section 1
 
     GET  /api/health   {"kennel": true, "out": "<abs run dir>", "pin": "<sha>",
                         "bridge": "<ws url>"|null, "meshcat": "<http url>"|null,
-                        "guides": [{"name": "first-run.md", "title": "..."}]|null}
+                        "guides": [{"name": "first-run.md", "title": "..."}]|null,
+                        "console_version": "YYYY.MM.DD",
+                        "manifest": {<the guest's version manifest>}|null,
+                        "manifest_ref": "<sha256 of its bytes>"|null,
+                        "drift": {"checked": "...", "findings": [...], ...}|null}
+                       the last four since #74/#75: what the driver left under
+                       --out as .kennel-manifest.json and .kennel-drift
     POST /api/runs     body = the export archive; writes run-<stamp>/ under --out
     GET  /api/runs     the run folders present, newest first -- with each run's
                        composed `choices` and, once `kennel-demo.sh verify` has
@@ -60,6 +66,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(HERE)
 PIN_LOCK = os.path.join(REPO_ROOT, "stack", "pin.lock")
 
+# The console's own version (#74): a date, bumped BY HAND whenever this server or
+# the page changes, and equal to the page's KENNEL_CONSOLE_VERSION literal --
+# verify-send.py group 7 compares the two files. The baseline prep script reads
+# this line out of the host's project archive into the guest's version manifest,
+# so its shape -- one assignment, a double-quoted YYYY.MM.DD -- is load-bearing.
+KENNEL_CONSOLE_VERSION = "2026.09.10"
+
 # The four files a console export carries (export.md section 1). The stack reads
 # only the two YAMLs; a folder missing either of the other two is not an export.
 ARTIFACT_NAMES = ("simulator_params_go2.yaml", "mit_controller_sim_go2.yaml",
@@ -97,6 +110,11 @@ MAX_UPLOAD = 8 * 1024 * 1024
 # already has open.
 BRIDGE_FILE = ".kennel-bridge"
 MESHCAT_FILE = ".kennel-meshcat"
+# The guest's version manifest (#74) and the last drift report (#75), left under
+# --out by `kennel-demo.sh up`/`status`/`reset` and `drift`. Same rule as the two
+# URLs above: the driver discovers, this server only reads -- per request.
+MANIFEST_FILE = ".kennel-manifest.json"
+DRIFT_FILE = ".kennel-drift"
 
 # A URL this server hands to the page, which will open a WebSocket to it. Only
 # the two schemes that can mean anything here, and nothing with a control
@@ -136,6 +154,62 @@ def side_channel(out_dir, name):
     except OSError:
         return None
     return value if value and URL_RE.match(value) else None
+
+
+def manifest_from(out_dir):
+    """(the guest's version manifest, its manifest_ref) from <out>/.kennel-manifest.json.
+
+    manifest_ref is the sha256 of the file's BYTES, never of a re-serialization:
+    the prep script writes the manifest canonically precisely so that the bytes
+    are the identity (vm/manifest.md). (None, None) when there is none or it does
+    not parse -- the page must still boot with no guest known.
+    """
+    try:
+        with open(os.path.join(out_dir, MANIFEST_FILE), "rb") as f:
+            raw = f.read()
+        doc = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return None, None
+    if not isinstance(doc, dict):
+        return None, None
+    return doc, hashlib.sha256(raw).hexdigest()
+
+
+def drift_from(out_dir):
+    """The last drift report the driver copied to <out>/.kennel-drift (#75), or None."""
+    try:
+        with open(os.path.join(out_dir, DRIFT_FILE), encoding="utf-8") as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(doc, dict) or not isinstance(doc.get("findings"), list):
+        return None
+    return {"checked": doc.get("checked"), "manifest_ref": doc.get("manifest_ref"),
+            "findings": [f for f in doc["findings"] if isinstance(f, dict)],
+            "notes": [n for n in (doc.get("notes") or []) if isinstance(n, str)]}
+
+
+def manifest_warning(files, out_dir):
+    """A sentence when a POSTed run names a manifest the guest does not carry (#74).
+
+    A warning and never a refusal: the pin decides whether a run means anything
+    here, and the drift check names what changed.
+    """
+    try:
+        meta = json.loads(dict(files)["run.json"].decode("utf-8"))
+    except (KeyError, UnicodeDecodeError, ValueError):
+        return None
+    ref = meta.get("manifest_ref") if isinstance(meta, dict) else None
+    if not ref:
+        return None
+    _, current = manifest_from(out_dir)
+    if current is None:
+        return ("this run names manifest %s, and no guest manifest is known here "
+                "(kennel-demo.sh up writes it)." % str(ref)[:12])
+    if ref != current:
+        return ("this run was composed against manifest %s, but the guest carries %s. "
+                "Written anyway; kennel-demo.sh drift names what changed." % (str(ref)[:12], current[:12]))
+    return None
 
 
 def guide_title(path):
@@ -581,6 +655,7 @@ def list_runs(out_dir):
             "complete": len(present) == len(ARTIFACT_NAMES),
             "run_id": meta.get("run_id"),
             "choices": meta.get("choices"),
+            "manifest_ref": meta.get("manifest_ref"),
             "verify": verify_summary(report),
             "_t": mtime,
         })
@@ -616,6 +691,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.split("?")[0] == "/api/health":
+            manifest, manifest_ref = manifest_from(self.out_dir)
             self._json(200, {"kennel": True, "out": self.out_dir, "pin": self.pin,
                              # Resolved per request: `teleop` writes these while
                              # the console is already open, and an operator who
@@ -626,7 +702,15 @@ class Handler(SimpleHTTPRequestHandler):
                              # null with no guides directory, which is also what
                              # plain http.server gives the page: no /api/health
                              # at all. One rule, two ways of being absent (#73).
-                             "guides": guide_list(self.guides_dir)})
+                             "guides": guide_list(self.guides_dir),
+                             # The guest this console composes for (#74, #75):
+                             # its version manifest, that manifest's identity and
+                             # the last drift report, as the driver left them.
+                             # Appended, so every key above keeps its place.
+                             "console_version": KENNEL_CONSOLE_VERSION,
+                             "manifest": manifest,
+                             "manifest_ref": manifest_ref,
+                             "drift": drift_from(self.out_dir)})
             return
         if self.path.split("?")[0] == "/api/runs":
             self._json(200, {"out": self.out_dir, "runs": list_runs(self.out_dir)})
@@ -752,7 +836,12 @@ class Handler(SimpleHTTPRequestHandler):
             self._refusal(Refused(500, "could not write into %s (%s)." % (self.out_dir, exc)))
             return
         self.log_message("wrote %s", path)
-        self._json(201, {"run": run, "path": path, "sha256": digests})
+        payload = {"run": run, "path": path, "sha256": digests}
+        warning = manifest_warning(files, self.out_dir)
+        if warning:
+            self.log_message("warning: %s", warning)
+            payload["warning"] = warning
+        self._json(201, payload)
 
     def log_message(self, fmt, *args):
         """One line per request, on stdout -- the driver tees it to a log file."""
@@ -819,6 +908,11 @@ def main(argv=None):
     print("[serve.py] guides       %s" % (
         "%s (%d)" % (Handler.guides_dir, len(guide_list(Handler.guides_dir) or []))
         if Handler.guides_dir else "none -- the console will show no Guides item"))
+    _, ref = manifest_from(out_dir)
+    print("[serve.py] manifest     %s" % (
+        "%s (%s)" % (os.path.join(out_dir, MANIFEST_FILE), ref[:12]) if ref
+        else "none yet -- kennel-demo.sh up writes %s" % os.path.join(out_dir, MANIFEST_FILE)))
+    print("[serve.py] console      %s" % KENNEL_CONSOLE_VERSION)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
