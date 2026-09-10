@@ -1900,11 +1900,11 @@ do_import() {
     virsh list --all >/dev/null 2>&1    # wake socket-activated libvirtd
     # Asked up to five times, a second apart -- observing, bounded -- with the
     # whole answer read before it is tested. The first real import after a sweep
-    # was refused here with the network active (F25, vm/image.md): libvirtd is
-    # socket-activated, a new one was starting at that very second, its journal
-    # logged `End of file while reading data: Input/output error` for the
-    # connection, virsh printed nothing, and a one-shot check read nothing as
-    # "not active".
+    # was refused here with the network active (F25, vm/image.md): at that second
+    # libvirtd logged a client connection ending in `End of file while reading
+    # data: Input/output error`, virsh printed no `Active:` line, and a one-shot
+    # check read nothing as "not active". Transient: the same read answered
+    # `Active: yes` on all of 600 tries afterwards.
     local net_active="" try
     for try in 1 2 3 4 5; do
         net_active="$(virsh net-info "$LIBVIRT_NET" 2>/dev/null | awk '$1 == "Active:" {print $2}')"
