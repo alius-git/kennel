@@ -30,7 +30,9 @@
 #              then files its report in the applied run's folder as verify.json
 #   scenario   demo/tools/scenario-<name>.sh -- one verification scenario of
 #              plan/scenarios.md driven end to end and asserted (see
-#              demo/scenarios.md). A test, not a demo phase.
+#              demo/scenarios.md). A test, not a demo phase. `firstwalk`
+#              performs guides/first-run.md itself, so its subject is a
+#              document rather than the stack.
 #   walk       vm/test/verify-meshcat-host.sh + p21-trot-hold.sh
 #   teleop     stack/bridge/kennel-bridge.sh (on guest) + verify-bridge-host.sh,
 #              then the console: drive the robot from the browser joystick
@@ -66,6 +68,10 @@
 #     kennel-demo.sh scenario disturb  # s004: interventions, and the process
 #                                      # set that never changes (#69)
 #     kennel-demo.sh scenario diagnose # s003: degradation, fall, post-mortem (#71)
+#     kennel-demo.sh scenario firstwalk # s001: guides/first-run.md performed and
+#                                      # timed. Needs the stack DOWN and the
+#                                      # console port free -- step 1 of the
+#                                      # checklist is what starts it (#73)
 #
 # Knobs (all optional, environment variables):
 #   YURUNA_DIR            ~/git/yuruna       framework checkout (setup, provision)
@@ -85,17 +91,23 @@
 #   KENNEL_SOLVER         PARTIAL_CONDENSING_OSQP   composed solver, and the
 #                                            expected one when no run.json says
 #   KENNEL_RATE           0.75               composed simulator_realtime_rate
-#   KENNEL_PRESET         (none)             a named composition for `compose`
-#                                            and `all`. The one that exists is
-#                                            `stress` (#70): the measured red
-#                                            composition -- OSQP at
-#                                            mpc_condensed_size 1 on the flat
-#                                            plane, which degrades the MPC
-#                                            margin AND falls (stack/stress.md
-#                                            §4). It fills in only what you did
-#                                            not choose. Named presets in
-#                                            general are #72; this is the one
-#                                            #71 needs
+#   KENNEL_PRESET         (none)             one of the presets the CONSOLE
+#                                            ships (#72), picked in the UI by
+#                                            its name or its slug:
+#                                              stock-go2-walk
+#                                              solver-benchmark-a-hpipm
+#                                              solver-benchmark-b-osqp
+#                                              stress
+#                                            The composition is the page's data
+#                                            (kennel_console/composer-scope.md
+#                                            §7), never a table in this script;
+#                                            a wrong name is refused by the page
+#                                            with the four it offers. It fills
+#                                            in only what you did not choose --
+#                                            an explicit KENNEL_SOLVER or
+#                                            KENNEL_RATE still wins. `stress` is
+#                                            the measured red composition #71
+#                                            needs (stack/stress.md §4)
 #   KENNEL_DISTURBANCES   0                  1 composes the fourth block, the
 #                                            disturbance service (#68)
 #   KENNEL_MAP / KENNEL_HPIPM_MODE / KENNEL_CONDENSED   passed to compose; unset
@@ -140,11 +152,9 @@ RATE="${KENNEL_RATE:-0.75}"
 # and an explicit knob must still win.
 RATE_IS_DEFAULT=0; [ -z "${KENNEL_RATE:-}" ] && RATE_IS_DEFAULT=1
 SOLVER_IS_DEFAULT=0; [ -z "${KENNEL_SOLVER:-}" ] && SOLVER_IS_DEFAULT=1
-# A named composition (#70's half of #72). `stress` is the one the sweep
-# measured: the red composition of stack/stress.md, which is the demo's own
-# solver and rate on OBSTACLE TERRAIN -- a map that is known not to walk
-# (transfer.md §6.3), which is the point of it. Anything else is refused by
-# name rather than silently ignored.
+# One of the presets the console ships (#72), by name or slug. This script does
+# not know what any of them composes -- it hands the name to the page, which
+# owns the data and refuses a name it does not offer.
 PRESET="${KENNEL_PRESET:-}"
 
 GUEST_HOSTNAME="${KENNEL_GUEST_HOSTNAME:-kennel-vm}"
@@ -1166,48 +1176,18 @@ console_stop() {
 }
 
 SERVER_PID=""
-# What a named preset composes. Refused by NAME rather than silently ignored: a
-# preset nobody implemented must not quietly produce the default composition and
-# call itself the stress preset.
-# A preset composes a WHOLE composition, and every field of it was measured.
-# `stress` is the row stack/stress.md §4 picks: PARTIAL_CONDENSING_OSQP with
-# mpc_condensed_size 1, on the FLAT PLANE at rate 1.0. It is the only composition
-# in the sweep that does both things s003 needs -- it degrades the MPC margin
-# (3.75 ms mean against 1.16 for the same solver at stock condensing, peaking at
-# 9.18 ms, over the console's 7 ms amber line) AND it falls, by the recipe's own
-# rule, while still walking. Obstacle terrain falls too and shows no degradation
-# at all, which is why the preset is a composition and not a map.
-#
-# Refused by NAME rather than silently ignored: a preset nobody implemented must
-# not quietly compose the default and call itself the stress preset.
-preset_field() {   # $1 = map | rate | solver | condensed
-    case "$PRESET" in
-        "") echo "" ;;
-        stress)
-            case "$1" in
-                map)       echo flat_plane ;;
-                rate)      echo 1.0 ;;
-                solver)    echo PARTIAL_CONDENSING_OSQP ;;
-                condensed) echo 1 ;;
-            esac ;;
-        *) fail "no preset '$PRESET'. The one that exists is 'stress' (stack/stress.md §4)." \
-                "Named presets in general are issue #72."
-           exit 2 ;;
-    esac
-}
+# A named preset (#72) is the PAGE's data, not this script's. `KENNEL_PRESET`
+# travels through p22-console-demo.sh to the console, which picks the option
+# whose name -- or slug -- matches and loads a whole composition it ships; the
+# panes are then read back and printed as PRESET_<KEY>= lines. Refusing a wrong
+# name is the page's job too, because the page is the only thing that knows what
+# presets there are: a table here could disagree with it silently, and did not
+# have to, so there is none. The four are Stock Go2 walk, Solver benchmark A
+# (HPIPM), Solver benchmark B (OSQP) and Stress -- each a measured row of
+# stack/stress.md §2, recorded in kennel_console/composer-scope.md §7.
 
 do_compose() {
     OUT="${1:-$OUT}"
-    # A preset fills in only what the operator did not choose, so every knob
-    # still wins over it.
-    PRESET_MAP="$(preset_field map)" || exit $?
-    if [ -n "$PRESET" ]; then
-        local pv
-        [ "$RATE_IS_DEFAULT" = 1 ] && { pv="$(preset_field rate)"; [ -n "$pv" ] && RATE="$pv"; }
-        [ "$SOLVER_IS_DEFAULT" = 1 ] && { pv="$(preset_field solver)"; [ -n "$pv" ] && SOLVER="$pv"; }
-        [ -z "${KENNEL_CONDENSED:-}" ] && { pv="$(preset_field condensed)"
-                                            [ -n "$pv" ] && KENNEL_CONDENSED="$pv"; }
-    fi
     mkdir -p "$OUT"
     if ! curl -sf -o /dev/null "$CONSOLE_URL"; then
         say "serving the console on port $PORT (kennel_console/serve.md §1)"
@@ -1220,9 +1200,19 @@ do_compose() {
             sleep 0.25
         done
     fi
-    [ -n "$PRESET" ] && say "preset           $PRESET -- $SOLVER, condensed ${KENNEL_CONDENSED:-stock}, rate $RATE, $PRESET_MAP (stack/stress.md §4)"
-    KENNEL_CONSOLE_URL="$CONSOLE_URL" KENNEL_SOLVER="$SOLVER" KENNEL_RATE="$RATE" \
-        KENNEL_MAP="${KENNEL_MAP:-$PRESET_MAP}" \
+    # A preset fills in only what the operator did not choose: an EXPLICIT
+    # KENNEL_SOLVER or KENNEL_RATE still wins, a defaulted one yields to the
+    # preset by being passed through EMPTY -- which p22 reads as "touch no
+    # control", the meaning every other knob there already has.
+    local solver="$SOLVER" rate="$RATE"
+    if [ -n "$PRESET" ]; then
+        [ "$SOLVER_IS_DEFAULT" = 1 ] && solver=""
+        [ "$RATE_IS_DEFAULT" = 1 ] && rate=""
+        say "preset           $PRESET -- picked in the console by text; the composition is the page's (composer-scope.md §7)"
+    fi
+    KENNEL_CONSOLE_URL="$CONSOLE_URL" KENNEL_SOLVER="$solver" KENNEL_RATE="$rate" \
+        KENNEL_PRESET="$PRESET" \
+        KENNEL_MAP="${KENNEL_MAP:-}" \
         KENNEL_HPIPM_MODE="${KENNEL_HPIPM_MODE:-}" KENNEL_CONDENSED="${KENNEL_CONDENSED:-}" \
         KENNEL_DISTURBANCES="${KENNEL_DISTURBANCES:-0}" \
         "$HERE/p22-console-demo.sh" "$OUT"
@@ -1230,7 +1220,8 @@ do_compose() {
     [ -n "$SERVER_PID" ] && { kill "$SERVER_PID" 2>/dev/null; SERVER_PID=""; }
     [ $rc -eq 0 ] || {
         fail "compose failed (p22-console-demo.sh exited $rc)." \
-             "It needs google-chrome; to compose by hand instead, see demo/runbook.md §3.2."
+             "It needs google-chrome; to compose by hand instead, see demo/runbook.md §3.2." \
+             "A refused preset name is exit 1 and the page lists the four it ships."
         return $rc
     }
     say "run folder       $(latest_run)"

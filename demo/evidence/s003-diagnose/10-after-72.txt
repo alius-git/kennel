@@ -1,0 +1,164 @@
+=== 10-after-72: scenario diagnose, after the driver's preset table was retired ===
+The one consumer of KENNEL_PRESET besides compose. It exports KENNEL_PRESET=stress
+and reads its verdict from the stack, so this is what proves the retired table
+changed nothing it depends on.
+2026-09-09T18:20:08Z
+
+=== scenario s003.diagnose -- degradation, a fall, and the post-mortem (#71) ===
+2026-09-09T18:20:08Z
+guest        kennel-vm at 192.168.122.32
+evidence     /home/thales/kennel/demo/evidence/s003-diagnose
+preset       stress   attempts 3, need 2 to fall
+walk         vx 0.3 m/s from the page, joystick centred, 60 sim-s per attempt
+ps excludes  k13-target-monitor[.]py|k14-solve-probe[.]py|kennel-verify[.]sh|check[.]py|^ps |ros2 (topic|service|param|node|run) 
+asserting    MPC amber=1, a deadline entry=1
+
+---- attempt 1 of 3 ----
+[scenario] composing the stress preset
+  [PASS] the stress preset composed -- /home/thales/kennel-runs/run-20260909T182015Z
+  [PASS] the stack launched on it -- the six healthy-session nodes, no duplicates
+[scenario] applied run  run-20260909T182015Z
+  [PASS] the console booted against the scenario's own serve.py
+  [PASS] the bridge URL was prefilled from /api/health, so teleop's hand-off works -- ws://192.168.122.32:9090/
+  [PASS] nothing is dialled before the operator asks -- []
+  [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
+  [PASS] the panels are on the live stack, and the page says so -- live
+
+---- attempt 1 · 1 · a live healthy run ----
+  [PASS] the six pipeline blocks report a tint a suite can read -- [['Gait Sequencer', 'green'], ['MPC', 'green'], ['WBC', 'green'], ['Swing Leg Ctrl', 'green'], ['Contact Logic', 'green'], ['Model Adaptation', 'off']]
+  [NOTE] the MPC block at connect, before the walk is commanded -- 1 mpc=green blocks=Gait Sequencer:green,MPC:green,WBC:green,Swing Leg Ctrl:green,Contact Logic:green,Model Adaptation:off
+  [BYPASS] 1-3 green-to-amber transition -- the composed preset degrades the margin from the controller's FIRST solve, so there is no green run to watch turn amber. A transition needs an EVENT during the run, and the only event mechanism at this pin is the disturbance service -- which is s004's (demo/scenarios.md §2.3)
+  [PASS] no fall banner
+  [PASS] photographed 05-renders/01-green-attempt1.png -- 144009 B
+
+---- attempt 1 · 2 · walk, and watch it degrade ----
+  [PASS] the gait picker reports WALKING_TROT ACTIVE from /gait_state -- ['gait WALKING_TROT active — /gait_state period 0.500 s, duty 0.60, offsets [0.00, 0.50, 0.50, 0.00] after 0.04 s']
+  [PASS] the velocity field holds 0.3 m/s
+  [PASS] a 60 sim-s measurement window is open
+[scenario]   first amber: Gait Sequencer,MPC,Swing Leg Ctrl,Contact Logic at sim 5.0 s
+[scenario]   guest: dist_xy 14.9719 m, z_min 0.08997 m, tilt over 0.5 rad in 0.0
+  [PASS] attempt 1: the robot FELL, by the verification recipe's own rule -- z_min 0.08997 m, tilt over 0.5 rad in 0.0 of samples, after 14.9719 m
+
+---- attempt 1 · 3-7 · what the console said while it happened ----
+  [PASS] the fall banner is raised -- FALL DETECTED — body height — z median 0.196 m, outside [0.20, 0.45] m
+  [PASS] and the feed is pinned to the five seconds before it
+  [PASS] the feed has something to read -- 16 entries
+  [PASS] photographed 05-renders/03-red-attempt1.png -- 236847 B
+[scenario]   tint history: 0 1 55 | amber: Contact Logic,Gait Sequencer,MPC,Swing Leg Ctrl | red: Contact Logic,Gait Sequencer,MPC,Model Adaptation,Swing Leg Ctrl,WBC
+  [PASS] every pipeline block ends RED at the fall -- 0 1 55 | amber: Contact Logic,Gait Sequencer,MPC,Swing Leg Ctrl | red: Contact Logic,Gait Sequencer,MPC,Model Adaptation,Swing Leg Ctrl,WBC
+  [PASS] and something went AMBER before it -- the degradation was visible -- 0 1 55 | amber: Contact Logic,Gait Sequencer,MPC,Swing Leg Ctrl | red: Contact Logic,Gait Sequencer,MPC,Model Adaptation,Swing Leg Ctrl,WBC
+  [NOTE] attempt 1: the MPC block reached amber before the fall -- 0 1 55 | amber: Contact Logic,Gait Sequencer,MPC,Swing Leg Ctrl | red: Contact Logic,Gait Sequencer,MPC,Model Adaptation,Swing Leg Ctrl,WBC
+[scenario]   post-mortem: {"rows": 16, "deadline": 5, "solver_failed": 0, "contact": 10, "fall": 1, "contact_before_fall": true, "deadline_before_fall": true, "nothing_later": true, "window_span_s": 4.9, "fall_text": "FALL: body height \u2014 z median 0.196 m, outside [0.20, 0.45] m \u2014 controller latched to damping mode"}
+  [PASS] the pinned post-mortem ends in the FALL entry, with its trigger values -- FALL: body height — z median 0.196 m, outside [0.20, 0.45] m — controller latched to damping mode
+  [PASS] nothing in the pinned window happened after the fall (step 7's order) -- {"rows": 16, "deadline": 5, "solver_failed": 0, "contact": 10, "fall": 1, "contact_before_fall": true, "deadline_before_fall": true, "nothing_later": true, "window_span_s": 4.9, "fall_text": "FALL: body height \u2014 z median 0.196 m, outside [0.20, 0.45] m \u2014 controller latched to damping mode"}
+  [PASS] at least one contact-mismatch entry, with leg and offset, before the fall (step 4) -- 10 contact entries
+  [PASS] the pinned window covers more than the fall itself (step 6: the last five seconds) -- 4.9 s of events pinned
+  [PASS] a deadline-violation entry with a measured value, before the fall (step 3) -- 5 entries
+
+---- attempt 1 · 6 · the verdict and the record ----
+  [PASS] the stick is released
+  [PASS] disconnected, so nothing of ours is publishing
+  [PASS] verify filed a report for this run, with a verdict the recipe defines -- fell in run-20260909T182015Z/verify.json (exit 1, robot at z 0.25808 m)
+[scenario]   pass=8 fail=2
+  [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
+  [PASS] the panels are on the live stack, and the page says so -- live
+  [PASS] the Runs view lists the host's runs -- 22 rows
+  [PASS] run-20260909T182015Z is listed, with the verdict its record carries -- run-20260909T182015Z | Flat plane | Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → sto (want fell)
+  [PASS] the process set is unchanged after after-attempt1 -- 22 processes, diff empty
+
+---- attempt 1 · 8 · reset: the sim restarts, the record is kept ----
+  [PASS] reset sim was pressed
+  [PASS] the page says it called /reset_sim -- ['reset sim', 'reset: target zeroed, asking for STAND …']
+[scenario]   z median 0.30542 m
+  [PASS] the robot left the floor after /reset_sim -- z median 0.30542 m -- the stress composition settles well under the 0.30 m it is commanded to
+  [NOTE] the page's sim clock reads -- 3.9 s
+  [PASS] the sim clock restarted (under 20 s) -- 3.9 s
+  [PASS] the Runs view lists the host's runs -- 22 rows
+  [PASS] run-20260909T182015Z is listed, with the verdict its record carries -- run-20260909T182015Z | Flat plane | Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → sto (want fell)
+  [PASS] photographed 05-renders/04-reset-attempt1.png -- 169586 B
+  [PASS] no uncaught errors anywhere in the session -- []
+  [PASS] nothing was fetched from anywhere but localhost and the guest -- []
+
+---- attempt 2 of 3 ----
+[scenario] the previous attempt's session is closed (bridge down) before relaunching
+[scenario] composing the stress preset
+  [PASS] the stress preset composed -- /home/thales/kennel-runs/run-20260909T182335Z
+  [PASS] the stack launched on it -- the six healthy-session nodes, no duplicates
+[scenario] applied run  run-20260909T182335Z
+  [PASS] the console booted against the scenario's own serve.py
+  [PASS] the bridge URL was prefilled from /api/health, so teleop's hand-off works -- ws://192.168.122.32:9090/
+  [PASS] nothing is dialled before the operator asks -- []
+  [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
+  [PASS] the panels are on the live stack, and the page says so -- live
+
+---- attempt 2 · 1 · a live healthy run ----
+  [PASS] the six pipeline blocks report a tint a suite can read -- [['Gait Sequencer', 'green'], ['MPC', 'red'], ['WBC', 'green'], ['Swing Leg Ctrl', 'green'], ['Contact Logic', 'green'], ['Model Adaptation', 'off']]
+  [NOTE] the MPC block at connect, before the walk is commanded -- 0 mpc=red blocks=Gait Sequencer:green,MPC:red,WBC:green,Swing Leg Ctrl:green,Contact Logic:green,Model Adaptation:off
+  [BYPASS] 1-3 green-to-amber transition -- the composed preset degrades the margin from the controller's FIRST solve, so there is no green run to watch turn amber. A transition needs an EVENT during the run, and the only event mechanism at this pin is the disturbance service -- which is s004's (demo/scenarios.md §2.3)
+  [PASS] no fall banner
+  [PASS] photographed 05-renders/01-green-attempt2.png -- 147573 B
+
+---- attempt 2 · 2 · walk, and watch it degrade ----
+  [PASS] the gait picker reports WALKING_TROT ACTIVE from /gait_state -- ['gait WALKING_TROT active — /gait_state period 0.500 s, duty 0.60, offsets [0.00, 0.50, 0.50, 0.00] after 0.07 s']
+  [PASS] the velocity field holds 0.3 m/s
+  [PASS] a 60 sim-s measurement window is open
+[scenario]   first amber: Gait Sequencer,Swing Leg Ctrl,Contact Logic at sim 7.8 s
+[scenario]   guest: dist_xy 14.4564 m, z_min 0.07597 m, tilt over 0.5 rad in 0.0
+  [PASS] attempt 2: the robot FELL, by the verification recipe's own rule -- z_min 0.07597 m, tilt over 0.5 rad in 0.0 of samples, after 14.4564 m
+
+---- attempt 2 · 3-7 · what the console said while it happened ----
+  [PASS] the fall banner is raised -- FALL DETECTED — body height — z median 0.199 m, outside [0.20, 0.45] m
+  [PASS] and the feed is pinned to the five seconds before it
+  [PASS] the feed has something to read -- 21 entries
+  [PASS] photographed 05-renders/03-red-attempt2.png -- 236730 B
+[scenario]   tint history: 1 1 55 | amber: Contact Logic,Gait Sequencer,MPC,Swing Leg Ctrl | red: Contact Logic,Gait Sequencer,MPC,Model Adaptation,Swing Leg Ctrl,WBC
+  [PASS] every pipeline block ends RED at the fall -- 1 1 55 | amber: Contact Logic,Gait Sequencer,MPC,Swing Leg Ctrl | red: Contact Logic,Gait Sequencer,MPC,Model Adaptation,Swing Leg Ctrl,WBC
+  [PASS] and something went AMBER before it -- the degradation was visible -- 1 1 55 | amber: Contact Logic,Gait Sequencer,MPC,Swing Leg Ctrl | red: Contact Logic,Gait Sequencer,MPC,Model Adaptation,Swing Leg Ctrl,WBC
+  [NOTE] attempt 2: the MPC block reached amber before the fall -- 1 1 55 | amber: Contact Logic,Gait Sequencer,MPC,Swing Leg Ctrl | red: Contact Logic,Gait Sequencer,MPC,Model Adaptation,Swing Leg Ctrl,WBC
+[scenario]   post-mortem: {"rows": 21, "deadline": 6, "solver_failed": 0, "contact": 14, "fall": 1, "contact_before_fall": true, "deadline_before_fall": true, "nothing_later": true, "window_span_s": 4.7, "fall_text": "FALL: body height \u2014 z median 0.199 m, outside [0.20, 0.45] m \u2014 controller latched to damping mode"}
+  [PASS] the pinned post-mortem ends in the FALL entry, with its trigger values -- FALL: body height — z median 0.199 m, outside [0.20, 0.45] m — controller latched to damping mode
+  [PASS] nothing in the pinned window happened after the fall (step 7's order) -- {"rows": 21, "deadline": 6, "solver_failed": 0, "contact": 14, "fall": 1, "contact_before_fall": true, "deadline_before_fall": true, "nothing_later": true, "window_span_s": 4.7, "fall_text": "FALL: body height \u2014 z median 0.199 m, outside [0.20, 0.45] m \u2014 controller latched to damping mode"}
+  [PASS] at least one contact-mismatch entry, with leg and offset, before the fall (step 4) -- 14 contact entries
+  [PASS] the pinned window covers more than the fall itself (step 6: the last five seconds) -- 4.7 s of events pinned
+  [PASS] a deadline-violation entry with a measured value, before the fall (step 3) -- 6 entries
+
+---- attempt 2 · 6 · the verdict and the record ----
+  [PASS] the stick is released
+  [PASS] disconnected, so nothing of ours is publishing
+  [PASS] verify filed a report for this run, with a verdict the recipe defines -- fell in run-20260909T182335Z/verify.json (exit 1, robot at z 0.1002 m)
+[scenario]   pass=8 fail=2
+  [PASS] connect bridge -> the page is driving the real stack -- ['driving — 20 Hz to /quad_control_target']
+  [PASS] the panels are on the live stack, and the page says so -- live
+  [PASS] the Runs view lists the host's runs -- 23 rows
+  [PASS] run-20260909T182335Z is listed, with the verdict its record carries -- run-20260909T182335Z | Flat plane | Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → sto (want fell)
+  [PASS] the process set is unchanged after after-attempt2 -- 22 processes, diff empty
+
+---- attempt 2 · 8 · reset: the sim restarts, the record is kept ----
+  [PASS] reset sim was pressed
+  [PASS] the page says it called /reset_sim -- ['reset sim', 'reset: target zeroed, asking for STAND …']
+[scenario]   z median 0.31168 m
+  [PASS] the robot left the floor after /reset_sim -- z median 0.31168 m -- the stress composition settles well under the 0.30 m it is commanded to
+  [NOTE] the page's sim clock reads -- 3.8 s
+  [PASS] the sim clock restarted (under 20 s) -- 3.8 s
+  [PASS] the Runs view lists the host's runs -- 23 rows
+  [PASS] run-20260909T182335Z is listed, with the verdict its record carries -- run-20260909T182335Z | Flat plane | Simple → OSQP · partial condensing → ArcOPT · Eiquadprog → stock — single implementation → sto (want fell)
+  [PASS] photographed 05-renders/04-reset-attempt2.png -- 171312 B
+  [PASS] no uncaught errors anywhere in the session -- []
+  [PASS] nothing was fetched from anywhere but localhost and the guest -- []
+
+---- the result ----
+[scenario] fell 2 of 2 attempts (needed 2)
+  [PASS] the stress preset falls on at least 2 of 2 attempts -- fell 2 of 2 -- stack/stress.md carries the measured rate
+  [PASS] and the MPC block reached amber on at least one of them -- the degradation is visible -- amber on 2 of 2 falling attempts (measured 2 of 3, stack/stress.md §4)
+
+bypassed (measured, not asserted -- see demo/scenarios.md):
+  1-3 green-to-amber transition -- the composed preset degrades the margin from the controller's FIRST solve, so there is no green run to watch turn amber. A transition needs an EVENT during the run, and the only event mechanism at this pin is the disturbance service -- which is s004's (demo/scenarios.md §2.3)
+  1-3 green-to-amber transition -- the composed preset degrades the margin from the controller's FIRST solve, so there is no green run to watch turn amber. A transition needs an EVENT during the run, and the only event mechanism at this pin is the disturbance service -- which is s004's (demo/scenarios.md §2.3)
+pass=87 fail=0 bypass=2
+ALL CHECKS PASSED
+
+[scenario] leaving the stack as a scenario found it: standing, STAND, bridge down
+[scenario]   [kennel-bridge] watchdog stopped (interventions this session: 1)
+[scenario]   [kennel-bridge] bridge stopped
+[scenario]   [kennel-demo] teleop stopped. The console will report the bridge as unreachable.
+exit=0

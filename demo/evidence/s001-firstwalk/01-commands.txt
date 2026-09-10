@@ -1,0 +1,12 @@
+CMD: demo/tools/kennel-demo.sh console
+PAGE: preset Stock Go2 walk
+PAGE: send
+CMD: demo/tools/kennel-demo.sh run
+CMD: demo/tools/kennel-demo.sh teleop
+PAGE: boot
+PAGE: dashboard
+PAGE: connect
+PAGE: gait WALKING_TROT
+PAGE: stick -1
+PAGE: hold 10
+PAGE: release

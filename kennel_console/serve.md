@@ -80,6 +80,13 @@ rosbridge and Meshcat URLs when `kennel-demo.sh teleop` has discovered them —
 read per request, from `<out>/.kennel-bridge`, so a console that is already open
 picks them up without a restart ([`teleop.md`](teleop.md)).
 
+It also serves the guides ([#73](https://github.com/alius-git/kennel/issues/73),
+[`guides.md`](guides.md)): `--guides DIR` (default the checkout's `guides/`) adds
+`/guides/<name>.md`, `/guides/<name>.html` and `/guides/img/<file>.png`, and
+lists what it found in `/api/health`. `guides/` is outside the docroot, so this
+is the only way a guide reaches a browser -- which is what makes the console's
+**Guides** item exist exactly when this server does.
+
 **`python3 -m http.server` is not deprecated by it.** It is still the command
 this record proved the offline claim on, still exactly what §2–§5 below assert,
 and still the one to use to check that nothing here depends on a live server:

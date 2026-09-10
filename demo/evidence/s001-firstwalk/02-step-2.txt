@@ -1,0 +1,3 @@
+  [PASS] the console offers a preset called Stock Go2 walk -- Stock Go2 walk
+  [PASS]   and says it is holding it -- preset · Stock Go2 walk
+  [PASS]   with a composition in the generated panes -- 3693 chars

@@ -1,0 +1,24 @@
+[kennel-demo] guest            kennel-vm at 192.168.122.32
+[kennel-demo] stopped the held trot (the console is the publisher now)
+[kennel-bridge] env              /tmp/p21-env.sh (written by p21-launch-from-commands.sh)
+[kennel-bridge] starting rosbridge on port 9090
+[kennel-bridge]   /rosbridge_websocket in the graph  (+1.83 .. +2.65 s)
+[kennel-bridge]   port 9090 bound (0.0.0.0:9090)  (+2.65 .. +2.67 s)
+[kennel-bridge] bridge up on port 9090 (pid 2259)
+[kennel-bridge] starting the target watchdog (stale 1.0s, 3 zeros)
+[kennel-bridge]   /k13_target_watchdog in the graph
+[kennel-bridge]   watchdog ready, waiting for the first target
+[kennel-bridge] watchdog up (pid 2457)
+[kennel-bridge] the URL is the host's to compose -- vm/test/verify-bridge-host.sh prints it
+
+[kennel-demo] bridge           ws://192.168.122.32:9090/
+[kennel-demo] meshcat          http://192.168.122.32:7000/
+[kennel-demo] console          http://localhost:8000/Kennel%20Console.dc.html
+
+[kennel-demo] In the console: Dashboard -> Interventions -> connect, pick a gait, push the stick.
+[kennel-demo] The velocity target is published while the page is connected; releasing the
+[kennel-demo] stick ramps it back to zero. STAND and E-STOP are beside the gait picker.
+[kennel-demo] A guest-side watchdog is running: if this page dies without warning, the
+[kennel-demo] robot's target is zeroed 1.0s later. It is the only thing that
+[kennel-demo] catches a killed tab -- JavaScript cannot (kennel_console/teleop.md §5).
+[kennel-demo] When you are done:  demo/tools/kennel-demo.sh teleop stop

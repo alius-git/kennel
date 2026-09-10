@@ -1,0 +1,2 @@
+  [PASS] the stick is pushed (ny=-1.0)
+  [PASS] the stick is released

@@ -12,6 +12,23 @@ The in-depth documentation lives next to what it describes — the plan corpus i
 - [`plan/design.md`](../plan/design.md) — the master design: locked decisions,
   POC topology, application inventory, repository layout.
 
+## Guides — the pages a newcomer reads
+
+Served by the console under **Guides** when it is started by
+[`demo/tools/kennel-demo.sh console`](../demo/tools/kennel-demo.sh), and readable
+here as they are.
+
+- [`guides/first-run.md`](../guides/first-run.md) — the checklist: eight steps,
+  each one command or one click, from a provisioned guest to a robot walking
+  under your command. It is *performed and timed* by
+  `kennel-demo.sh scenario firstwalk`.
+- [`guides/walkthrough.md`](../guides/walkthrough.md) — the same five minutes
+  taken apart: compose, send, run, watch, drive, reset, and the record it leaves.
+- [`guides/diagnosis.md`](../guides/diagnosis.md) — how to read the Dashboard:
+  one section per panel, the threshold that tints it, and what to do about it.
+- [`kennel_console/guides.md`](../kennel_console/guides.md) — the implementation
+  record: the route, the renderer, and how the checklist is kept executable.
+
 ## Plan — what Kennel is and why
 
 - [`plan/PRFAQ.txt`](../plan/PRFAQ.txt) — the press-release/FAQ vision record.
@@ -39,8 +56,9 @@ The in-depth documentation lives next to what it describes — the plan corpus i
   (compose → transfer → launch → verify → walk). Its §7 is the implementation
   record of the driver's own command surface.
 - [`demo/scenarios.md`](../demo/scenarios.md) — the verification scenarios as
-  driver verbs: `scenario disturb` (s004) and `scenario diagnose` (s003), what
-  each asserts, and the bypasses each carries.
+  driver verbs: `scenario disturb` (s004), `scenario diagnose` (s003) and
+  `scenario firstwalk` (s001 — the first-run checklist performed and timed),
+  what each asserts, and the bypasses each carries.
 - [`demo/dry-run.md`](../demo/dry-run.md) — the implementation record of the
   by-the-book run: measured timings, frictions found, doc fixes made.
 - [`demo/evidence/`](../demo/evidence/) — captured logs, metrics, and
@@ -100,6 +118,9 @@ The in-depth documentation lives next to what it describes — the plan corpus i
 - [`kennel_console/runs.md`](../kennel_console/runs.md) — real run records: the
   verify report lands in the run folder, `/api/runs` serves it, and the Runs
   view shows real verdicts, counters and a config diff.
+- [`kennel_console/guides.md`](../kennel_console/guides.md) — the guides served
+  and rendered from the console: the route, the markdown subset, and the
+  checklist that a verb performs.
 
 ## Upstream
 

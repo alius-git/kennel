@@ -11,6 +11,12 @@
 > scenarios are now commands — `kennel-demo.sh scenario disturb` and
 > `scenario diagnose` — that drive the console against the running stack and
 > assert every numbered step from a witness that can actually see it.
+>
+> **§6 adds a third**, for [issue #73](https://github.com/alius-git/kennel/issues/73):
+> `scenario firstwalk` performs [`guides/first-run.md`](../guides/first-run.md)
+> as written, on a stopwatch, and asserts that everything it ran came from that
+> page — s001.firstwalk, and the first of these verbs whose subject is a
+> *document*.
 
 Measured on 2026-09-08 against the live guest (`kennel-vm` at `192.168.122.32`,
 8 vCPU / 16 GiB, pin `dcf53c5`).
@@ -39,9 +45,11 @@ Three rules they inherit, and one they add:
   console never started or stopped a process, and §1.5 is how that becomes a
   check rather than a claim.
 
-Both verbs **leave the stack standing at `STAND` with the bridge down**, on
+s004 and s003 **leave the stack standing at `STAND` with the bridge down**, on
 every path, including their failure paths — the trap disconnects the page, runs
-`teleop stop`, and recovers the robot if it is on the floor.
+`teleop stop`, and recovers the robot if it is on the floor. s001 is the
+exception and leaves the stack **up**: the checklist ends with a walking robot,
+and the walkthrough is what a newcomer reads next (§6).
 
 ---
 
@@ -350,6 +358,11 @@ demo/tools/kennel-demo.sh scenario disturb        # ~6 min
 # s003 composes its own preset, up to three times
 demo/tools/kennel-demo.sh scenario diagnose       # ~15 min
 
+# s001 performs guides/first-run.md, and needs the stack DOWN and port 8000 free
+demo/tools/kennel-demo.sh down
+demo/tools/kennel-demo.sh console stop
+demo/tools/kennel-demo.sh scenario firstwalk      # ~2 min
+
 demo/tools/kennel-demo.sh scenario                # what exists
 ```
 
@@ -405,3 +418,136 @@ will not reach its bar and the verb goes red for the right reason.
 - **A person still has to look at it.** These verbs assert observables; whether
   the Dashboard *reads* like a diagnosis instrument is the human friction
   session [`bridge.md`](../stack/bridge.md) §11 leaves open.
+
+---
+
+## 6. s001.firstwalk — `kennel-demo.sh scenario firstwalk`
+
+`demo/tools/scenario-firstwalk.sh`. **40 checks, no bypasses.** Green twice:
+cold from a `reset` guest and warm on the same guest.
+
+s001.firstwalk asks two questions, and this verb answers both mechanically:
+*does a newcomer following only the checklist reach a walking robot inside the
+budget*, and *was the checklist sufficient* — "the harness records that every
+executed command string came from the checklist or the console's generated
+block" (`plan/scenarios.md` s001 step 8).
+
+**The subject is a document.** [`guides/first-run.md`](../guides/first-run.md)
+is not described by this verb; it is *read* by it. Each step is a `### N ·`
+heading with one fenced block — ` ```bash ` for a command, ` ```click ` for
+something done in the console — and the verb performs the fences in order.
+Nothing else runs. The success line is read out of the file too: the first
+backticked literal on a step's `**Success looks like:**` line must appear in
+that step's transcript or on the page.
+
+> That last rule is the one that matters. **If the prose promises a line the
+> tool does not print, this fails** — and the fix is in the prose, not in the
+> script. It is [`dry-run.md`](dry-run.md)'s method with the friction log made
+> mechanical, and it is why the checklist cannot rot: a change to any verb's
+> output that contradicts the page shows up here as a red check.
+
+### 6.1 What it measured
+
+Cold, from a `reset` guest ([`evidence/s001-firstwalk/03-scenario-cold.txt`](evidence/s001-firstwalk/03-scenario-cold.txt));
+the warm re-run is [`06-scenario-warm.txt`](evidence/s001-firstwalk/06-scenario-warm.txt).
+
+| Step | What it is | cold | warm |
+|---|---|---|---|
+| 1 | `kennel-demo.sh console` | 4 s | 4 s |
+| 2 | load *Stock Go2 walk* | 1 s | 1 s |
+| 3 | `send to kennel-runs →` | 0 s | 0 s |
+| 4 | `kennel-demo.sh run` | **1m15s** | 1m15s |
+| 5 | `kennel-demo.sh teleop` | 18 s | 20 s |
+| 6 | Dashboard, `connect bridge` | 2 s | 2 s |
+| 7 | gait `WALKING_TROT` | 0 s | 1 s |
+| 8 | stick forward, hold 10 sim-s, release | 13 s | 13 s |
+| | **first boot to sustained commanded walking** | **113.1 s** | **115.4 s** |
+
+Against s001's own budget: **a target of ≈ 5 minutes and a ceiling of 10**. Both
+runs are inside the target, by better than half. All durations are
+`CLOCK_MONOTONIC_RAW` through [`p22-clock.sh`](tools/p22-clock.sh), and the
+ratio column reads **1.000** in both — this host's ~10 % clock defect
+([`dry-run.md` §2](dry-run.md), [`vm/provisioning.md` §6a](../vm/provisioning.md))
+was not present, which is why the raw and adjusted columns agree here and did
+not in August.
+
+The walk itself, from the guest's own monitor and never from the page:
+
+| | cold | warm |
+|---|---|---|
+| travelled in 10 sim-s | 4.6436 m | 4.6574 m |
+| mean planar speed, against 0.5 m/s commanded | **0.4647 m/s** | 0.4661 m/s |
+| body height, median | 0.31151 m | 0.31113 m |
+| tilt over 0.5 rad | 0.0 % | 0.0 % |
+| pipeline blocks red at timer stop | none (five green, adaptation `off`) | none |
+
+`x_travel` and `vx_mean` are `kennel-bridge.sh observe`'s, over the ten sim
+seconds the checklist's own `hold 10` opens — the same window a person holding
+the stick would produce, measured in sim time so the rate the run was composed
+at cannot skew it.
+
+**The trace assertion**, which is s001 step 8:
+
+```
+CMD_EXTRA=[]        3 commands executed, all from the checklist
+PAGE_EXTRA=[]       9 page actions, all from the checklist (plus the verb's own reload)
+```
+
+The one page action that is *not* a checklist step is the reload after `teleop`:
+`/api/health` gains the bridge URL only once `teleop` has written it, and the
+page has to be re-read to see it. A person's own tab picks it up when they click;
+this reload is the agent's equivalent, is logged as `PAGE: boot`, and is the only
+member of the allowed set the file does not contain.
+
+### 6.2 The friction log — F10, F11
+
+Continuing [`dry-run.md` §4](dry-run.md)'s numbering, so an F-number is unique
+across this repo. Both were found by running the verb *before* the prose or the
+script was adjusted to fit it, which is the whole method.
+
+| # | Symptom | What it was | Disposition |
+|---|---|---|---|
+| **F10** | The first audit reported `pass=22 fail=3` and looked almost right — but only **four** of the eight steps had run. The clock table stopped at `step-4`; `CMD_RAN=2 PAGE_RAN=2` | `while read … done < steps.tsv` with `kennel-demo.sh run` in the body. `run` shells out to **ssh**, ssh reads stdin, and it consumed the rest of the step file. Steps 5–8 never happened, and everything that *did* run passed | **Fixed** in the verb: the steps are read into an array with `mapfile` and the loop iterates over that, so no inner consumer can eat them. The inner click loop got the same treatment (`observe` is ssh too) |
+| **F11** | `the bridge URL was prefilled from /api/health` failed at step 1 | The verb reloaded the page right after `console`, and `/api/health` carries a bridge URL only after `teleop` has written one. The check was true of the wrong moment | **Fixed** in the verb: Chrome starts after step 1 (the page is needed for steps 2–3), and the reload that asserts the hand-off happens after step 5, where a person would first see it |
+
+**F10 is the second time this species has been paid for.** PR #82 recorded the
+same defect in `k14-sweep.sh` — *"`while read … done < points.txt` runs `ssh` in
+its body, `ssh` reads stdin, and the first point swallowed the rest of the
+file"* — and it reappeared here in a different file within the week. Both times
+the transcript looked healthy, because the steps that ran all passed. The rule
+that follows is short: **a bash loop whose body may run `ssh` reads its input
+from an array, never from a redirect.**
+
+Nothing was found in the *prose*: the checklist's eight success strings were all
+printed by the tools, first time. That is a weaker result than it sounds — the
+strings were chosen from the runbook's own column and from the DOM the suites
+already pin, so this run confirms they still hold rather than discovering that
+they do.
+
+### 6.3 Deviation D1, again
+
+`dry-run.md` §5's deviation, unchanged: an agent has no hands, so the clicks are
+scripted through `scenario-page.py` and the browser is headless. What that cannot
+report is the class of friction a first-run document most needs — a control that
+was hard to find, a label that read the wrong way, a step whose order felt wrong.
+**A person should still perform this page once.** Until then, "the checklist is
+sufficient" means every string it promises appears and every command it needs is
+in it, which is less than "a newcomer got through it".
+
+### 6.4 Limits
+
+- **The starting line is a provisioned guest**, not an imported appliance. s001
+  steps 1–2 are the OVA import and the version-manifest check, which are
+  [#76](https://github.com/alius-git/kennel/issues/76) and
+  [#74](https://github.com/alius-git/kennel/issues/74). The measured 113 s is
+  therefore *not* s001's full budget — it is the part that exists today, and the
+  import will be added to it.
+- **The console port and the stack are preconditions**, checked and refused:
+  this verb starts a stack itself and times it, so a running one makes the
+  measurement meaningless, and step 1 starts the console, so a server already
+  there is one the newcomer would not have.
+- **One host, one operator, two runs.** Two samples 2 s apart is a consistent
+  number, not a distribution.
+- **It leaves the stack up**, unlike s004 and s003 — the checklist ends with a
+  walking robot. The trap still releases the stick, stops teleop and stops the
+  console server the checklist started.

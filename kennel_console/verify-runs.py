@@ -316,6 +316,105 @@ ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"
             ".filter(n=>!n.startsWith('http://localhost:'))")
 check("zero non-localhost requests", not ext, str(ext))
 
+# ---------------------------------------------------------------- 7
+group("7. a shipped preset round-trips through a real run folder (#72)")
+# The acceptance of #72: load preset -> generate -> load the generated run.json
+# back -> byte-identical YAMLs. It lives here rather than in verify-scope
+# because only this suite has a real serve.py writing real run folders and a
+# real Runs table to load one back from -- everywhere else it would be a
+# comparison of a page against itself.
+#
+# The four compositions are LITERALS. A suite that read them out of the page
+# under test would pass whatever that page said; these are the rows
+# stack/stress.md §2 measured, written down again on purpose.
+W = "src/common/model/urdf/plane.urdf"
+FIX = "plane_base_link"
+EXPECT = {
+    "Stock Go2 walk": {"world_urdf": W, "world_fix_link": FIX,
+                       "simulator_realtime_rate": 1, "publish_quad_state": True,
+                       "mpc_solver": "PARTIAL_CONDENSING_HPIPM",
+                       "mpc_hpipm_mode": "SPEED", "mpc_condensed_size": 5},
+    "Solver benchmark A (HPIPM)": {"world_urdf": W, "world_fix_link": FIX,
+                                   "simulator_realtime_rate": 0, "publish_quad_state": True,
+                                   "mpc_solver": "PARTIAL_CONDENSING_HPIPM",
+                                   "mpc_hpipm_mode": "SPEED", "mpc_condensed_size": 5},
+    "Solver benchmark B (OSQP)": {"world_urdf": W, "world_fix_link": FIX,
+                                  "simulator_realtime_rate": 0, "publish_quad_state": True,
+                                  "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+                                  "mpc_hpipm_mode": "SPEED", "mpc_condensed_size": 5},
+    "Stress": {"world_urdf": W, "world_fix_link": FIX,
+               "simulator_realtime_rate": 1, "publish_quad_state": True,
+               "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+               "mpc_hpipm_mode": "SPEED", "mpc_condensed_size": 1},
+}
+PRESET_HELPERS = r"""
+window.__presetSel = () => [...document.querySelectorAll('select')]
+  .find(s => [...s.options].some(o => /load preset/.test(o.textContent)));
+window.__loadPreset = name => { const s = window.__presetSel();
+  const o = [...s.options].find(o => o.value && o.textContent.trim() === name);
+  if (!o) return false; window.__setSel(s, o.value); return true; };
+window.__pane = () => { const p = [...document.querySelectorAll('pre')]
+  .filter(p => /ros__parameters/.test(p.textContent)); return p.length ? p[0].textContent : ''; };
+// The `load` control of ONE row -- searched inside that row's element, so a
+// second `load` anywhere on the page can never be the one clicked.
+window.__loadRow = i => { const r = window.__rowEls()[i]; if (!r) return false;
+  const b = [...r.querySelectorAll('div')].find(d => !d.querySelector('div')
+    && d.textContent.trim() === 'load');
+  if (!b) return false; b.click(); return true; };
+true"""
+SIM_TAB, CTRL_TAB = "simulator_params_go2.yaml", "mit_controller_sim_go2.yaml"
+
+
+def pane(tab):
+    ws.js("__click(%r)" % tab)
+    time.sleep(0.45)
+    return ws.js("__pane()")
+
+
+for name in ("Stock Go2 walk", "Solver benchmark A (HPIPM)",
+             "Solver benchmark B (OSQP)", "Stress"):
+    goto()
+    ws.js(PRESET_HELPERS)
+    view("Compose")
+    loaded = ws.js("__loadPreset(%r)" % name)
+    time.sleep(0.5)
+    check("%s loads in the composer" % name, loaded is not False)
+    sim_a, ctrl_a = pane(SIM_TAB), pane(CTRL_TAB)
+    ws.js("__click('Compose')")
+    time.sleep(0.3)
+    before = {r["run"] for r in api("/api/runs")[1]["runs"]}
+    ws.js("__click(__sendBtn().textContent.trim())")
+    wait_for(lambda: {r["run"] for r in api("/api/runs")[1]["runs"]} - before, timeout=15)
+    new = sorted({r["run"] for r in api("/api/runs")[1]["runs"]} - before)
+    check("  a run folder was written for it", bool(new), str(new))
+    if not new:
+        continue
+    run = new[-1]
+    on_disk = {n: open(os.path.join(OUT, run, n), "rb").read().decode()
+               for n in ("simulator_params_go2.yaml", "mit_controller_sim_go2.yaml", "run.json")}
+    check("  the folder's YAMLs are the panes, byte for byte",
+          on_disk["simulator_params_go2.yaml"] == sim_a
+          and on_disk["mit_controller_sim_go2.yaml"] == ctrl_a)
+    choices = json.loads(on_disk["run.json"])["choices"]
+    check("  run.json records the preset's composition", choices == EXPECT[name], str(choices))
+    # Now the other half: the run folder back into the composer, through the
+    # Runs view's own `load` -- cfgFromChoices -> normalizeCfg -> the emitters.
+    goto()
+    ws.js(PRESET_HELPERS)
+    view("Runs")
+    check("  the run is the newest row",
+          (ws.js("__rows()") or [["", ""]])[0][1].startswith(run), str((ws.js("__rows()") or [[]])[0][:2]))
+    check("  its `load` control is there", ws.js("__loadRow(0)") is not False)
+    time.sleep(0.7)
+    check("  load lands on Compose", "Compose experiment" in (ws.js("__txt()") or ""))
+    check("  and the reloaded run regenerates the same bytes",
+          pane(SIM_TAB) == sim_a and pane(CTRL_TAB) == ctrl_a,
+          "export.md §6's round-trip, from a run folder a server actually wrote")
+    time.sleep(1.1)   # stampNow() has one-second resolution: two sends inside it collide
+ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"
+            ".filter(n=>!n.startsWith('http://localhost:'))")
+check("zero non-localhost requests through the whole round trip", not ext, str(ext))
+
 print()
 for g in groups:
     n, p = groups[g][0], groups[g][1]

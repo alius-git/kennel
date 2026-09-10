@@ -14,17 +14,18 @@ record before deviating from the rule.
 | Path | |
 |---|---|
 | [`plan/`](plan/) | the corpus — PRFAQ, personas, applications, scenarios, [`plan/design.md`](plan/design.md) and its `design/` diagrams — plus the implementation plans: A–C [`plan/next-goals.md`](plan/next-goals.md), D [`plan/teleop-joystick.md`](plan/teleop-joystick.md), E [`plan/reliability.md`](plan/reliability.md), F [`plan/console-live.md`](plan/console-live.md) |
-| [`kennel_console/`](kennel_console/) | the single-file React console, [`kennel_console/serve.py`](kennel_console/serve.py), eight `verify-*.sh` suites (serve, scope, generate, export, send, teleop, dashboard, runs), and the recorded-stack fixtures they replay |
+| [`kennel_console/`](kennel_console/) | the single-file React console, [`kennel_console/serve.py`](kennel_console/serve.py), nine `verify-*.sh` suites (serve, scope, generate, export, send, teleop, dashboard, runs, guides), and the recorded-stack fixtures they replay |
+| [`guides/`](guides/) | the pages a newcomer reads — [`first-run.md`](guides/first-run.md) (the checklist, *performed* by `scenario firstwalk`), `walkthrough.md`, `diagnosis.md`; `img/` is copies and crops of renders that exist elsewhere, built by `guides/tools/make-img.sh` |
 | [`stack/`](stack/) | running the pinned stack: [`stack/launch.md`](stack/launch.md), `transfer/`, `verify/` (the recipe, the `k14-*` sweep and its probe, [`stack/stress.md`](stack/stress.md)), `composed-run/tools/` (the `p21-*` tools), `bridge/` (the rosbridge, its live suite `verify-teleop-live.sh`, and the target watchdog), `known-good/` |
 | [`vm/`](vm/) | the appliance: [`vm/host-baseline.md`](vm/host-baseline.md), [`vm/provisioning.md`](vm/provisioning.md), [`vm/snapshot.md`](vm/snapshot.md), and the Yuruna sequences under `vm/test/` |
-| [`demo/`](demo/) | the driver [`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh), the [runbook](demo/runbook.md), the [dry run](demo/dry-run.md), the [scenario verbs](demo/scenarios.md) (`scenario disturb`, `scenario diagnose`) |
+| [`demo/`](demo/) | the driver [`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh), the [runbook](demo/runbook.md), the [dry run](demo/dry-run.md), the [scenario verbs](demo/scenarios.md) (`scenario disturb`, `scenario diagnose`, `scenario firstwalk`) |
 | `dfki-quad/` | the pinned upstream clone — **gitignored, never edited**; read it at the pin with `git show <PIN>:path` |
 
 Driver verbs ([`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh) `help`):
 
 - once per host — `setup`, `provision`
 - each session — `up`, `console`, `run`, `teleop [stop]`, `walk [stop]`, `down`, `reset`
-- the scenarios as tests — `scenario disturb`, `scenario diagnose`
+- the scenarios as tests — `scenario disturb`, `scenario diagnose`, `scenario firstwalk`
 - the pieces underneath — `all`, `compose`, `transfer`, `launch`, `verify`, `status`, `snapshot`, `halt`
 
 ## The rules
@@ -114,6 +115,14 @@ against a variable read back out of the page under test
 inserting a control ahead of an existing one breaks them
 ([`kennel_console/send.md`](kennel_console/send.md) §5 →
 [`kennel_console/export.md`](kennel_console/export.md) §5).
+
+**A bash loop whose body may run `ssh` reads its input from an array, never
+from a redirect.** `ssh` reads stdin, so `while read … done < points.txt` with an
+ssh call inside it swallows the rest of the file — and the transcript looks
+healthy, because every step that did run passed. Paid for twice: the sweep
+reported one row of eighteen ([`stack/stress.md`](stack/stress.md), PR #82's
+first correction) and the s001 audit performed four steps of eight
+([`demo/scenarios.md`](demo/scenarios.md) §6.2 F10). Use `mapfile -t`.
 
 **Read the pin with `git show <PIN>:path`**, never from the working tree of
 `dfki-quad/` — the clone can be off-pin, and addressing the blob by SHA is what

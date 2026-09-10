@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Version: 2026.09.07
-# Verify the Runs view: real verdicts, real counters, a one-key config diff (#64).
+# Version: 2026.09.09
+# Verify the Runs view: real verdicts, real counters, a one-key config diff (#64),
+# and a shipped preset's round trip through a run folder the server wrote (#72).
 #
 #   ./kennel_console/verify-runs.sh [servePort] [plainPort] [cdpPort]
 #
@@ -15,6 +16,13 @@
 # temp --out so the operator's ~/kennel-runs is never touched. The plain
 # http.server half is the point of the pairing: with no host to read runs from,
 # the view falls back to the seeded demo history and every row says so.
+#
+# Group 7 is #72's acceptance and needs this suite's real server: each shipped
+# preset is loaded, sent, and then loaded BACK out of the written run folder
+# through the Runs view's own `load` -- the round trip is a byte comparison of
+# what the emitters produce at both ends.
+#
+# 84 checks.
 #
 # Requires google-chrome.
 #
