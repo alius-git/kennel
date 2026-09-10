@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Version: 2026.09.09
+# Version: 2026.09.10
 # Verify the Runs view: real verdicts, real counters, a one-key config diff (#64),
 # and a shipped preset's round trip through a run folder the server wrote (#72).
 #
@@ -22,7 +22,14 @@
 # through the Runs view's own `load` -- the round trip is a byte comparison of
 # what the emitters produce at both ends.
 #
-# 84 checks.
+# Group 8 is #24's, and it is the same idea pointed at one committed folder:
+# test/fixtures/run-<stamp>/ is the composition the MVP Yuruna sequence applies,
+# so it has to stay a console EXPORT (round-tripped here through the real Runs
+# table) and the sequence's restatement of its name, pin, solver and sha256s has
+# to stay equal to it. Regenerate the fixture with `kennel-demo.sh compose`,
+# never by editing a file.
+#
+# 105 checks.
 #
 # Requires google-chrome.
 #
