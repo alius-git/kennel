@@ -13,26 +13,29 @@
 #       -> workload...kennel.stack.ssh              Docker + the pinned stack (#10)
 #         -> workload...kennel.baseline.ssh         clean it, freeze it (#51)
 #           -> workload...kennel.reset.ssh          revert to it, prove it (#51)
+#             -> workload...kennel.mvp.ssh          the demo, asserted (#24)
 #
 # A cold cycle is that whole chain (~40 min). `Invoke-TestSequence.ps1` on a
 # host that already holds the `kennel-vm-baseline` snapshot takes the warm path
-# and runs only the top-level (~90 s), because the top-level declares
-# `requiresSnapshot`. The cycle runner has no warm path -- it always builds from
-# cold. See test/README.md for both, and for the two host roles.
+# and runs only the top-level (~4 min: revert, stage, apply, launch, assert),
+# because the top-level declares `requiresSnapshot` -- that is what
+# `kennel-demo.sh mvp` wraps. The CYCLE runner has no warm path: it always
+# builds from cold. See test/README.md for both, and for the two host roles.
 #
-# NB the MVP sequence of issue #24 (workload...kennel.mvp.ssh) becomes this
-# file's top-level when it lands; the reset sequence then stays available as the
-# `baseline` test set below.
-
 sequences:
-  - workload.guest.ubuntu.server.24.kennel.reset.ssh
+  - workload.guest.ubuntu.server.24.kennel.mvp.ssh
 
 # Optional named groupings a pool can be assigned instead of the whole list; the
 # implicit set "all" always exists and needs no declaration. displayName and
 # description are what a non-technical operator sees on the pool-control board.
 testSets:
+  - name: mvp
+    displayName: MVP -- provision, configure, launch, assert
+    description: "The whole demo from a stock guest -- the appliance built and frozen, then a console-composed run launched and asserted walking."
+    sequences:
+      - workload.guest.ubuntu.server.24.kennel.mvp.ssh
   - name: baseline
     displayName: Baseline only
-    description: Provision the appliance and freeze it, then revert and prove what came back. No stack run.
+    description: "Provision the appliance and freeze it, then revert and prove what came back. No stack run."
     sequences:
       - workload.guest.ubuntu.server.24.kennel.reset.ssh

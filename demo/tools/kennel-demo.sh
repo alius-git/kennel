@@ -44,6 +44,9 @@
 #   teleop     stack/bridge/kennel-bridge.sh (on guest) + verify-bridge-host.sh,
 #              then the console: drive the robot from the browser joystick
 #   down       stack/known-good/tools/k13-stop.sh   (in the container)
+#   mvp        Yuruna sequence workload.guest.ubuntu.server.24.kennel.mvp.ssh
+#              (#24): the demo as one sequence, asserted -- and its evidence
+#              collected off the guest, which Yuruna itself cannot do
 #
 # Usage:
 #   Once per host
@@ -71,6 +74,12 @@
 #     kennel-demo.sh snapshot [--yes]  # re-take the baseline from a green guest
 #     kennel-demo.sh halt              # power the guest down cleanly
 #
+#   Harness (the Yuruna sequences this repo ships as a project -- test/README.md)
+#     kennel-demo.sh mvp               # the MVP sequence: revert -> stage the
+#                                      # console's fixture -> apply -> launch ->
+#                                      # assert walking on the composed solver
+#                                      # (~4 min warm, ~40 min from no baseline)
+#
 #   Scenarios (tests against the running stack, not demo phases)
 #     kennel-demo.sh scenario disturb  # s004: interventions, and the process
 #                                      # set that never changes (#69)
@@ -84,6 +93,9 @@
 #   YURUNA_DIR            ~/git/yuruna       framework checkout (setup, provision)
 #   YURUNA_TAG            2026.08.04         framework release setup checks out
 #   YURUNA_IMAGE_DIR      ~/yuruna/image/ubuntu.env   where Get-Image.ps1 put the ISO
+#   KENNEL_HARNESS_EVIDENCE  test/evidence     where `mvp` leaves what it
+#                                            collected off the guest and out of
+#                                            the Yuruna cycle folder
 #   KENNEL_PROJECT_URL    file://<this repo> what the verbs clone into
 #                                            $YURUNA_DIR/project before running a
 #                                            sequence (#23). The default is THIS
@@ -1231,6 +1243,85 @@ do_reset() {
     do_status
 }
 
+# --- REGION: the harness verbs (issues #24, #25)
+# `mvp` runs the MVP sequence; `cycle` runs a whole Yuruna cycle. Both wrap a
+# Yuruna entry point rather than reimplementing one, and both COLLECT: Yuruna
+# keeps a step's output only when the step fails, and has no action that copies
+# a file back to the host, so a green run's evidence has to be fetched.
+MVP_SEQUENCE="workload.guest.ubuntu.server.24.kennel.mvp.ssh"
+HARNESS_EVIDENCE="${KENNEL_HARNESS_EVIDENCE:-$REPO_ROOT/test/evidence}"
+
+# Everything a run leaves behind, into $HARNESS_EVIDENCE/<label>-<stamp>/:
+# the guest's ~/kennel-mvp (the verify report and the three process logs the
+# MVP sequence assembled there), the newest Yuruna cycle folder (HTML
+# transcript, cycle.events.ndjson, manifest.json), status.json and the newest
+# per-step perf rows. Best-effort by design -- a failed collection must not
+# turn a green run red, and on a RED run it is the more useful half.
+#
+# No .yml is ever copied: this lands under test/, and every directory named
+# `test` in a project is a sequence directory -- a stray sequence file there
+# would be discovered as one.
+harness_collect() {   # $1 = label
+    local label="$1" dest cyc
+    dest="$HARNESS_EVIDENCE/$label-$(date -u +%Y%m%dT%H%M%SZ)"
+    mkdir -p "$dest" || return 0
+    if guest_reachable; then
+        scp "${SSH_OPTS[@]}" -qr "$TARGET:kennel-mvp" "$dest/" 2>/dev/null \
+            && say "collected        the guest's run record -> $dest/kennel-mvp/"
+    else
+        warn "the guest is not reachable -- its run record was left on it."
+    fi
+    cyc="$(ls -dt "$YURUNA_DIR"/test/status/log/[0-9]*/ 2>/dev/null | head -1)"
+    if [ -n "$cyc" ]; then
+        mkdir -p "$dest/cycle"
+        cp "$cyc"/*.html "$cyc"/*.ndjson "$cyc"/manifest.json "$dest/cycle/" 2>/dev/null
+        say "collected        $(basename "$cyc") -> $dest/cycle/"
+    fi
+    cp "$YURUNA_DIR/test/status/runtime/status.json" "$dest/status.json" 2>/dev/null
+    cp "$(ls -t "$YURUNA_DIR"/test/status/perf/cycles/*.jsonl 2>/dev/null | head -1)" \
+       "$dest/perf.jsonl" 2>/dev/null
+    say "evidence         $dest"
+    return 0
+}
+
+# The MVP sequence as a verb (#24). Warm on a host that holds the baseline --
+# revert, stage, apply, launch, assert, record, stop, about four minutes -- and
+# the whole cold chain on a host that does not, which is `provision` plus this.
+do_mvp() {
+    need_yuruna
+    install_kennel_project || exit 2
+    cd "$YURUNA_DIR" || exit 2
+    virsh list --all > /dev/null    # wake socket-activated libvirtd
+
+    # Which path this will take, asked of the host rather than assumed -- the
+    # difference is four minutes against forty, and an operator should know
+    # which one they just started.
+    if virsh snapshot-list "$SNAPSHOT_ID" 2>/dev/null | grep -q "$SNAPSHOT_ID"; then
+        banner "mvp: $MVP_SEQUENCE (warm path -- the baseline is on this host)"
+        say "revert -> stage the fixture -> apply -> launch -> assert walking (~4 min)"
+    else
+        banner "mvp: $MVP_SEQUENCE (COLD path -- no '$SNAPSHOT_ID' snapshot on this host)"
+        say "the whole chain runs first: start -> sizing -> stack -> baseline -> reset (~40 min)."
+        say "To build the appliance deliberately instead:  $0 provision"
+    fi
+    local t0=$SECONDS rc=0
+    pwsh test/Invoke-TestSequence.ps1 -SequenceName "$MVP_SEQUENCE" -NoProjectClone || rc=1
+    say "mvp in $(( (SECONDS-t0) / 60 ))m$(( (SECONDS-t0) % 60 ))s"
+
+    # Collected on BOTH paths, because a red run is the one whose logs matter.
+    GUEST_IP="${KENNEL_GUEST_IP:-}"      # the revert re-DHCPs; re-discover
+    harness_collect mvp
+    [ "$rc" = 0 ] || {
+        fail "the MVP sequence did not pass -- see the transcript above (expect 0 FAIL)." \
+             "The failing step's description says which class it is: ASSERT_FAILED is a red" \
+             "stack, INFRASTRUCTURE is the recipe not being able to look (stack/verify.md §1)." \
+             "'requiresSnapshot: snapshot ... not on host' means there is no baseline yet."
+        exit 1
+    }
+    say "the stack ran the fixture and walked on it. The run stays applied;"
+    say "return the guest to stock with:  $0 reset"
+}
+
 # --- REGION: the console as a verb (issue #54)
 # `compose` serves the console for the length of one scripted run and takes it
 # down again. Composing BY HAND needs the opposite: a server that outlives the
@@ -1751,6 +1842,7 @@ case "${1:-}" in
     up)        shift; do_up ;;
     halt)      shift; do_halt ;;
     reset)     shift; do_reset ;;
+    mvp)       shift; do_mvp ;;
     snapshot)  shift; do_snapshot "$@" ;;
     console)   shift; do_console "$@" ;;
     run)       shift; do_run "$@" ;;
@@ -1765,6 +1857,6 @@ case "${1:-}" in
     scenario)  shift; do_scenario "$@" ;;
     all)       shift; do_all ;;
     -h|--help|help) usage ;;
-    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status | scenario"
+    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status | scenario | mvp"
        usage >&2; exit 2 ;;
 esac

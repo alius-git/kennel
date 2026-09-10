@@ -29,7 +29,7 @@
 # to stay equal to it. Regenerate the fixture with `kennel-demo.sh compose`,
 # never by editing a file.
 #
-# 105 checks.
+# 117 checks.
 #
 # Requires google-chrome.
 #
@@ -48,6 +48,15 @@ PAGE="Kennel%20Console.dc.html"
 
 if ! command -v google-chrome >/dev/null 2>&1; then
   echo "google-chrome is required to drive the console -- install it, or run verify-serve.sh only."
+  exit 2
+fi
+
+# Group 8 parses every sequence YAML the way Yuruna's own gate does, so pyyaml
+# is a hard requirement here rather than the optional convenience it is in
+# verify-generate.sh. Exit 2: could not run the checks, not a failed check.
+if ! python3 -c 'import yaml' 2>/dev/null; then
+  echo "NONZERO SCRIPT EXIT: python3 pyyaml is required by group 8 (the fixture and sequence checks)." >&2
+  echo "  sudo apt install python3-yaml    # or: pip install pyyaml" >&2
   exit 2
 fi
 

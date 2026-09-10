@@ -29,6 +29,8 @@ import time
 import urllib.error
 import urllib.request
 
+import yaml
+
 from cdp import attach
 
 SERVE_PORT = sys.argv[1]
@@ -535,6 +537,43 @@ if isinstance(idx, int) and idx >= 0:
               json.loads(again["run.json"])["choices"] == fix_json["choices"]
               and json.loads(again["run.json"])["run"] != fix_json["run"],
               "export.md §1: three files are deterministic, run.json carries the stamp")
+
+# The other half of (b): the MVP sequence's four literals. It restates them so
+# that a fixture regenerated on its own fails LOUDLY at the apply step -- which
+# only works while they agree, and nothing else in the repo compares them.
+SEQ = os.path.join(REPO, "test", "workload.guest.ubuntu.server.24.kennel.mvp.ssh.yml")
+seq_text = open(SEQ).read() if os.path.exists(SEQ) else ""
+check("the MVP sequence is there to compare against", bool(seq_text), SEQ)
+check("it stages the fixture this repo ships",
+      ("KENNEL_MVP_RUN=%s " % FIXNAME) in seq_text, FIXNAME)
+check("it expects the pin run.json carries", ("KENNEL_PIN=%s " % pin) in seq_text, pin)
+check("it expects the solver the fixture composes",
+      "--expect-solver PARTIAL_CONDENSING_OSQP" in seq_text
+      and "KENNEL_EXPECT_SOLVER" not in seq_text)
+check("it restates the simulator YAML's sha256",
+      ("KENNEL_EXPECT_SIM_SHA=%s " % fix_sha["simulator_params_go2.yaml"]) in seq_text,
+      fix_sha["simulator_params_go2.yaml"][:16] + "...")
+check("it restates the controller YAML's sha256",
+      ("KENNEL_EXPECT_CTRL_SHA=%s " % fix_sha["mit_controller_sim_go2.yaml"]) in seq_text,
+      fix_sha["mit_controller_sim_go2.yaml"][:16] + "...")
+# And the fixture is what a cycle would actually run: test.runner.yml's
+# top-level has to be the sequence that applies it.
+runner = yaml.safe_load(open(os.path.join(REPO, "test", "test.runner.yml")))
+check("a cycle's top-level is the sequence that applies it",
+      runner.get("sequences") == ["workload.guest.ubuntu.server.24.kennel.mvp.ssh"],
+      str(runner.get("sequences")))
+# Every YAML under test/ has to PARSE, because Yuruna's pre-cycle gate parses
+# each one and refuses to start the cycle over a single bad file -- and a plain
+# scalar carrying ": " is invalid YAML that reads perfectly well to a human.
+# Found the hard way: a testSets description did exactly that and the gate
+# refused the MVP run four seconds in.
+for name in sorted(n for n in os.listdir(os.path.join(REPO, "test")) if n.endswith(".yml")):
+    try:
+        yaml.safe_load(open(os.path.join(REPO, "test", name)))
+        parsed, why = True, ""
+    except Exception as exc:                       # noqa: BLE001 - report any parse failure
+        parsed, why = False, str(exc).splitlines()[0]
+    check("test/%s parses as YAML" % name, parsed, why)
 
 ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"
             ".filter(n=>!n.startsWith('http://localhost:'))")
