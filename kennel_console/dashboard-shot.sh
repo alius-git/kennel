@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Version: 2026.09.07
+# Version: 2026.09.10
 # Photograph the console: the Dashboard with the real viewer in its 3D pane and
-# the live source behind its panels, or the Runs view (#61, #62, #63, #64).
+# the live source behind its panels, or the Runs view (#61, #62, #63, #64), or
+# the Compose view as it opens -- whose export strip, since #74, names the guest
+# from its version manifest and warns when it differs or drifted.
 #
 # Runs on the HOST, against a console `kennel-demo.sh console` is already
 # serving. The render in an implementation record is the one acceptance item
 # that cannot be asserted, so -- like p21-meshcat-shot.sh, whose shape this
 # follows -- it is at least made reproducible rather than hand-aimed.
 #
-#   kennel_console/dashboard-shot.sh <output.png> [--view dashboard|runs] [--connect]
+#   kennel_console/dashboard-shot.sh <output.png> [--view dashboard|runs|compose] [--connect]
 #
 # --connect clicks `connect bridge` and waits for the page to say `mode · live`
 # AND for its sim clock to advance twice, so what is photographed is a page with
@@ -112,8 +114,19 @@ def hold(pred, why, budget=None):
 
 
 view = os.environ["VIEW"]
-ws.js("__click(%r)" % ("Runs" if view == "runs" else "Dashboard"))
-time.sleep(1.0)
+SEND = ("[...document.querySelectorAll('div')].find(d => !d.querySelector('div')"
+        " && /^send to .+ \u2192$/.test(d.textContent.trim()))")
+if view == "compose":
+    # Compose is where the console opens, so there is nothing to click -- but the
+    # strip only knows the guest once the /api/health probe has answered, and the
+    # send button exists exactly then. Wait for it, then bring the strip into view.
+    hold(lambda: ws.js("!!" + SEND),
+         "the console never offered `send to ...` -- is it served by serve.py?")
+    ws.js("(() => { const d = %s; if (d) d.scrollIntoView({block: 'center'}); return true; })()" % SEND)
+    time.sleep(1.0)
+else:
+    ws.js("__click(%r)" % ("Runs" if view == "runs" else "Dashboard"))
+    time.sleep(1.0)
 
 if os.environ["CONNECT"] == "1":
     hold(lambda: ws.js("!!__connectBtn()"),

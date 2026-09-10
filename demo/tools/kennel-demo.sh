@@ -2038,7 +2038,7 @@ EOF
     up_core
     echo
     manifest_summary "$MANIFEST_FILE"
-    say "import in $(( (SECONDS - t_all) / 60 ))m$(( (SECONDS - t_all) % 60 ))s (verify ${t_verify}s, copy ${t_copy}s, first boot to ssh ${t_boot}s)"
+    say "import in $(( (SECONDS - t_all) / 60 ))m$(( (SECONDS - t_all) % 60 ))s (verify ${t_verify}s, copy ${t_copy}s, first boot to ssh and a running container ${t_boot}s)"
     say "'$SNAPSHOT_ID' is this host's baseline now: running, container up, no run applied."
     say "next:  $0 console   then   $0 run          ($0 reset returns here in ~90 s)"
 }
