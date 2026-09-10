@@ -1898,8 +1898,22 @@ do_import() {
         exit 2
     }
     virsh list --all >/dev/null 2>&1    # wake socket-activated libvirtd
-    virsh net-info "$LIBVIRT_NET" 2>/dev/null | grep -Eq '^Active:[[:space:]]+yes' || {
-        fail "libvirt network '$LIBVIRT_NET' is not active; the guest would have no lease to be found by."
+    # Asked up to five times, a second apart -- observing, bounded -- with the
+    # whole answer read before it is tested. The first real import after a sweep
+    # was refused here with the network active (F25, vm/image.md): libvirtd is
+    # socket-activated, a new one was starting at that very second, its journal
+    # logged `End of file while reading data: Input/output error` for the
+    # connection, virsh printed nothing, and a one-shot check read nothing as
+    # "not active".
+    local net_active="" try
+    for try in 1 2 3 4 5; do
+        net_active="$(virsh net-info "$LIBVIRT_NET" 2>/dev/null | awk '$1 == "Active:" {print $2}')"
+        [ "$net_active" = yes ] && break
+        sleep 1
+    done
+    [ "$net_active" = yes ] || {
+        fail "libvirt network '$LIBVIRT_NET' is not active; the guest would have no lease to be found by." \
+             "Start it:  virsh net-start $LIBVIRT_NET   (and virsh net-autostart $LIBVIRT_NET)"
         exit 2
     }
 
