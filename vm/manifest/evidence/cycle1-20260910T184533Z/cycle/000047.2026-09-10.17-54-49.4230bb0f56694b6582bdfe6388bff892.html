@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Yuruna test-runner log</title>
+</head><body><pre style="white-space: pre-wrap; word-wrap: break-word; overflow-x: auto;">
+<span class="log-output">Log file: /home/thales/git/yuruna/test/status/log/000047.2026-09-10.17-54-49.4230bb0f56694b6582bdfe6388bff892.incomplete/000047.2026-09-10.17-54-49.4230bb0f56694b6582bdfe6388bff892.html</span>
+<span class="log-output">Host diagnostic (cycle start): ./status/log/000047.2026-09-10.17-54-49.4230bb0f56694b6582bdfe6388bff892/host.diagnostic.txt</span>
+<span class="log-output">Host diagnostic (cycle start): 3 problem(s) reported -- KUBE=1, LINUX=1, YURUNA=1</span>
+<span class="log-output">Cycle start: 2026-09-10T17:54:49Z</span>
+<span class="log-output">Commit:   f0d4d3b1, 370078e</span>
+<span class="log-output">Get-Image: skipped (last run: 09/10/2026 03:16:37, all images present)</span>
+<span class="log-output"></span>
+<span class="log-output">===== test.config.yml: 2026-09-10 14:54:44Z</span>
+<span class="log-output">configService:
+  enabled: true
+  port: 8443
+downloadAgentService:
+  autoSeed: true
+  enabled: true
+  freshnessSeconds: 86400
+  prefetchLeadSeconds: 7200
+  scanIntervalSeconds: 900
+guestSequence:
+- guest.ubuntu.server.24
+logLevel: Information
+networkStorage:
+  poolStorageLocalPath: &quot;&quot;
+  poolStorageNetworkPath: &quot;&quot;
+  poolStorageNetworkUser: &quot;&quot;
+  stashStorageLocalPath: &quot;&quot;
+  stashStorageNetworkPath: &quot;&quot;
+  stashStorageNetworkUser: &quot;&quot;
+notification:
+  failuresBeforeAlert: 2
+  successesBeforeRearm: 5
+pool:
+  enabled: false
+  intentGitUrl: &quot;&quot;
+  localClonePath: &quot;&quot;
+  networkReplicate: false
+  pullTimeoutSeconds: 30
+repositories:
+  frameworkUrl: https://github.com/alissonsol/yuruna
+  ghToken: &quot;&quot;
+  projectUrl: file:///home/thales/kennel
+statusService:
+  enabled: true
+  port: 8080
+testCycle:
+  autoRemediation:
+    enabled: false
+    maxAttemptsPerCycle: 2
+  cycleDelaySeconds: 300
+  guestQuarantine:
+    enabled: true
+    failuresToQuarantine: 3
+    skipCycles: 5
+  perfLog:
+    enabled: true
+  preambleTimeoutSeconds: 600
+  recentDisplayCount: 30
+  stepTimeoutSeconds: 2700
+  stopOnFailure: false
+  warmResume:
+    enabled: true
+    maxAttempts: 2
+vmCommunication:
+  charDelayMs: 10
+  pollSeconds: 5
+  timeoutSeconds: 180
+  vncPort: 5900
+vmImage:
+  alwaysRedownload: false
+  refreshSeconds: 604800
+vmStart:
+  bootDelaySeconds: 15
+  cachingProxyIp: &quot;&quot;
+  cleanupVmNamePrefixes: []
+  startTimeoutSeconds: 120
+  testVmNamePrefix: test-
+</span>
+<span class="log-output"></span>
+<span class="log-output">--- Cycle-start VM sweep (Prefix: &#39;test-&#39;) ---</span>
+<span class="log-output">Running orphaned VM file cleanup: /home/thales/git/yuruna/host/ubuntu.kvm/Remove-OrphanedVMFiles.ps1</span>
+<span class="log-output"></span>
+<span class="log-output">== guest.ubuntu.server.24 (VM: test-guest.ubuntu.server.24-01) ==</span>
+<span class="log-information">Password came from authentication mechanism: default</span>
+<span class="log-information">See configuration at: /home/thales/git/yuruna/test/extension/authentication</span>
+<span class="log-information">Domain &#39;test-guest.ubuntu.server.24-01&#39; defined from /tmp/tmp3SQyF5.tmp</span>
+<span class="log-information">Domain &#39;test-guest.ubuntu.server.24-01&#39; started</span>
+<span class="log-output">  guest.ubuntu.server.24 New-VM: PASS &lt;== ubuntu-24.04.4-live-server-amd64.iso</span>
+<span class="log-output">  guest.ubuntu.server.24 Start-VM: PASS ==&gt; IP: (pending)</span>
+<span class="log-information">  Running: start.guest.ubuntu.server.24.kennel.ssh</span>
+<span class="log-information">[guest.ubuntu.server.24] Running sequence: start.guest.ubuntu.server.24.kennel.ssh on host.ubuntu.kvm (VM: test-guest.ubuntu.server.24-01)</span>
+<span class="log-information">    Sequence: Kennel (SSH): Ubuntu Server 24.04 guest sized for the dfki-quad Docker image build + colcon build of the MPC/WBC/acados stack.</span>
+<span class="log-information">       5 s [1/9] PASS waitForSeconds: Let the GRUB boot menu render</span>
+<span class="log-information">       0 s [2/9] PASS pressKey: Blind-dismiss the GRUB boot menu (first attempt)</span>
+<span class="log-information">       8 s [3/9] PASS waitForSeconds: Pause before retry</span>
+<span class="log-information">       0 s [4/9] PASS pressKey: Blind-dismiss the GRUB boot menu (retry)</span>
+<span class="log-information">      22 s [5/9] PASS waitForAndEnter: OCR: Continue with autoinstall?</span>
+<span class="log-information">     489 s [6/9] PASS sshWaitReady: Wait for SSH after autoinstall (fast-fail on subiquity crash)</span>
+<span class="log-information">       0 s [7/9] PASS sshExec: Smoke test: whoami/hostname</span>
+<span class="log-information">      81 s [8/9] PASS sshFetchAndExecute: ubuntu.server.24.update.sh</span>
+<span class="log-information">       0 s [9/9] PASS sshExec: Reboot the VM</span>
+<span class="log-information">     606 s [All 9 steps completed in 10 min and 6 s]</span>
+<span class="log-information">  start.guest.ubuntu.server.24.kennel.ssh: PASS</span>
+<span class="log-output">  guest.ubuntu.server.24 Start-GuestOS: PASS</span>
+<span class="log-output">  guest.ubuntu.server.24 New-VM.Resource: PASS</span>
+<span class="log-information">  Running: workload.guest.ubuntu.server.24.kennel.ssh</span>
+<span class="log-information">[guest.ubuntu.server.24] Running sequence: workload.guest.ubuntu.server.24.kennel.ssh on host.ubuntu.kvm (VM: test-guest.ubuntu.server.24-01)</span>
+<span class="log-information">    Sequence: Kennel (SSH): assert the kennel-vm guest booted at the documented size (8 vCPU / 16 GiB / 64 G disk) and record its resource footprint.</span>
+<span class="log-information">       0 s [1/8] PASS sshWaitReady: Wait for sshd after reboot</span>
+<span class="log-information">       0 s [2/8] PASS sshExec: Smoke test: whoami/hostname</span>
+<span class="log-information">       0 s [3/8] PASS sshExec: Record the guest&#39;s CPU / memory / disk footprint</span>
+<span class="log-information">       0 s [4/8] PASS sshExec: Assert 8 vCPU</span>
+<span class="log-information">       0 s [5/8] PASS sshExec: Assert &gt;= 15 GiB RAM (16 GiB configured)</span>
+<span class="log-information">       0 s [6/8] PASS sshExec: Assert &gt;= 50 GiB root filesystem</span>
+<span class="log-information">       0 s [7/8] PASS sshExec: Assert the guest hostname is kennel-vm</span>
+<span class="log-information">       0 s [8/8] PASS sshExec: Record the pre-build headroom baseline for #10</span>
+<span class="log-information">       2 s [All 8 steps completed in 0 min and 2 s]</span>
+<span class="log-information">  workload.guest.ubuntu.server.24.kennel.ssh: PASS</span>
+<span class="log-information">  Running: workload.guest.ubuntu.server.24.kennel.stack.ssh</span>
+<span class="log-information">[guest.ubuntu.server.24] Running sequence: workload.guest.ubuntu.server.24.kennel.stack.ssh on host.ubuntu.kvm (VM: test-guest.ubuntu.server.24-01)</span>
+<span class="log-information">    Sequence: Kennel (SSH): provision Docker CE + the pinned dfki-quad stack in the guest, prove the go2 simulator is launchable in-container, and prove Meshcat is bound where the host can reach it.</span>
+<span class="log-information">       0 s [1/11] PASS sshWaitReady: Wait for sshd</span>
+<span class="log-information">       0 s [2/11] PASS sshExec: Smoke test: whoami/hostname</span>
+<span class="log-information">    1737 s [3/11] PASS sshFetchAndExecute: Provision Docker + the pinned dfki-quad stack</span>
+<span class="log-information">      57 s [4/11] PASS sshFetchAndExecute: Re-run to prove idempotency (must be a no-op refresh)</span>
+<span class="log-information">       0 s [5/11] PASS sshExec: Assert the dfki-quad image exists</span>
+<span class="log-information">       0 s [6/11] PASS sshExec: Assert the dfki_quad container is running</span>
+<span class="log-information">       0 s [7/11] PASS sshExec: Assert the go2 workspace is built</span>
+<span class="log-information">       0 s [8/11] PASS sshExec: Assert the clone sits at the stack pin</span>
+<span class="log-information">      56 s [9/11] PASS sshExec: Assert &#39;ros2 launch simulator simulator.launch.py sim:=go2&#39; is launchable</span>
+<span class="log-information">       3 s [10/11] PASS sshExec: Assert Meshcat binds a host-reachable address in the guest (#11 hop 1)</span>
+<span class="log-information">       0 s [11/11] PASS sshExec: Record the build&#39;s footprint (feeds #9 &#167;5.4)</span>
+<span class="log-information">    1855 s [All 11 steps completed in 31 min and 55 s]</span>
+<span class="log-information">  workload.guest.ubuntu.server.24.kennel.stack.ssh: PASS</span>
+<span class="log-information">  Running: workload.guest.ubuntu.server.24.kennel.baseline.ssh</span>
+<span class="log-information">[guest.ubuntu.server.24] Running sequence: workload.guest.ubuntu.server.24.kennel.baseline.ssh on host.ubuntu.kvm (VM: test-guest.ubuntu.server.24-01)</span>
+<span class="log-information">    Sequence: Kennel (SSH): make the provisioned kennel-vm guest a clean baseline -- stack stopped, no composed run, clone stock at the pin, workspace built -- and freeze it as disk snapshot &#39;kennel-vm-baseline&#39;.</span>
+<span class="log-information">       0 s [1/5] PASS sshWaitReady: Wait for sshd</span>
+<span class="log-information">       0 s [2/5] PASS sshExec: Smoke test: whoami/hostname</span>
+<span class="log-information">      33 s [3/5] PASS sshFetchAndExecute: Clean the guest to a baseline (stop stack, assert stock + built, clear staging)</span>
+<span class="log-information">       0 s [4/5] PASS sshExec: Assert the baseline manifest carries the stack pin</span>
+<span class="log-information">      saveDiskSnapshot: VM renamed &#39;test-guest.ubuntu.server.24-01&#39; -&gt; &#39;kennel-vm-baseline&#39;; subsequent steps will target &#39;kennel-vm-baseline&#39;.</span>
+<span class="log-information">       5 s [5/5] PASS saveDiskSnapshot: Freeze the baseline as disk snapshot &#39;kennel-vm-baseline&#39; (renames the domain; leaves it stopped)</span>
+<span class="log-information">      39 s [All 5 steps completed in 1 min and 39 s]</span>
+<span class="log-information">  workload.guest.ubuntu.server.24.kennel.baseline.ssh: PASS</span>
+<span class="log-information">  VM renamed mid-chain: &#39;test-guest.ubuntu.server.24-01&#39; -&gt; &#39;kennel-vm-baseline&#39;.</span>
+<span class="log-information">  Running: workload.guest.ubuntu.server.24.kennel.reset.ssh</span>
+<span class="log-information">[guest.ubuntu.server.24] Running sequence: workload.guest.ubuntu.server.24.kennel.reset.ssh on host.ubuntu.kvm (VM: kennel-vm-baseline)</span>
+<span class="log-information">    Sequence: Kennel (SSH): revert the kennel-vm guest to the &#39;kennel-vm-baseline&#39; disk snapshot and prove what came back is the appliance -- stock at the pin, container running, workspace built, simulator launchable.</span>
+<span class="log-information">       2 s [1/13] PASS loadDiskSnapshot: Revert the disk to &#39;kennel-vm-baseline&#39; and start the guest</span>
+<span class="log-information">      11 s [2/13] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)</span>
+<span class="log-information">       0 s [3/13] PASS sshExec: Smoke test: whoami/hostname</span>
+<span class="log-information">       0 s [4/13] PASS sshExec: Assert the guest that came back is kennel-vm</span>
+<span class="log-information">       0 s [5/13] PASS sshExec: Assert the restored guest&#39;s manifest carries the stack pin</span>
+<span class="log-information">       0 s [6/13] PASS sshExec: Assert the clone sits at the stack pin</span>
+<span class="log-information">       0 s [7/13] PASS sshExec: Assert no tracked file differs from the pin (configs are stock)</span>
+<span class="log-information">       1 s [8/13] PASS sshExec: Start the dfki_quad container and assert it is running</span>
+<span class="log-information">       0 s [9/13] PASS sshExec: Assert the go2 workspace survived the revert</span>
+<span class="log-information">      56 s [10/13] PASS sshExec: Assert &#39;ros2 launch simulator simulator.launch.py sim:=go2&#39; is launchable</span>
+<span class="log-information">       0 s [11/13] PASS sshExec: Assert no composed run is applied (a baseline is stock)</span>
+<span class="log-information">       0 s [12/13] PASS sshExec: Record what the reset returned (feeds vm/snapshot.md)</span>
+<span class="log-information">       1 s [13/13] PASS sshFetchAndExecute: Assert the drift check finds nothing (the guest is its manifest&#39;s environment)</span>
+<span class="log-information">      72 s [All 13 steps completed in 1 min and 12 s]</span>
+<span class="log-information">  workload.guest.ubuntu.server.24.kennel.reset.ssh: PASS</span>
+<span class="log-information">  Running: workload.guest.ubuntu.server.24.kennel.mvp.ssh</span>
+<span class="log-information">[guest.ubuntu.server.24] Running sequence: workload.guest.ubuntu.server.24.kennel.mvp.ssh on host.ubuntu.kvm (VM: kennel-vm-baseline)</span>
+<span class="log-information">    Sequence: Kennel (SSH): the MVP -- revert to the baseline, stage the console-exported fixture from the project tree, apply it, launch the stack from its commands.txt, assert healthy and walking on the composed solver, keep the logs, stop the stack.</span>
+<span class="log-information">      13 s [1/14] PASS loadDiskSnapshot: Revert the disk to &#39;kennel-vm-baseline&#39; and start the guest</span>
+<span class="log-information">      11 s [2/14] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)</span>
+<span class="log-information">       0 s [3/14] PASS sshExec: Smoke test: whoami/hostname</span>
+<span class="log-information">       0 s [4/14] PASS sshExec: Assert the restored guest&#39;s manifest carries the stack pin</span>
+<span class="log-information">       1 s [5/14] PASS sshExec: Start the dfki_quad container and assert it is running</span>
+<span class="log-information">       1 s [6/14] PASS sshFetchAndExecute: Stage the fixture and the four stack tools from the project tree (through the host)</span>
+<span class="log-information">       0 s [7/14] PASS sshExec: Assert the staged fixture&#39;s run.json is the pin and the solver this sequence expects</span>
+<span class="log-information">       1 s [8/14] PASS sshExec: Apply the fixture to the container&#39;s config paths and prove the bytes landed (repo -&gt; guest -&gt; container)</span>
+<span class="log-information">      37 s [9/14] PASS sshExec: Launch the three stack processes from the fixture&#39;s commands.txt and wait for the six-node graph</span>
+<span class="log-information">      41 s [10/14] PASS sshExec: Run the verification recipe against the composed solver (its exit code is classified next)</span>
+<span class="log-information">       0 s [11/14] PASS sshExec: Classify: the recipe could look at the stack (any other exit is an infrastructure error, not a stack verdict)</span>
+<span class="log-information">       0 s [12/14] PASS sshExec: Assert healthy and walking on PARTIAL_CONDENSING_OSQP (an assert failed = red run, with the three process logs above)</span>
+<span class="log-information">       0 s [13/14] PASS sshExec: Keep this run&#39;s record on the guest -- the report and the three process logs -- for the host to collect</span>
+<span class="log-information">       0 s [14/14] PASS sshExec: Stop the stack in the container</span>
+<span class="log-information">     106 s [All 14 steps completed in 2 min and 46 s]</span>
+<span class="log-information">  workload.guest.ubuntu.server.24.kennel.mvp.ssh: PASS</span>
+<span class="log-output">  guest.ubuntu.server.24 Start-GuestWorkload: PASS</span>
+<span class="log-output">  guest.ubuntu.server.24: PASS</span>
+<span class="log-output">  Cleanup complete for guest.ubuntu.server.24.</span>
+</pre></body></html>

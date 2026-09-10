@@ -1,0 +1,35 @@
+$ demo/tools/kennel-demo.sh compose
+# 2026-09-10T18:54:42Z, kennel 5b64347
+
+[compose] the console is up and on Compose
+  [ok ] Compose view is the landing view
+  [ok ] solver dropdown present
+  [ok ] real-time rate input present
+  [ok ] starts at stock solver — PARTIAL_CONDENSING_HPIPM
+  [ok ] starts at stock rate — 1
+
+[compose] choice 1 — MPC solver -> PARTIAL_CONDENSING_OSQP
+  [ok ] dropdown holds the choice — PARTIAL_CONDENSING_OSQP
+  [ok ] controller YAML shows it — mpc_solver: "PARTIAL_CONDENSING_OSQP"
+
+[compose] choice 2 — real-time rate -> 0.75
+  [ok ] input holds the choice — 0.75
+  [ok ] simulator YAML shows it — simulator_realtime_rate: 0.75                   # Target realtime rate that the simulation tries to reach (1=Realtime, 0=As fast as possible)
+
+[compose] map left at stock — transfer.md 6.3: obstacle terrain does not walk
+  [ok ] world_urdf is still the plane
+  [ok ] Compose view photographed — 194835 B
+
+[generate] generate run
+  [ok ] exactly one archive downloaded — ['run-20260910T185449Z.zip']
+
+ARCHIVE=/tmp/tmp.9wAQX5BBow/run-20260910T185449Z.zip
+
+[p22-console] run folder: /home/thales/kennel-runs/run-20260910T185449Z
+a83c79c99727f543b583fd38dd4f90ff33b0126a70be3af51bad50f7e98fe2a4  ./commands.txt
+3c69d87ff866dd3910a29ed0ff17e16da26ad5a36e874a424ea17e4562476962  ./mit_controller_sim_go2.yaml
+93caa07dc19536e61cf0bf36b93076fbed36e9594dea1f711eeb53f43ca58595  ./run.json
+1715821fea8922b8af83de4f32cfc2506af521708db0d16809b0dbdf0693df99  ./simulator_params_go2.yaml
+RUNDIR=/home/thales/kennel-runs/run-20260910T185449Z
+[kennel-demo] run folder       /home/thales/kennel-runs/run-20260910T185449Z
+exit=0

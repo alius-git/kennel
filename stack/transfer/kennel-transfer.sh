@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version: 2026.08.06
+# Version: 2026.09.10
 # Kennel -- issue #20: push a console-exported run folder from the HOST into the
 # guest and onto the config paths the launch files read inside the container.
 #
@@ -18,6 +18,12 @@
 # <run-folder> is an UNPACKED run-<timestamp>/ directory as exported by the
 # console (issue #19). The console cannot choose where the browser saves it, so
 # the path is always an argument -- see kennel_console/export.md section 6.
+#
+# Since #74 `apply` also compares the run's `manifest_ref` (the sha256 of the
+# version manifest the console knew when it composed the run) with the guest's
+# ~/kennel-manifest.json, and WARNS when they differ or the guest has none. A
+# warning and never a refusal: the pin is what decides whether a run means
+# anything here, and the drift check (#75) is what names what changed.
 #
 # Exit codes are the applier's, with the host-side ones layered underneath:
 #   0  success
@@ -170,6 +176,35 @@ if ! ssh "${SSH_OPTS[@]}" "$TARGET" true 2>/dev/null; then
          "Try: ssh -i $SSH_KEY $TARGET hostname" \
          "If the guest has just booted, sshWaitReady can take several minutes."
     exit 4
+fi
+
+# --- REGION: the version manifest (#74)
+# A run composed in a console that knew the guest's manifest carries its
+# manifest_ref. The guest is asked for its own here, where it is being sshed
+# anyway. Different means the run was composed against another environment --
+# a rebuilt baseline, an imported image, a repin -- which is worth a line in the
+# operator's transcript and not worth refusing: the pin check above decides
+# refusal, and `kennel-demo.sh drift` names what changed.
+if [ "$MODE" = apply ]; then
+    rj_ref=""
+    [ -f "$RUN_FOLDER/run.json" ] \
+        && rj_ref="$(sed -n 's/.*"manifest_ref"[[:space:]]*:[[:space:]]*"\([0-9a-f]*\)".*/\1/p' "$RUN_FOLDER/run.json" | head -1)"
+    guest_ref="$(ssh "${SSH_OPTS[@]}" "$TARGET" 'sha256sum ~/kennel-manifest.json 2>/dev/null | cut -c1-64' 2>/dev/null)"
+    if [ -z "$guest_ref" ]; then
+        warn "the guest carries no version manifest (its baseline predates #74) -- this run's"
+        warn "environment cannot be checked. Re-take the baseline: demo/tools/kennel-demo.sh snapshot"
+    else
+        say "manifest         ${guest_ref:0:12}  (the guest's)"
+        if [ -z "$rj_ref" ]; then
+            say "                 run.json names none (composed with no manifest known)"
+        elif [ "$rj_ref" != "$guest_ref" ]; then
+            warn "this run was composed against manifest ${rj_ref:0:12}, but the guest carries ${guest_ref:0:12}:"
+            warn "the environment is not the one the run was composed for. Applying anyway --"
+            warn "demo/tools/kennel-demo.sh drift names what differs from the guest's own baseline."
+        else
+            say "                 run.json names the same manifest"
+        fi
+    fi
 fi
 
 # --- REGION: stage

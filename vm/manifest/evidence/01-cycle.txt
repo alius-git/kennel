@@ -1,0 +1,344 @@
+
+==== cycle: 1 cycle(s) of Invoke-TestProject.ps1, from cold ====
+[kennel-demo] project URL      file:///home/thales/kennel
+[kennel-demo] each cycle DESTROYS the 'kennel-vm' guest INCLUDING the baseline snapshot
+[kennel-demo] 'kennel-vm-baseline', rebuilds both from clean, and runs workload.guest.ubuntu.server.24.kennel.mvp.ssh
+[kennel-demo] to the end. About 40 minutes each. The rebuilt baseline is LEFT STANDING.
+
+==== cycle 1 of 1 ====
+Host type: host.ubuntu.kvm
+
+There may be more host-health recommendations available. For a deeper report (config files, transports, framework/project staleness, RAM/CPU, host-specific feature state) run: pwsh test/Test-Config.ps1
+Stopping VMs with prefix 'test-', 'kennel-vm-baseline'...
+
+  Stopping kennel-vm-baseline [running]...
+    Stopped.
+    Removed.
+
+
+Removed 1 VM(s); 0 survivor(s).
+
+Releasing host virtual display (if attached)...
+
+Running orphaned VM file cleanup: /home/thales/git/yuruna/host/ubuntu.kvm/Remove-OrphanedVMFiles.ps1
+
+
+================================================================
+  WARNING: DESTRUCTIVE OPERATION
+================================================================
+
+  This script deletes VM directories under ~/yuruna/vms/
+  that are NOT registered with libvirt.
+
+  THIS CANNOT BE UNDONE.
+
+================================================================
+
+libvirt registered VMs: 1
+
+Currently registered VMs and their on-disk artifacts:
+
+  ub26_guest
+    /home/thales/yuruna/vms/ub26_guest/seed.iso  (0.40 MB)
+    /home/thales/yuruna/vms/ub26_guest/seed.src/meta-data  (0.00 MB)
+    /home/thales/yuruna/vms/ub26_guest/seed.src/user-data  (0.04 MB)
+    /home/thales/yuruna/vms/ub26_guest/ub26_guest.qcow2  (5,854.62 MB)
+
+No orphaned VM directories found. Nothing to clean up.
+
+=============================================
+  Invoke-TestProject (single test cycle)
+  Config:     /home/thales/git/yuruna/test/test.config.yml
+  ProjectUrl: file:///home/thales/kennel
+  RepoRoot:   /home/thales/git/yuruna
+  Inner:      /home/thales/git/yuruna/test/modules/Invoke-TestRunnerInnerLoop.ps1
+  Stop:       Ctrl+C (or completes when the inner exits)
+=============================================
+
+[Invoke-TestProject] Step 1+2: wipe and re-clone <RepoRoot>/project from file:///home/thales/kennel
+Removing previous project clone: /home/thales/git/yuruna/project
+Cloning file:///home/thales/kennel -> /home/thales/git/yuruna/project
+Project clone refreshed.
+[Invoke-TestProject] Step 1+2: complete.
+
+[Invoke-TestProject] Step 3: spawning Invoke-TestRunnerInnerLoop for one test cycle.
+test.config.yml: applying template overlay to pick up schema changes.
+Host type: host.ubuntu.kvm
+Note: if this cycle refreshes the caching-proxy port map it writes systemd forwarder units with sudo and may prompt for your password.
+[33;1mWARNING: ===================================================================[0m
+[33;1mWARNING:  Host clock is 481.7s behind real time (limit: 120s).[0m
+[33;1mWARNING:  Guests take this clock from their virtual RTC at power-on, and[0m
+[33;1mWARNING:  their own NTP client steps them to real time seconds into the[0m
+[33;1mWARNING:  boot. That step lands mid-startup: a Kubernetes guest comes up[0m
+[33;1mWARNING:  with its pods Running but never Ready and every NodePort[0m
+[33;1mWARNING:  refusing, hours before anything blames a clock.[0m
+[33;1mWARNING: [0m
+[33;1mWARNING:  This cycle continues. Fix the clock from a console that can[0m
+[33;1mWARNING:  answer for Administrator / sudo -- run from the repo root:[0m
+[33;1mWARNING:    pwsh test/Test-Config.ps1[0m
+[33;1mWARNING:    pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1[0m
+[33;1mWARNING: ===================================================================[0m
+Runtime directory: /home/thales/git/yuruna/test/status/runtime
+Log directory:     /home/thales/git/yuruna/test/status/log
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+Caching-proxy service: not detected (guests will download directly from Ubuntu mirrors)
+[33;1mWARNING: ===================================================================[0m
+[33;1mWARNING:  Host clock is 481.7s behind real time (limit: 120s).[0m
+[33;1mWARNING:  Guests take this clock from their virtual RTC at power-on, and[0m
+[33;1mWARNING:  their own NTP client steps them to real time seconds into the[0m
+[33;1mWARNING:  boot. That step lands mid-startup: a Kubernetes guest comes up[0m
+[33;1mWARNING:  with its pods Running but never Ready and every NodePort[0m
+[33;1mWARNING:  refusing, hours before anything blames a clock.[0m
+[33;1mWARNING: [0m
+[33;1mWARNING:  This cycle continues. Fix the clock from a console that can[0m
+[33;1mWARNING:  answer for Administrator / sudo -- run from the repo root:[0m
+[33;1mWARNING:    pwsh test/Test-Config.ps1[0m
+[33;1mWARNING:    pwsh host/ubuntu.kvm/Enable-TestAutomation.ps1[0m
+[33;1mWARNING: ===================================================================[0m
+
+=============================================
+  CYCLE 47
+  (inner cycle starting -- local time: 2026-09-10 14:54:45 -03:00)
+=============================================
+Project clone skipped (-NoProjectClone). Using existing /home/thales/git/yuruna/project.
+[33;1mWARNING: [0m
+[33;1mWARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!![0m
+[33;1mWARNING: Framework repo at /home/thales/git/yuruna has 4 uncommitted change(s); /yuruna-archive.tar.gz is built from `git archive HEAD` and will NOT include them. Guests will see committed content while the host runs working-tree code.[0m
+[33;1mWARNING:      M host/vmconfig/ubuntu.server.base.user-data[0m
+[33;1mWARNING:      M test/modules/Test.SequenceEngine.psm1[0m
+[33;1mWARNING:      M test/sequences/start.guest.ubuntu.server.24.ssh.yml[0m
+[33;1mWARNING:     ?? test/test.config.yml.bak-2026-06[0m
+[33;1mWARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!![0m
+[33;1mWARNING: [0m
+[33;1mWARNING: Test-CachingProxyServiceAvailable: state.ipAddress is empty -- no locally-owned cache. Set $Env:YURUNA_CACHING_PROXY_SERVICE_IP to point at a remote cache, or run Start-CachingProxyServiceVM.ps1.[0m
+
+---------------------------------------------------------
+Yuruna capability matrix (host.ubuntu.kvm)
+---------------------------------------------------------
+  Host I/O:   Send-Key, Send-Text
+  OCR:        tesseract
+  Recovery:   VNC reconnect (built-in (clear cached handle)), screenshot (legacy capture)
+  Extensions:
+    authentication         default
+    caching-proxy-parser-service default
+    download-agent-service default
+    extension-sdk          (no active)
+    notification           default
+    pool-aggregator-service default
+    pool-control-service   default
+    stash-service          default
+---------------------------------------------------------
+Host diagnostic (cycle start): ./status/log/000047.2026-09-10.17-54-49.4230bb0f56694b6582bdfe6388bff892/host.diagnostic.txt
+Host diagnostic (cycle start): 3 problem(s) reported -- KUBE=1, LINUX=1, YURUNA=1
+Cycle start: 2026-09-10T17:54:49Z
+Commit:   f0d4d3b1, 370078e
+Get-Image: skipped (last run: 09/10/2026 03:16:37, all images present)
+
+===== test.config.yml: 2026-09-10 14:54:44Z
+configService:
+  enabled: true
+  port: 8443
+downloadAgentService:
+  autoSeed: true
+  enabled: true
+  freshnessSeconds: 86400
+  prefetchLeadSeconds: 7200
+  scanIntervalSeconds: 900
+guestSequence:
+- guest.ubuntu.server.24
+logLevel: Information
+networkStorage:
+  poolStorageLocalPath: ""
+  poolStorageNetworkPath: ""
+  poolStorageNetworkUser: ""
+  stashStorageLocalPath: ""
+  stashStorageNetworkPath: ""
+  stashStorageNetworkUser: ""
+notification:
+  failuresBeforeAlert: 2
+  successesBeforeRearm: 5
+pool:
+  enabled: false
+  intentGitUrl: ""
+  localClonePath: ""
+  networkReplicate: false
+  pullTimeoutSeconds: 30
+repositories:
+  frameworkUrl: https://github.com/alissonsol/yuruna
+  ghToken: ""
+  projectUrl: file:///home/thales/kennel
+statusService:
+  enabled: true
+  port: 8080
+testCycle:
+  autoRemediation:
+    enabled: false
+    maxAttemptsPerCycle: 2
+  cycleDelaySeconds: 300
+  guestQuarantine:
+    enabled: true
+    failuresToQuarantine: 3
+    skipCycles: 5
+  perfLog:
+    enabled: true
+  preambleTimeoutSeconds: 600
+  recentDisplayCount: 30
+  stepTimeoutSeconds: 2700
+  stopOnFailure: false
+  warmResume:
+    enabled: true
+    maxAttempts: 2
+vmCommunication:
+  charDelayMs: 10
+  pollSeconds: 5
+  timeoutSeconds: 180
+  vncPort: 5900
+vmImage:
+  alwaysRedownload: false
+  refreshSeconds: 604800
+vmStart:
+  bootDelaySeconds: 15
+  cachingProxyIp: ""
+  cleanupVmNamePrefixes: []
+  startTimeoutSeconds: 120
+  testVmNamePrefix: test-
+
+
+--- Cycle-start VM sweep (Prefix: 'test-') ---
+Running orphaned VM file cleanup: /home/thales/git/yuruna/host/ubuntu.kvm/Remove-OrphanedVMFiles.ps1
+
+== guest.ubuntu.server.24 (VM: test-guest.ubuntu.server.24-01) ==
+Password came from authentication mechanism: default
+See configuration at: /home/thales/git/yuruna/test/extension/authentication
+Domain 'test-guest.ubuntu.server.24-01' defined from /tmp/tmp3SQyF5.tmp
+Domain 'test-guest.ubuntu.server.24-01' started
+  guest.ubuntu.server.24 New-VM: PASS <== ubuntu-24.04.4-live-server-amd64.iso
+  guest.ubuntu.server.24 Start-VM: PASS ==> IP: (pending)
+  Running: start.guest.ubuntu.server.24.kennel.ssh
+[guest.ubuntu.server.24] Running sequence: start.guest.ubuntu.server.24.kennel.ssh on host.ubuntu.kvm (VM: test-guest.ubuntu.server.24-01)
+    Sequence: Kennel (SSH): Ubuntu Server 24.04 guest sized for the dfki-quad Docker image build + colcon build of the MPC/WBC/acados stack.
+       5 s [1/9] PASS waitForSeconds: Let the GRUB boot menu render
+       0 s [2/9] PASS pressKey: Blind-dismiss the GRUB boot menu (first attempt)
+       8 s [3/9] PASS waitForSeconds: Pause before retry
+       0 s [4/9] PASS pressKey: Blind-dismiss the GRUB boot menu (retry)
+      22 s [5/9] PASS waitForAndEnter: OCR: Continue with autoinstall?
+     489 s [6/9] PASS sshWaitReady: Wait for SSH after autoinstall (fast-fail on subiquity crash)
+       0 s [7/9] PASS sshExec: Smoke test: whoami/hostname
+      81 s [8/9] PASS sshFetchAndExecute: ubuntu.server.24.update.sh
+       0 s [9/9] PASS sshExec: Reboot the VM
+     606 s [All 9 steps completed in 10 min and 6 s]
+  start.guest.ubuntu.server.24.kennel.ssh: PASS
+  guest.ubuntu.server.24 Start-GuestOS: PASS
+  guest.ubuntu.server.24 New-VM.Resource: PASS
+  Running: workload.guest.ubuntu.server.24.kennel.ssh
+[guest.ubuntu.server.24] Running sequence: workload.guest.ubuntu.server.24.kennel.ssh on host.ubuntu.kvm (VM: test-guest.ubuntu.server.24-01)
+    Sequence: Kennel (SSH): assert the kennel-vm guest booted at the documented size (8 vCPU / 16 GiB / 64 G disk) and record its resource footprint.
+       0 s [1/8] PASS sshWaitReady: Wait for sshd after reboot
+       0 s [2/8] PASS sshExec: Smoke test: whoami/hostname
+       0 s [3/8] PASS sshExec: Record the guest's CPU / memory / disk footprint
+       0 s [4/8] PASS sshExec: Assert 8 vCPU
+       0 s [5/8] PASS sshExec: Assert >= 15 GiB RAM (16 GiB configured)
+       0 s [6/8] PASS sshExec: Assert >= 50 GiB root filesystem
+       0 s [7/8] PASS sshExec: Assert the guest hostname is kennel-vm
+       0 s [8/8] PASS sshExec: Record the pre-build headroom baseline for #10
+       2 s [All 8 steps completed in 0 min and 2 s]
+  workload.guest.ubuntu.server.24.kennel.ssh: PASS
+  Running: workload.guest.ubuntu.server.24.kennel.stack.ssh
+[guest.ubuntu.server.24] Running sequence: workload.guest.ubuntu.server.24.kennel.stack.ssh on host.ubuntu.kvm (VM: test-guest.ubuntu.server.24-01)
+    Sequence: Kennel (SSH): provision Docker CE + the pinned dfki-quad stack in the guest, prove the go2 simulator is launchable in-container, and prove Meshcat is bound where the host can reach it.
+       0 s [1/11] PASS sshWaitReady: Wait for sshd
+       0 s [2/11] PASS sshExec: Smoke test: whoami/hostname
+    1737 s [3/11] PASS sshFetchAndExecute: Provision Docker + the pinned dfki-quad stack
+      57 s [4/11] PASS sshFetchAndExecute: Re-run to prove idempotency (must be a no-op refresh)
+       0 s [5/11] PASS sshExec: Assert the dfki-quad image exists
+       0 s [6/11] PASS sshExec: Assert the dfki_quad container is running
+       0 s [7/11] PASS sshExec: Assert the go2 workspace is built
+       0 s [8/11] PASS sshExec: Assert the clone sits at the stack pin
+      56 s [9/11] PASS sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+       3 s [10/11] PASS sshExec: Assert Meshcat binds a host-reachable address in the guest (#11 hop 1)
+       0 s [11/11] PASS sshExec: Record the build's footprint (feeds #9 §5.4)
+    1855 s [All 11 steps completed in 31 min and 55 s]
+  workload.guest.ubuntu.server.24.kennel.stack.ssh: PASS
+  Running: workload.guest.ubuntu.server.24.kennel.baseline.ssh
+[guest.ubuntu.server.24] Running sequence: workload.guest.ubuntu.server.24.kennel.baseline.ssh on host.ubuntu.kvm (VM: test-guest.ubuntu.server.24-01)
+    Sequence: Kennel (SSH): make the provisioned kennel-vm guest a clean baseline -- stack stopped, no composed run, clone stock at the pin, workspace built -- and freeze it as disk snapshot 'kennel-vm-baseline'.
+       0 s [1/5] PASS sshWaitReady: Wait for sshd
+       0 s [2/5] PASS sshExec: Smoke test: whoami/hostname
+      33 s [3/5] PASS sshFetchAndExecute: Clean the guest to a baseline (stop stack, assert stock + built, clear staging)
+       0 s [4/5] PASS sshExec: Assert the baseline manifest carries the stack pin
+      saveDiskSnapshot: VM renamed 'test-guest.ubuntu.server.24-01' -> 'kennel-vm-baseline'; subsequent steps will target 'kennel-vm-baseline'.
+       5 s [5/5] PASS saveDiskSnapshot: Freeze the baseline as disk snapshot 'kennel-vm-baseline' (renames the domain; leaves it stopped)
+      39 s [All 5 steps completed in 1 min and 39 s]
+  workload.guest.ubuntu.server.24.kennel.baseline.ssh: PASS
+  VM renamed mid-chain: 'test-guest.ubuntu.server.24-01' -> 'kennel-vm-baseline'.
+  Running: workload.guest.ubuntu.server.24.kennel.reset.ssh
+[guest.ubuntu.server.24] Running sequence: workload.guest.ubuntu.server.24.kennel.reset.ssh on host.ubuntu.kvm (VM: kennel-vm-baseline)
+    Sequence: Kennel (SSH): revert the kennel-vm guest to the 'kennel-vm-baseline' disk snapshot and prove what came back is the appliance -- stock at the pin, container running, workspace built, simulator launchable.
+       2 s [1/13] PASS loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+      11 s [2/13] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+       0 s [3/13] PASS sshExec: Smoke test: whoami/hostname
+       0 s [4/13] PASS sshExec: Assert the guest that came back is kennel-vm
+       0 s [5/13] PASS sshExec: Assert the restored guest's manifest carries the stack pin
+       0 s [6/13] PASS sshExec: Assert the clone sits at the stack pin
+       0 s [7/13] PASS sshExec: Assert no tracked file differs from the pin (configs are stock)
+       1 s [8/13] PASS sshExec: Start the dfki_quad container and assert it is running
+       0 s [9/13] PASS sshExec: Assert the go2 workspace survived the revert
+      56 s [10/13] PASS sshExec: Assert 'ros2 launch simulator simulator.launch.py sim:=go2' is launchable
+       0 s [11/13] PASS sshExec: Assert no composed run is applied (a baseline is stock)
+       0 s [12/13] PASS sshExec: Record what the reset returned (feeds vm/snapshot.md)
+       1 s [13/13] PASS sshFetchAndExecute: Assert the drift check finds nothing (the guest is its manifest's environment)
+      72 s [All 13 steps completed in 1 min and 12 s]
+  workload.guest.ubuntu.server.24.kennel.reset.ssh: PASS
+  Running: workload.guest.ubuntu.server.24.kennel.mvp.ssh
+[guest.ubuntu.server.24] Running sequence: workload.guest.ubuntu.server.24.kennel.mvp.ssh on host.ubuntu.kvm (VM: kennel-vm-baseline)
+    Sequence: Kennel (SSH): the MVP -- revert to the baseline, stage the console-exported fixture from the project tree, apply it, launch the stack from its commands.txt, assert healthy and walking on the composed solver, keep the logs, stop the stack.
+      13 s [1/14] PASS loadDiskSnapshot: Revert the disk to 'kennel-vm-baseline' and start the guest
+      11 s [2/14] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)
+       0 s [3/14] PASS sshExec: Smoke test: whoami/hostname
+       0 s [4/14] PASS sshExec: Assert the restored guest's manifest carries the stack pin
+       1 s [5/14] PASS sshExec: Start the dfki_quad container and assert it is running
+       1 s [6/14] PASS sshFetchAndExecute: Stage the fixture and the four stack tools from the project tree (through the host)
+       0 s [7/14] PASS sshExec: Assert the staged fixture's run.json is the pin and the solver this sequence expects
+       1 s [8/14] PASS sshExec: Apply the fixture to the container's config paths and prove the bytes landed (repo -> guest -> container)
+      37 s [9/14] PASS sshExec: Launch the three stack processes from the fixture's commands.txt and wait for the six-node graph
+      41 s [10/14] PASS sshExec: Run the verification recipe against the composed solver (its exit code is classified next)
+       0 s [11/14] PASS sshExec: Classify: the recipe could look at the stack (any other exit is an infrastructure error, not a stack verdict)
+       0 s [12/14] PASS sshExec: Assert healthy and walking on PARTIAL_CONDENSING_OSQP (an assert failed = red run, with the three process logs above)
+       0 s [13/14] PASS sshExec: Keep this run's record on the guest -- the report and the three process logs -- for the host to collect
+       0 s [14/14] PASS sshExec: Stop the stack in the container
+     106 s [All 14 steps completed in 2 min and 46 s]
+  workload.guest.ubuntu.server.24.kennel.mvp.ssh: PASS
+  guest.ubuntu.server.24 Start-GuestWorkload: PASS
+  guest.ubuntu.server.24: PASS
+  Cleanup complete for guest.ubuntu.server.24.
+
+== Cycle 47 complete: pass ==
+
+--- Warnings ---
+[33;1mWARNING:   Git pull was skipped (-NoGitPull).[0m
+
+=============================================
+  CYCLE 47 complete -- entering teardown
+=============================================
+Running orphaned VM file cleanup: /home/thales/git/yuruna/host/ubuntu.kvm/Remove-OrphanedVMFiles.ps1
+[cycle 47] cycleDelaySeconds wait: 300 s before exiting to outer.
+[cycle 47] cycleDelaySeconds wait complete -- exiting inner; outer will respawn. (local time: 2026-09-10 15:45:32 -03:00)
+
+[Invoke-TestProject] Step 3: inner cycle exited with code 0.
+
+=============================================
+  Invoke-TestProject: STOP (exit 0)
+  Cycle PASSED.
+=============================================
+[kennel-demo] cycle 1 ran for 50m58s
+[kennel-demo] collected        the guest's run record -> /home/thales/kennel/vm/manifest/evidence/cycle1-20260910T184533Z/kennel-mvp/
+[kennel-demo] collected        000047.2026-09-10.17-54-49.4230bb0f56694b6582bdfe6388bff892 -> /home/thales/kennel/vm/manifest/evidence/cycle1-20260910T184533Z/cycle/
+[kennel-demo] evidence         /home/thales/kennel/vm/manifest/evidence/cycle1-20260910T184533Z
+[kennel-demo] cycle 47  pass  2742s
+[kennel-demo]   guest.ubuntu.server.24   test-guest.ubuntu.server.24-01 pass
+[kennel-demo]   warm_resume events: 0 (the cycle passed without re-running a failed sequence)
+[kennel-demo] all 1 cycle(s) green in 51m0s
+[kennel-demo] the guest is the one the last cycle built, with its baseline snapshot and the
+[kennel-demo] composed run applied. Back to stock in ~90 s with:  demo/tools/kennel-demo.sh reset
+demo/tools/kennel-demo.sh: line 2616: syntax error near unexpected token `;;'
+demo/tools/kennel-demo.sh: line 2616: `age >&2; exit 2 ;;'

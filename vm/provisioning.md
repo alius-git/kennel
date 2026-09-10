@@ -54,6 +54,12 @@ now names is the **reset** one, and provisioning ends in a baseline it can retur
 to. See [`vm/snapshot.md`](snapshot.md); everything below still describes what
 happens in between.
 
+And since [#74](https://github.com/alius-git/kennel/issues/74) the baseline link
+writes the guest's **version manifest** — OS, kernel, Docker, image, pin, ROS,
+Drake, every installed package — before it freezes the guest, and turns off the
+periodic apt jobs that would otherwise change the guest underneath that manifest
+([`vm/manifest.md`](manifest.md), [`vm/drift.md`](drift.md)).
+
 ## 2. The script, phase by phase
 
 Each phase is guarded, so a re-run on an already-provisioned guest is a no-op or

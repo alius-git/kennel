@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 2,
+  "cycleFolder": "000047.2026-09-10.17-54-49.4230bb0f56694b6582bdfe6388bff892",
+  "writtenAtUtc": "2026-09-10T18:40:31.9214442Z",
+  "artifactCount": 5,
+  "artifacts": [
+    {
+      "modifiedUtc": "2026-09-10T17:54:49.2817447Z",
+      "sizeBytes": 208,
+      "sha256": "4E6D737DD5F385369205FA2A27BA565B79700EB09477363638912C5FA3B9146E",
+      "path": ".incomplete",
+      "kind": "other"
+    },
+    {
+      "modifiedUtc": "2026-09-10T18:40:31.8988552Z",
+      "sizeBytes": 16219,
+      "sha256": "643C312380CB005F94AF8D7402B8DB8DCD6C61DC357F0BFDC7BE6C56DC0A4121",
+      "path": "000047.2026-09-10.17-54-49.4230bb0f56694b6582bdfe6388bff892.html",
+      "kind": "transcript"
+    },
+    {
+      "modifiedUtc": "2026-09-10T18:40:31.8968553Z",
+      "sizeBytes": 62675,
+      "sha256": "588F854780E1396F3ABCD9A3E4D0490FBA1A0AA58B9EB0CA099D067C6C6DAB66",
+      "path": "cycle.events.ndjson",
+      "kind": "ndjson"
+    },
+    {
+      "modifiedUtc": "2026-09-10T17:55:01.7219337Z",
+      "sizeBytes": 136660,
+      "sha256": "58A9C7D4065E2D232DE0FDBDB5EBAC4A9E8C57C70B43489488B53EA9476083E1",
+      "path": "host.diagnostic.txt",
+      "kind": "diagnostic-host"
+    },
+    {
+      "modifiedUtc": "2026-09-10T17:55:01.7202156Z",
+      "sizeBytes": 409,
+      "sha256": "86DACFEEDBC13D26B25446E72FA292245D42ED0C378E1D3E5A3FC3B78105F6FB",
+      "path": "host.diagnostic.txt.json",
+      "kind": "other"
+    }
+  ]
+}

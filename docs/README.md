@@ -74,6 +74,13 @@ here as they are.
   Docker and the pinned dfki-quad stack, via Yuruna sequences.
 - [`vm/snapshot.md`](../vm/snapshot.md) — the baseline snapshot: freezing the
   provisioned guest so `reset` returns to it in seconds instead of 35 minutes.
+- [`vm/manifest.md`](../vm/manifest.md) — the version manifest: what the baseline
+  records about itself, how its identity (`manifest_ref`) is computed, and what
+  reads it — the sequences, the driver, the console, `run.json`.
+- [`vm/drift.md`](../vm/drift.md) — the drift check: the live guest against its
+  manifest, the negative control, and which workspace survives a `reset`.
+- [`vm/image.md`](../vm/image.md) — the appliance image: `export-image` and
+  `import`, the bundle, the first-boot key unit, and import-to-walking timed.
 - [`vm/meshcat-exposure.md`](../vm/meshcat-exposure.md) — reaching Meshcat from
   the host browser: the two network hops.
 

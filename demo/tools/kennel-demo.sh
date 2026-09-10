@@ -1,9 +1,10 @@
 #!/bin/bash
-# Version: 2026.09.07
+# Version: 2026.09.10
 # Kennel -- demo driver: the demo-script phases behind single verbs, so an
 # operator types a handful of commands instead of ~20 (follow-up to issue #22,
 # feeding #27's quickstart; snapshot/reset/up from #51; setup/console/run and
-# the zip-accepting transfer from #54; serve.py behind `console` from #56).
+# the zip-accepting transfer from #54; serve.py behind `console` from #56; the
+# version manifest, the drift check and the appliance image from #74-#76).
 #
 # Runs on the HOST. Every verb wraps the existing per-phase tool -- this script
 # adds orchestration only (guest discovery, scp, ordering, timing), so the
@@ -50,11 +51,21 @@
 #   cycle      pwsh test/Invoke-TestProject.ps1 (#25): ONE Yuruna cycle from
 #              cold, the way the runner runs one -- guest and baseline swept
 #              first, the whole chain rebuilt, the evidence collected
+#   drift      vm/guest/ubuntu.server.24/kennel-drift.sh (on guest, #75): the
+#              live guest against its version manifest, one line per finding;
+#              the report is left beside the run folders for the console
+#   export-image  qemu-img convert of the baseline SNAPSHOT layer (#76) into a
+#              compressed qcow2, with the domain template, the manifest and
+#              SHA256SUMS -- the appliance as something another host can import
+#   import     the other half (#76): verify a bundle before writing a byte,
+#              define kennel-vm-baseline, key it for THIS host, snapshot it,
+#              prove its manifest
 #
 # Usage:
 #   Once per host
 #     kennel-demo.sh setup [--yes]     # check/do the prerequisites (runbook 2)
 #     kennel-demo.sh provision [--yes] # clean guest -> baseline snapshot (~35 min; DESTROYS kennel-vm)
+#     kennel-demo.sh import <bundle>   # OR: an exported appliance image, in minutes (#76)
 #
 #   Each session
 #     kennel-demo.sh up                # start the guest and make it reachable
@@ -65,6 +76,7 @@
 #     kennel-demo.sh walk stop         # return the gait to STAND
 #     kennel-demo.sh down              # stop the stack in the container
 #     kennel-demo.sh reset             # revert to the baseline snapshot (~1-3 min)
+#     kennel-demo.sh drift             # the guest against its version manifest (#75)
 #
 #   Pieces
 #     kennel-demo.sh all               # compose -> transfer -> launch -> verify -> walk (~6 min)
@@ -87,6 +99,14 @@
 #                                      # its baseline, rebuilds both, runs the
 #                                      # MVP sequence, collects the evidence
 #                                      # (~40 min; KENNEL_CYCLES=2 for two)
+#
+#   Appliance (the baseline as a distributable image -- vm/image.md)
+#     kennel-demo.sh export-image [dir] # the baseline snapshot -> compressed qcow2,
+#                                      # domain template, manifest, SHA256SUMS;
+#                                      # refuses a drifted guest; leaves it shut off
+#     kennel-demo.sh import <dir>      # verify the bundle before writing a byte,
+#                                      # define kennel-vm-baseline, key it for this
+#                                      # host, snapshot it, prove its manifest
 #
 #   Scenarios (tests against the running stack, not demo phases)
 #     kennel-demo.sh scenario disturb  # s004: interventions, and the process
@@ -116,6 +136,16 @@
 #                                            head: git clone, never the working
 #                                            tree. Point it at the GitHub URL to
 #                                            run what is pushed instead
+#   KENNEL_IMAGE_DIR      ~/kennel-images    where export-image writes a bundle,
+#                                            as <dir>/kennel-vm-<pin7>-<date>/
+#   KENNEL_IMAGE_COMPRESSION (zlib)          qemu-img compression_type for
+#                                            export-image. Empty is zlib, which
+#                                            every qemu-img reads; zstd is faster
+#                                            where both hosts' qemu-img have it
+#   KENNEL_SSH_PUBKEY     $KENNEL_SSH_KEY.pub   the key `import` puts on the
+#                                            KENNELKEY volume. It is the key every
+#                                            verb then logs in with, so it must be
+#                                            the public half of KENNEL_SSH_KEY
 #   KENNEL_DEMO_OUT       ~/kennel-runs      where compose unpacks run folders,
 #                                            and where the console's send button
 #                                            writes them through serve.py
@@ -179,6 +209,12 @@ OUT="${KENNEL_DEMO_OUT:-$HOME/kennel-runs}"
 # nothing has to be restarted (send.md's feature detection, one level down).
 BRIDGE_FILE="$OUT/.kennel-bridge"
 MESHCAT_FILE="$OUT/.kennel-meshcat"
+# Where `up`, `run`, `status` and `reset` leave the guest's version manifest
+# (#74) and `drift` its last report (#75): the same side channel, read per
+# request by serve.py, so an open console shows the guest it is composing for.
+MANIFEST_FILE="$OUT/.kennel-manifest.json"
+MANIFEST_PKGS_FILE="$OUT/.kennel-manifest.packages.txt"
+DRIFT_FILE="$OUT/.kennel-drift"
 # Where the browser saves the console's archive. `transfer` and `run` look here
 # as well as in OUT, so composing by hand needs no unzip and no path typed
 # (issue #54); it is a knob because "Downloads" is a desktop convention, not a
@@ -200,6 +236,7 @@ GUEST_HOSTNAME="${KENNEL_GUEST_HOSTNAME:-kennel-vm}"
 LIBVIRT_NET="${KENNEL_LIBVIRT_NET:-default}"
 GUEST_USER="${KENNEL_GUEST_USER:-yuuser24}"
 SSH_KEY="${KENNEL_SSH_KEY:-$HOME/git/yuruna/test/status/ssh/yuruna_ed25519}"
+SSH_PUBKEY="${KENNEL_SSH_PUBKEY:-$SSH_KEY.pub}"
 GUEST_IP="${KENNEL_GUEST_IP:-}"
 CONTAINER="${KENNEL_CONTAINER:-dfki_quad}"
 BRIDGE_PORT="${KENNEL_BRIDGE_PORT:-9090}"
@@ -236,6 +273,16 @@ PROJECT_URL="${KENNEL_PROJECT_URL:-file://$REPO_ROOT}"
 # acceptance; it stops at the first red one, because the claim is about
 # consecutive cycles and continuing past a failure would not support it.
 CYCLES="${KENNEL_CYCLES:-1}"
+
+# The appliance image (#76). Bundles are written outside the repository: an image
+# is ~10 GB and belongs to the host that made it, not to the history of this repo.
+IMAGE_ROOT="${KENNEL_IMAGE_DIR:-$HOME/kennel-images}"
+IMAGE_COMPRESSION="${KENNEL_IMAGE_COMPRESSION:-}"
+IMAGE_TEMPLATE="$REPO_ROOT/vm/image/kennel-vm.xml.in"
+# Yuruna's per-VM directory root ($script:VmRootDir in Yuruna.Host.psm1): an
+# imported baseline lives where a provisioned one would, so Remove-VM and the
+# sweep find it the same way.
+VM_ROOT="$HOME/yuruna/vms"
 
 # The origin is separate from the page URL because serve.py answers /api/
 # there as well (kennel_console/send.md section 1).
@@ -546,6 +593,64 @@ disturbances_of_run() {   # $1 = run folder -> 1 (on) or 0
 # The stack pin, read the way kennel-transfer.sh and serve.py read it. Recorded
 # in a verify report so a report says which revision it is a report OF (#64).
 pin_sha() { sed -n 's/^commit:[[:space:]]*//p' "$REPO_ROOT/stack/pin.lock" | head -1; }
+
+# The guest's version manifest (#74), copied to where serve.py reads it. When the
+# guest has none -- a baseline older than #74 -- the host copy is REMOVED: a
+# manifest left behind by a previous guest is worse than none, because the
+# console would present it as this one's. Needs TARGET. 0 copied, 1 none.
+fetch_manifest() {
+    mkdir -p "$OUT"
+    if scp "${SSH_OPTS[@]}" -q "$TARGET:kennel-manifest.json" "$MANIFEST_FILE.tmp" 2>/dev/null \
+       && [ -s "$MANIFEST_FILE.tmp" ]; then
+        mv -f "$MANIFEST_FILE.tmp" "$MANIFEST_FILE"
+        scp "${SSH_OPTS[@]}" -q "$TARGET:kennel-manifest.packages.txt" "$MANIFEST_PKGS_FILE" 2>/dev/null \
+            || rm -f "$MANIFEST_PKGS_FILE"
+        return 0
+    fi
+    rm -f "$MANIFEST_FILE.tmp" "$MANIFEST_FILE" "$MANIFEST_PKGS_FILE"
+    return 1
+}
+
+# One screen of a version manifest, and its manifest_ref -- the sha256 of the
+# file's bytes, which is the manifest's identity (vm/manifest.md).
+manifest_summary() {   # $1 = a manifest file
+    python3 - "$1" <<'PY' | sed 's/^/[kennel-demo] /'
+import hashlib, json, sys
+raw = open(sys.argv[1], "rb").read()
+m = json.loads(raw)
+def g(*path):
+    v = m
+    for k in path:
+        v = v.get(k) if isinstance(v, dict) else None
+    return "null" if v is None else str(v)
+def short(v, n):
+    return v if v == "null" else v[:n]
+print("manifest_ref     %s" % hashlib.sha256(raw).hexdigest())
+print("  pin            %s" % g("pin"))
+print("  os / kernel    %s / %s" % (g("os", "pretty_name"), g("kernel")))
+print("  docker / image %s / %s" % (g("docker"), short(g("image_id"), 19)))
+print("  ROS / Drake    %s (%s) / %s" % (g("ros_distro"), g("ros_base"), g("drake")))
+print("  packages       %s" % g("packages", "count"))
+print("  built from     kennel %s, console %s, guides %s (via %s)" % (
+    short(g("project_commit"), 12), g("console_version"), short(g("guides_version"), 12), g("provenance")))
+print("  created        %s (guest clock)" % g("created"))
+PY
+}
+
+# The in-image manifest bytes rebuilt from a bundle's copy: the envelope keys
+# export-image added taken off, image_sha256 back to null, the prep script's
+# canonical dump. Its sha256 IS the manifest_ref the envelope claims, which is
+# what lets `import` check that claim before writing anything.
+manifest_ref_of_envelope() {   # $1 = <name>.manifest.json from a bundle
+    python3 - "$1" <<'PY'
+import hashlib, json, sys
+m = json.load(open(sys.argv[1], encoding="utf-8"))
+for k in ("image_file", "manifest_ref", "exported", "exported_from"):
+    m.pop(k, None)
+m["image_sha256"] = None
+print(hashlib.sha256((json.dumps(m, indent=2, sort_keys=True) + "\n").encode("utf-8")).hexdigest())
+PY
+}
 
 # The run folder a verify report belongs to (#64).
 #
@@ -1126,6 +1231,8 @@ up_core() {
         "s=\$(sudo docker inspect --type container -f '{{.State.Status}}' '$CONTAINER' 2>/dev/null); \
          if [ \"\$s\" != running ]; then sudo docker start '$CONTAINER' >/dev/null && echo 'container started'; \
          else echo 'container already running'; fi" | sed 's/^/[kennel-demo] /'
+    fetch_manifest \
+        || say "no version manifest on this guest (its baseline predates #74 -- re-take it: $0 snapshot)"
 }
 
 do_up() {
@@ -1160,45 +1267,25 @@ do_halt() {
     exit 3
 }
 
-do_snapshot() {
-    local yes=0
-    [ "${1:-}" = "--yes" ] && yes=1
-    need_yuruna
-    need_guest
-
-    banner "baseline prep (on the guest)"
-    say "this re-takes the baseline snapshot '$SNAPSHOT_ID', overwriting any existing one."
-    if [ "$yes" != 1 ]; then
-        reply=""
-        read -r -p "[kennel-demo] proceed? [y/N] " reply || true
-        case "$reply" in y|Y|yes) ;; *) say "aborted (pass --yes to skip the prompt)."; exit 2 ;; esac
-    fi
-    guest_stage test/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh
-    ssh "${SSH_OPTS[@]}" "$TARGET" "/tmp/ubuntu.server.24.kennel-baseline-prep.sh" || {
-        local rc=$?
-        fail "the guest is not a clean baseline (prep exited $rc) -- refusing to snapshot it." \
-             "A dirty baseline is worse than none: every future reset would return it." \
-             "Fix what the prep script named above, then re-run:  $0 snapshot"
-        exit "$rc"
-    }
-
-    banner "save disk snapshot"
-    local d; d="$(pick_domain)" || exit 2
-    say "domain           $d"
-    say "snapshot id      $SNAPSHOT_ID"
-    # Yuruna's own driver, not a re-implementation. The rename is the part that
-    # must not be improvised: Save-VMDiskSnapshot renames the domain to the id
-    # and relocates ~/yuruna/vms/<old> BEFORE snapshotting, because libvirt
-    # freezes the domain XML into the snapshot metadata and a snapshot taken
-    # under the old name can never be reverted (Yuruna.Host.psm1's own comment).
-    # It also stops the VM first and leaves it stopped.
-    #
-    # The manifest sidecar is written the same way the saveDiskSnapshot step
-    # handler writes it, with the same runtime dir and the host's own HostType.
-    # Without it `reset` warns "no manifest ... proceeding (legacy snapshot)" on
-    # every revert; a manifest with the WRONG fields is a hard refuse, which is
-    # why the host type is asked for rather than assumed.
-    local ps; ps="$(mktemp --suffix=.ps1)"
+# Yuruna's own driver, not a re-implementation. The rename is the part that
+# must not be improvised: Save-VMDiskSnapshot renames the domain to the id
+# and relocates ~/yuruna/vms/<old> BEFORE snapshotting, because libvirt
+# freezes the domain XML into the snapshot metadata and a snapshot taken
+# under the old name can never be reverted (Yuruna.Host.psm1's own comment).
+# It also stops the VM first and leaves it stopped.
+#
+# The manifest sidecar is written the same way the saveDiskSnapshot step
+# handler writes it, with the same runtime dir and the host's own HostType.
+# Without it `reset` warns "no manifest ... proceeding (legacy snapshot)" on
+# every revert; a manifest with the WRONG fields is a hard refuse, which is
+# why the host type is asked for rather than assumed.
+#
+# Factored out of `snapshot` for `import` (#76), which snapshots a domain IN
+# PLACE: with the domain already named after the id, Save-VMDiskSnapshot skips
+# the rename and only snapshots.
+yuruna_snapshot_domain() {   # $1 = domain, $2 = snapshot id
+    local ps rc
+    ps="$(mktemp --suffix=.ps1)"
     cat > "$ps" <<'PSEOF'
 param([Parameter(Mandatory)][string]$YurunaDir,
       [Parameter(Mandatory)][string]$VMName,
@@ -1217,10 +1304,59 @@ if ($manifest) { Write-Output "manifest: $manifest" }
 else { Write-Warning "snapshot saved, but its manifest could not be written; reset will warn about a legacy snapshot." }
 exit 0
 PSEOF
-    pwsh -NoProfile -File "$ps" -YurunaDir "$YURUNA_DIR" -VMName "$d" -Id "$SNAPSHOT_ID"
-    local rc=$?
+    pwsh -NoProfile -File "$ps" -YurunaDir "$YURUNA_DIR" -VMName "$1" -Id "$2"
+    rc=$?
     rm -f "$ps"
-    [ "$rc" -eq 0 ] || { fail "the snapshot was not taken (exit $rc)."; exit "$rc"; }
+    return "$rc"
+}
+
+do_snapshot() {
+    local yes=0
+    [ "${1:-}" = "--yes" ] && yes=1
+    need_yuruna
+    need_guest
+
+    banner "baseline prep (on the guest)"
+    say "this re-takes the baseline snapshot '$SNAPSHOT_ID', overwriting any existing one."
+    if [ "$yes" != 1 ]; then
+        reply=""
+        read -r -p "[kennel-demo] proceed? [y/N] " reply || true
+        case "$reply" in y|Y|yes) ;; *) say "aborted (pass --yes to skip the prompt)."; exit 2 ;; esac
+    fi
+    # The build provenance the manifest records (#74), from THIS checkout's
+    # committed HEAD -- the tree a sequence would have been served. Passed as
+    # knobs, so the prep script never has to reach for the host's archive.
+    local commit cver gver
+    commit="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)"
+    cver="$(git -C "$REPO_ROOT" show HEAD:kennel_console/serve.py 2>/dev/null \
+            | sed -n 's/^KENNEL_CONSOLE_VERSION *= *"\([^"]*\)".*/\1/p' | head -n 1)"
+    gver="$(git -C "$REPO_ROOT" rev-parse HEAD:guides 2>/dev/null)"
+    say "provenance       kennel ${commit:0:12}, console ${cver:-unknown}, guides ${gver:0:12}"
+    if [ -n "$(git -C "$REPO_ROOT" status --porcelain -- guides/ kennel_console/ 2>/dev/null)" ]; then
+        warn "guides/ or kennel_console/ has uncommitted changes: the manifest names HEAD, not the working tree."
+    fi
+    guest_stage test/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh
+    ssh "${SSH_OPTS[@]}" "$TARGET" \
+        "KENNEL_PROJECT_COMMIT='$commit' KENNEL_CONSOLE_VERSION='$cver' KENNEL_GUIDES_VERSION='$gver' \
+         /tmp/ubuntu.server.24.kennel-baseline-prep.sh" || {
+        local rc=$?
+        fail "the guest is not a clean baseline (prep exited $rc) -- refusing to snapshot it." \
+             "A dirty baseline is worse than none: every future reset would return it." \
+             "Fix what the prep script named above, then re-run:  $0 snapshot"
+        exit "$rc"
+    }
+
+    fetch_manifest && manifest_summary "$MANIFEST_FILE"
+
+    banner "save disk snapshot"
+    local d; d="$(pick_domain)" || exit 2
+    say "domain           $d"
+    say "snapshot id      $SNAPSHOT_ID"
+    yuruna_snapshot_domain "$d" "$SNAPSHOT_ID" || {
+        local rc=$?
+        fail "the snapshot was not taken (exit $rc)."
+        exit "$rc"
+    }
 
     banner "baseline"
     virsh snapshot-list "$SNAPSHOT_ID" 2>&1 | sed 's/^/[kennel-demo] /'
@@ -1248,14 +1384,25 @@ do_reset() {
     say "the guest is back at the baseline: stock configs at the pin, container running,"
     say "workspace built, no run applied. Compose and launch with:  $0 all"
 
-    # Yuruna captures sshExec output only when a step FAILS, so a green sequence
+    # Yuruna keeps a step's output only when the step FAILS, so a green sequence
     # leaves no record of WHICH baseline came back -- not in the HTML log, not in
-    # cycle.events.ndjson. Print it here, host-side, so the operator's own
-    # transcript carries it.
-    banner "baseline record"
+    # cycle.events.ndjson. `status` prints its version manifest host-side (#74),
+    # so the operator's own transcript carries it.
     GUEST_IP="${KENNEL_GUEST_IP:-}"      # the revert re-DHCPs; re-discover
     need_guest
-    ssh "${SSH_OPTS[@]}" "$TARGET" "cat ~/.kennel-baseline" | sed 's/^/[kennel-demo] /'
+
+    # The sequence's last step already asserted the drift check clean. It runs
+    # once more from here for the one thing a Yuruna step cannot do: leave the
+    # report on the host, where the console reads it (#75). Seconds -- and BEFORE
+    # `status`, so status reports this guest's drift and not the previous one's.
+    banner "drift"
+    do_drift || {
+        local rc=$?
+        fail "the guest is not its manifest's environment right after a reset (drift exit $rc)." \
+             "The sequence asserted it clean moments ago, so something changed it since -- or the" \
+             "baseline itself is bad. Re-take it from a clean guest:  $0 snapshot"
+        exit "$rc"
+    }
     echo
     do_status
 }
@@ -1285,6 +1432,10 @@ harness_collect() {   # $1 = label
     if guest_reachable; then
         scp "${SSH_OPTS[@]}" -qr "$TARGET:kennel-mvp" "$dest/" 2>/dev/null \
             && say "collected        the guest's run record -> $dest/kennel-mvp/"
+        # The guest's version manifest (#74). Not a drift report: the reset
+        # sequence writes one, and the MVP sequence's own loadDiskSnapshot reverts
+        # it away before anything could collect it.
+        scp "${SSH_OPTS[@]}" -q "$TARGET:kennel-manifest.json" "$dest/" 2>/dev/null
     else
         warn "the guest is not reachable -- its run record was left on it."
     fi
@@ -1480,6 +1631,435 @@ PY
     fi
 }
 
+# --- REGION: the appliance (issues #74, #75, #76)
+# The version manifest a baseline froze is the appliance's identity (#74); the
+# drift check compares a live guest with it (#75); an exported image carries it
+# to another host, where `import` proves the guest it booted is that appliance
+# (#76). Records: vm/manifest.md, vm/drift.md, vm/image.md.
+
+# The drift check as a verb (#75). The guest-side script decides; this stages
+# it, runs it, and leaves its JSON report where serve.py reads it. RETURNS the
+# script's code -- 0 clean, 1 drift, 2 could not look -- because `reset`,
+# `export-image` and `import` branch on it rather than exit on it.
+do_drift() {
+    need_guest
+    guest_stage vm/guest/ubuntu.server.24/kennel-drift.sh
+    ssh "${SSH_OPTS[@]}" "$TARGET" "/tmp/kennel-drift.sh"
+    local rc=$?
+    mkdir -p "$OUT"
+    case "$rc" in
+        0|1)
+            if scp "${SSH_OPTS[@]}" -q "$TARGET:kennel-drift.json" "$DRIFT_FILE.tmp" 2>/dev/null; then
+                mv -f "$DRIFT_FILE.tmp" "$DRIFT_FILE"
+            else
+                rm -f "$DRIFT_FILE.tmp"
+                warn "the drift report did not reach $DRIFT_FILE; the console will not show it."
+            fi ;;
+        *)
+            # Could not look: there is no report, and the previous one would now
+            # be a claim about a guest nobody checked.
+            rm -f "$DRIFT_FILE" ;;
+    esac
+    return "$rc"
+}
+
+# Whether a live domain is the machine the shipped template describes: machine
+# type, firmware, vCPU, memory, and the one disk's bus and format. Prints a row
+# per fact; returns 1 on any difference, 2 when the domain cannot be read.
+domain_matches_template() {   # $1 = domain
+    local tmp rc
+    tmp="$(mktemp)"
+    virsh dumpxml --inactive "$1" > "$tmp" 2>/dev/null || { rm -f "$tmp"; return 2; }
+    python3 - "$IMAGE_TEMPLATE" "$tmp" <<'PY' | sed 's/^/[kennel-demo] /'
+import sys
+import xml.etree.ElementTree as ET
+
+def facts(path):
+    root = ET.parse(path).getroot()
+    os_ = root.find("os")
+    disks = [d for d in root.find("devices").findall("disk") if d.get("device") == "disk"]
+    return {
+        "machine": os_.find("type").get("machine"),
+        "firmware": os_.get("firmware"),
+        "vcpu": root.find("vcpu").text.strip(),
+        "memory": "%s %s" % (root.find("memory").text.strip(), root.find("memory").get("unit")),
+        "disks": str(len(disks)),
+        "disk bus": disks[0].find("target").get("bus") if disks else None,
+        "disk format": disks[0].find("driver").get("type") if disks else None,
+    }
+
+want, got = facts(sys.argv[1]), facts(sys.argv[2])
+bad = [k for k in want if want[k] != got[k]]
+for k in want:
+    print("  %-12s %-18s %s" % (k, got[k], "ok" if k not in bad else "TEMPLATE SAYS %s" % want[k]))
+sys.exit(1 if bad else 0)
+PY
+    rc=${PIPESTATUS[0]}
+    rm -f "$tmp"
+    return "$rc"
+}
+
+# The baseline as a distributable image (#76). What ships is the SNAPSHOT layer
+# of the baseline disk: `qemu-img convert -l snapshot.name=<id>` reads the state
+# the snapshot froze and never the active layer the guest has written to since,
+# flattened and compressed. Beside it: the domain template, the version manifest
+# with the image's own checksum filled in (which no in-image copy can carry), the
+# package list, and SHA256SUMS.
+#
+# It refuses a guest that is not its baseline -- no manifest, or any drift -- and
+# a domain the template does not describe. The manifest it ships is read from the
+# live guest, which is the snapshot's because only the prep script writes it,
+# immediately before every freeze; `import` proves that on the far side by
+# comparing the imported guest's bytes with it.
+do_export_image() {
+    local dir="${1:-}" t_all=$SECONDS t tool
+    for tool in virsh qemu-img sha256sum python3 numfmt; do
+        command -v "$tool" >/dev/null 2>&1 || { fail "export-image needs '$tool' on this host."; exit 2; }
+    done
+    [ -f "$IMAGE_TEMPLATE" ] || { fail "the domain template is missing: $IMAGE_TEMPLATE"; exit 2; }
+    virsh list --all >/dev/null 2>&1    # wake socket-activated libvirtd
+    virsh domstate "$SNAPSHOT_ID" >/dev/null 2>&1 || {
+        fail "no libvirt domain '$SNAPSHOT_ID': there is no baseline on this host to export." \
+             "Build one:  $0 provision      (or import one:  $0 import <bundle>)"
+        exit 2
+    }
+    virsh snapshot-info --domain "$SNAPSHOT_ID" --snapshotname "$SNAPSHOT_ID" >/dev/null 2>&1 || {
+        fail "domain '$SNAPSHOT_ID' carries no snapshot '$SNAPSHOT_ID'." "Take one:  $0 snapshot"
+        exit 2
+    }
+    local src
+    src="$(virsh domblklist "$SNAPSHOT_ID" --details 2>/dev/null | awk '$2 == "disk" {print $4; exit}')"
+    [ -n "$src" ] && [ -f "$src" ] || { fail "could not find the disk of '$SNAPSHOT_ID' (virsh domblklist)."; exit 2; }
+    say "domain           $SNAPSHOT_ID"
+    say "disk             $src"
+
+    banner "export-image: the guest must be its baseline"
+    VM_DOMAIN="$SNAPSHOT_ID"
+    need_guest
+    local work ref pin
+    work="$(mktemp -d)"
+    if ! scp "${SSH_OPTS[@]}" -q "$TARGET:kennel-manifest.json" "$TARGET:kennel-manifest.packages.txt" "$work/" 2>/dev/null \
+       || [ ! -s "$work/kennel-manifest.json" ] || [ ! -s "$work/kennel-manifest.packages.txt" ]; then
+        rm -rf "$work"
+        fail "this baseline carries no version manifest (it predates #74), so there is no identity to ship." \
+             "Re-take the baseline, then export:  $0 snapshot --yes && $0 export-image"
+        exit 1
+    fi
+    ref="$(sha256sum "$work/kennel-manifest.json" | cut -c1-64)"
+    pin="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["pin"])' "$work/kennel-manifest.json")"
+    manifest_summary "$work/kennel-manifest.json"
+    do_drift || {
+        local rc=$?
+        rm -rf "$work"
+        fail "the guest is not its baseline (drift exit $rc): an image shipped with this manifest would lie about it." \
+             "Return it to the baseline, then export:  $0 reset && $0 export-image"
+        exit 1
+    }
+
+    banner "export-image: the domain is the machine the template describes"
+    domain_matches_template "$SNAPSHOT_ID" || {
+        rm -rf "$work"
+        fail "the live domain differs from $IMAGE_TEMPLATE (above): that template would describe another machine." \
+             "Rebuild the baseline at the sizing this repository ships ($0 provision), or change the template deliberately."
+        exit 1
+    }
+
+    local name alloc avail
+    name="kennel-vm-${pin:0:7}-$(date -u +%Y%m%d)"
+    [ -n "$dir" ] || dir="$IMAGE_ROOT/$name"
+    if [ -e "$dir" ] && [ -n "$(ls -A "$dir" 2>/dev/null)" ]; then
+        rm -rf "$work"
+        fail "'$dir' already holds files; export-image never overwrites a bundle." \
+             "Pass another directory, or move that one aside."
+        exit 2
+    fi
+    mkdir -p "$dir" || { rm -rf "$work"; fail "cannot create '$dir'."; exit 2; }
+    dir="$(cd "$dir" && pwd)"
+    alloc="$(qemu-img info -U --output=json "$src" | python3 -c 'import json, sys; print(json.load(sys.stdin)["actual-size"])')"
+    avail="$(df -B1 --output=avail "$dir" | tail -n 1 | tr -dc 0-9)"
+    if [ "${avail:-0}" -lt "${alloc:-0}" ]; then
+        rm -rf "$work"
+        fail "$(numfmt --to=iec-i --suffix=B "$avail") free under $dir, and the source disk holds $(numfmt --to=iec-i --suffix=B "$alloc") -- the upper bound on the image." \
+             "Free space, or point KENNEL_IMAGE_DIR at a bigger filesystem."
+        exit 2
+    fi
+    say "bundle           $dir"
+    say "source           $(numfmt --to=iec-i --suffix=B "$alloc") allocated in the qcow2 (snapshot + active layer)"
+
+    banner "export-image: halt the guest (qemu-img needs the disk unlocked)"
+    do_halt
+
+    banner "export-image: convert the snapshot layer"
+    # -W lets the compressed clusters be written out of order, so compression is
+    # not serialized behind the reader; it is safe because the target is new.
+    local -a conv=(qemu-img convert -W -O qcow2 -c -l "snapshot.name=$SNAPSHOT_ID")
+    [ -n "$IMAGE_COMPRESSION" ] && conv+=(-o "compression_type=$IMAGE_COMPRESSION")
+    [ -t 1 ] && conv+=(-p)
+    say "${conv[*]} $src $dir/$name.qcow2"
+    t=$SECONDS
+    "${conv[@]}" "$src" "$dir/$name.qcow2" || {
+        rm -rf "$work" "$dir/$name.qcow2"
+        fail "qemu-img convert failed; nothing was shipped."
+        exit 2
+    }
+    local t_conv=$((SECONDS - t)) size snaps
+    qemu-img check -q "$dir/$name.qcow2" || { rm -rf "$work"; fail "the converted image does not pass qemu-img check."; exit 1; }
+    snaps="$(qemu-img info --output=json "$dir/$name.qcow2" | python3 -c 'import json, sys; print(len(json.load(sys.stdin).get("snapshots") or []))')"
+    [ "$snaps" = 0 ] || { rm -rf "$work"; fail "the converted image still carries $snaps internal snapshot(s)."; exit 1; }
+    size="$(stat -c %s "$dir/$name.qcow2")"
+    say "converted        $(numfmt --to=iec-i --suffix=B "$alloc") -> $(numfmt --to=iec-i --suffix=B "$size") in $((t_conv / 60))m$((t_conv % 60))s; qemu-img check clean; no internal snapshots"
+
+    banner "export-image: the bundle"
+    t=$SECONDS
+    local sha t_sha snap_created
+    sha="$(sha256sum "$dir/$name.qcow2" | cut -c1-64)"
+    t_sha=$((SECONDS - t))
+    cp "$IMAGE_TEMPLATE" "$dir/$name.xml"
+    cp "$work/kennel-manifest.packages.txt" "$dir/$name.packages.txt"
+    snap_created="$(virsh snapshot-info --domain "$SNAPSHOT_ID" --snapshotname "$SNAPSHOT_ID" 2>/dev/null \
+                    | sed -n 's/^Creation Time:[[:space:]]*//p')"
+    python3 - "$work/kennel-manifest.json" "$dir/$name.manifest.json" "$sha" "$name.qcow2" "$ref" \
+              "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(hostname)" "$snap_created" <<'PY'
+import json, sys
+src, dst, sha, image_file, ref, exported, host, snap = sys.argv[1:9]
+m = json.load(open(src, encoding="utf-8"))
+m.update({"image_sha256": sha, "image_file": image_file, "manifest_ref": ref, "exported": exported,
+          "exported_from": {"host": host, "snapshot_created": snap}})
+with open(dst, "w", encoding="utf-8") as f:
+    json.dump(m, f, indent=2, sort_keys=True)
+    f.write("\n")
+PY
+    [ "$(manifest_ref_of_envelope "$dir/$name.manifest.json")" = "$ref" ] || {
+        rm -rf "$work"
+        fail "the shipped manifest does not rebuild the in-image bytes (manifest_ref); refusing to ship it."
+        exit 1
+    }
+    ( cd "$dir" && { printf '%s  %s\n' "$sha" "$name.qcow2"; sha256sum "$name.xml" "$name.manifest.json" "$name.packages.txt"; } ) \
+        > "$dir/SHA256SUMS.tmp" && mv -f "$dir/SHA256SUMS.tmp" "$dir/SHA256SUMS"
+    rm -rf "$work"
+
+    banner "export-image: done"
+    ls -l "$dir" | sed 's/^/[kennel-demo]   /'
+    say "image_sha256     $sha (hashed in ${t_sha}s)"
+    say "manifest_ref     $ref"
+    say "export-image in $(( (SECONDS - t_all) / 60 ))m$(( (SECONDS - t_all) % 60 ))s (the conversion $((t_conv / 60))m$((t_conv % 60))s)"
+    say "the guest is shut off, as after snapshot. Bring it back with:  $0 up"
+    say "on another host:  $0 import <this directory, copied whole>"
+}
+
+# The other half (#76): an exported bundle becomes THIS host's baseline, in the
+# layout `provision` would have left -- domain kennel-vm-baseline under
+# ~/yuruna/vms/, its libvirt snapshot and Yuruna's sidecar -- so `reset`, `mvp`
+# and every other verb work on it unchanged. It needs no guest ISO.
+#
+# Nothing is written until the bundle verifies, and it never replaces an existing
+# baseline. The guest trusts the key on a KENNELKEY volume built from this host's
+# public key (the baseline's first-boot unit installs it), and the snapshot is
+# taken AFTER that first boot, so a revert never brings back the builder's key.
+do_import() {
+    local src_dir="${1:-}" t_all=$SECONDS t tool f
+    [ -n "$src_dir" ] && [ -d "$src_dir" ] || {
+        fail "import needs the bundle directory export-image wrote." \
+             "  $0 import ~/kennel-images/kennel-vm-<pin7>-<date>"
+        exit 2
+    }
+    src_dir="$(cd "$src_dir" && pwd)"
+    need_yuruna
+    for tool in virsh qemu-img genisoimage sha256sum python3 ssh-keygen; do
+        command -v "$tool" >/dev/null 2>&1 || { fail "import needs '$tool' on this host."; exit 2; }
+    done
+    local qcow="" xml="" envelope="" pkgs=""
+    local -a found
+    for f in qcow2 xml manifest.json packages.txt; do
+        mapfile -t found < <(find "$src_dir" -maxdepth 1 -type f -name "*.$f" | sort)
+        [ "${#found[@]}" -eq 1 ] || {
+            fail "a bundle holds exactly one *.$f; $src_dir holds ${#found[@]}."
+            exit 2
+        }
+        case "$f" in
+            qcow2) qcow="${found[0]}" ;;
+            xml) xml="${found[0]}" ;;
+            manifest.json) envelope="${found[0]}" ;;
+            packages.txt) pkgs="${found[0]}" ;;
+        esac
+    done
+    [ -f "$src_dir/SHA256SUMS" ] || { fail "the bundle has no SHA256SUMS -- nothing to verify it against."; exit 2; }
+    [ -f "$SSH_PUBKEY" ] && ssh-keygen -l -f "$SSH_PUBKEY" >/dev/null 2>&1 || {
+        fail "'$SSH_PUBKEY' is not a public key (KENNEL_SSH_PUBKEY, default \$KENNEL_SSH_KEY.pub)."
+        exit 2
+    }
+    local priv_pub
+    # </dev/null: a key with a passphrase must fail here, not sit at a prompt.
+    priv_pub="$(ssh-keygen -y -f "$SSH_KEY" </dev/null 2>/dev/null | awk '{print $1 " " $2}')"
+    [ -n "$priv_pub" ] && [ "$priv_pub" = "$(awk 'NF >= 2 && $1 !~ /^#/ {print $1 " " $2; exit}' "$SSH_PUBKEY")" ] || {
+        fail "$SSH_PUBKEY is not the public half of $SSH_KEY." \
+             "import proves the guest by logging in with KENNEL_SSH_KEY after installing KENNEL_SSH_PUBKEY;" \
+             "with two different keys it would install one and knock with the other. Set KENNEL_SSH_KEY alone."
+        exit 2
+    }
+    virsh list --all >/dev/null 2>&1    # wake socket-activated libvirtd
+    # Asked up to five times, a second apart -- observing, bounded -- with the
+    # whole answer read before it is tested. The first real import after a sweep
+    # was refused here with the network active (F25, vm/image.md): at that second
+    # libvirtd logged a client connection ending in `End of file while reading
+    # data: Input/output error`, virsh printed no `Active:` line, and a one-shot
+    # check read nothing as "not active". Transient: the same read answered
+    # `Active: yes` on all of 600 tries afterwards.
+    local net_active="" try
+    for try in 1 2 3 4 5; do
+        net_active="$(virsh net-info "$LIBVIRT_NET" 2>/dev/null | awk '$1 == "Active:" {print $2}')"
+        [ "$net_active" = yes ] && break
+        sleep 1
+    done
+    [ "$net_active" = yes ] || {
+        fail "libvirt network '$LIBVIRT_NET' is not active; the guest would have no lease to be found by." \
+             "Start it:  virsh net-start $LIBVIRT_NET   (and virsh net-autostart $LIBVIRT_NET)"
+        exit 2
+    }
+
+    banner "import: verify the bundle (nothing is written until this passes)"
+    say "bundle           $src_dir"
+    for f in "$qcow" "$xml" "$envelope" "$pkgs"; do
+        awk -v n="$(basename "$f")" '$2 == n {found = 1} END {exit !found}' "$src_dir/SHA256SUMS" || {
+            fail "SHA256SUMS does not list $(basename "$f"): a bundle whose sums omit a file is not verified. Nothing was written."
+            exit 1
+        }
+    done
+    t=$SECONDS
+    ( cd "$src_dir" && sha256sum --check --strict SHA256SUMS ) 2>&1 | sed 's/^/[kennel-demo]   /'
+    [ "${PIPESTATUS[0]}" -eq 0 ] || {
+        fail "the bundle does not match its SHA256SUMS (the FAILED line above names the file)." \
+             "Nothing was written. Copy the bundle again, or export it again."
+        exit 1
+    }
+    local t_verify=$((SECONDS - t)) sum_sha env_sha env_ref env_pin
+    sum_sha="$(awk -v n="$(basename "$qcow")" '$2 == n {print $1}' "$src_dir/SHA256SUMS")"
+    read -r env_sha env_ref env_pin < <(python3 -c 'import json, sys
+m = json.load(open(sys.argv[1], encoding="utf-8"))
+print(m.get("image_sha256") or "-", m.get("manifest_ref") or "-", m.get("pin") or "-")' "$envelope")
+    [ "$env_sha" = "$sum_sha" ] || { fail "the manifest's image_sha256 is not the image's checksum. Nothing was written."; exit 1; }
+    [ "$env_ref" = "$(manifest_ref_of_envelope "$envelope")" ] || {
+        fail "the manifest's manifest_ref does not match its own contents. Nothing was written."
+        exit 1
+    }
+    say "verified         4 files in ${t_verify}s; image_sha256 and manifest_ref agree with them"
+    say "manifest_ref     $env_ref"
+    [ "$env_pin" = "$(pin_sha)" ] \
+        || warn "this image is at pin ${env_pin:0:12} and this checkout at $(pin_sha | cut -c1-12): runs composed here will be refused by transfer until the two agree."
+
+    banner "import: this host"
+    local vmdir="$VM_ROOT/$SNAPSHOT_ID" d running=""
+    if virsh domstate "$SNAPSHOT_ID" >/dev/null 2>&1 || [ -e "$vmdir" ]; then
+        fail "a '$SNAPSHOT_ID' baseline already exists on this host (a libvirt domain, or $vmdir)." \
+             "import never replaces one. Remove it deliberately first, from $YURUNA_DIR:" \
+             "  pwsh -NoProfile -Command \"& ./test/Remove-TestVMFiles.ps1 -Prefix @('$SNAPSHOT_ID') -Confirm:\\\$false\""
+        exit 1
+    fi
+    for d in $(domains_by_lease); do
+        [ "$(virsh domstate "$d" 2>/dev/null)" = running ] && running="$running $d"
+    done
+    [ -z "$running" ] || {
+        fail "a running domain already answers to '$GUEST_HOSTNAME':$running" \
+             "Two guests with one hostname make lease discovery a coin flip (vm/snapshot.md 5.2)." \
+             "Shut it down first:  virsh shutdown <domain>"
+        exit 1
+    }
+    say "no '$SNAPSHOT_ID' here, and nothing running answers to '$GUEST_HOSTNAME'"
+
+    banner "import: place the disk and the key volume"
+    # New-VM.ps1's self-heal, verbatim in effect: libvirt-qemu must be able to
+    # traverse $HOME to reach a disk below it.
+    if command -v setfacl >/dev/null 2>&1 && getent passwd libvirt-qemu >/dev/null 2>&1; then
+        setfacl -m 'u:libvirt-qemu:--x' "$HOME" 2>/dev/null || true
+    fi
+    mkdir -p "$vmdir" || { fail "cannot create $vmdir."; exit 2; }
+    t=$SECONDS
+    cp --sparse=always "$qcow" "$vmdir/$SNAPSHOT_ID.qcow2" || { fail "could not copy the image into $vmdir."; exit 2; }
+    local t_copy=$((SECONDS - t))
+    qemu-img check -q "$vmdir/$SNAPSHOT_ID.qcow2" || { fail "the copied image does not pass qemu-img check."; exit 1; }
+    say "disk             $vmdir/$SNAPSHOT_ID.qcow2 ($(du -h "$vmdir/$SNAPSHOT_ID.qcow2" | cut -f1), copied in ${t_copy}s)"
+    local keydir
+    keydir="$(mktemp -d)"
+    awk 'NF && $1 !~ /^#/' "$SSH_PUBKEY" > "$keydir/authorized_keys"
+    cat > "$keydir/README" <<EOF
+Kennel KENNELKEY volume (vm/image.md). At boot the guest's kennel-import-key
+service REPLACES its user's authorized_keys with the public key(s) in
+authorized_keys on this volume. Public keys only; nothing secret is on it.
+Built by kennel-demo.sh import on $(hostname), $(date -u +%Y-%m-%dT%H:%M:%SZ).
+EOF
+    genisoimage -quiet -output "$vmdir/kennel-key.iso" -volid KENNELKEY -joliet -rock "$keydir" 2>/dev/null || {
+        rm -rf "$keydir"
+        fail "genisoimage could not build the key volume."
+        exit 2
+    }
+    rm -rf "$keydir"
+    say "key volume       $vmdir/kennel-key.iso (KENNELKEY: $(ssh-keygen -l -f "$SSH_PUBKEY" | awk '{print $2}'))"
+
+    banner "import: define the domain"
+    local rendered
+    rendered="$(mktemp --suffix=.xml)"
+    sed -e "s|@KENNEL_NAME@|$SNAPSHOT_ID|g" \
+        -e "s|@KENNEL_DISK@|$vmdir/$SNAPSHOT_ID.qcow2|g" \
+        -e "s|@KENNEL_KEY_ISO@|$vmdir/kennel-key.iso|g" "$xml" > "$rendered"
+    if grep -q '@KENNEL_' "$rendered"; then
+        rm -f "$rendered"
+        fail "the bundle's template carries a placeholder import does not know."
+        exit 1
+    fi
+    virsh define "$rendered" >/dev/null || {
+        rm -f "$rendered"
+        fail "virsh define refused the bundle's domain template."
+        exit 2
+    }
+    rm -f "$rendered"
+    say "defined          $SNAPSHOT_ID ($(virsh domuuid "$SNAPSHOT_ID" 2>/dev/null))"
+    say "if anything below fails, watch the guest with  virsh console $SNAPSHOT_ID  and remove it"
+    say "with the Remove-TestVMFiles line above; the bundle is untouched."
+
+    banner "import: first boot (the key unit installs this host's key)"
+    VM_DOMAIN="$SNAPSHOT_ID"
+    t=$SECONDS
+    up_core
+    local t_boot=$((SECONDS - t))
+
+    banner "import: prove the guest is the shipped appliance"
+    local got_ref=""
+    [ -f "$MANIFEST_FILE" ] && got_ref="$(sha256sum "$MANIFEST_FILE" | cut -c1-64)"
+    say "manifest_ref     ${got_ref:-none}  (the guest's)"
+    say "                 $env_ref  (the bundle's)"
+    [ "$got_ref" = "$env_ref" ] || {
+        fail "the imported guest's version manifest is not the one the bundle ships." \
+             "The image and its manifest disagree: export it again from a baseline whose manifest is current."
+        exit 1
+    }
+    ssh "${SSH_OPTS[@]}" "$TARGET" "sudo journalctl -t kennel-import-key -b --no-pager -o short-iso" 2>/dev/null \
+        | sed 's/^/[kennel-demo]   /'
+    do_drift || {
+        local rc=$?
+        fail "the imported guest is not its manifest's environment (drift exit $rc)."
+        exit 1
+    }
+
+    banner "import: freeze it as this host's baseline"
+    say "the KEYED guest is what gets snapshotted, so a revert never brings back the builder's key"
+    do_halt
+    yuruna_snapshot_domain "$SNAPSHOT_ID" "$SNAPSHOT_ID" || {
+        local rc=$?
+        fail "the snapshot was not taken (exit $rc)."
+        exit "$rc"
+    }
+    virsh snapshot-list "$SNAPSHOT_ID" 2>&1 | sed 's/^/[kennel-demo] /'
+
+    banner "import: up"
+    GUEST_IP="${KENNEL_GUEST_IP:-}"
+    up_core
+    echo
+    manifest_summary "$MANIFEST_FILE"
+    say "import in $(( (SECONDS - t_all) / 60 ))m$(( (SECONDS - t_all) % 60 ))s (verify ${t_verify}s, copy ${t_copy}s, first boot to ssh and a running container ${t_boot}s)"
+    say "'$SNAPSHOT_ID' is this host's baseline now: running, container up, no run applied."
+    say "next:  $0 console   then   $0 run          ($0 reset returns here in ~90 s)"
+}
+
 # --- REGION: the console as a verb (issue #54)
 # `compose` serves the console for the length of one scripted run and takes it
 # down again. Composing BY HAND needs the opposite: a server that outlives the
@@ -1499,8 +2079,33 @@ do_console() {
         *) fail "console takes no argument, or --no-open, or stop."; exit 2 ;;
     esac
     mkdir -p "$OUT"
+    # A console that answers is not necessarily THIS checkout's (F24, vm/manifest.md):
+    # a serve.py keeps serving the code it started with -- for days, across a
+    # branch switch -- and its /api/health then lacks whatever the checkout added.
+    # Compare the version it reports with the checkout's literal. One this driver
+    # started (its pidfile names a live process) is restarted; anyone else's is
+    # only warned about, because stopping a process this script did not start is
+    # not its call (console_stop's rule).
     if console_alive; then
-        say "already served on port $PORT"
+        local want have
+        want="$(sed -n 's/^KENNEL_CONSOLE_VERSION *= *"\([^"]*\)".*/\1/p' "$REPO_ROOT/kennel_console/serve.py" | head -n 1)"
+        have="$(curl -sf "$CONSOLE_ORIGIN/api/health" 2>/dev/null \
+                | python3 -c 'import json, sys; print(json.load(sys.stdin).get("console_version") or "")' 2>/dev/null)"
+        if [ -z "$want" ] || [ "$have" = "$want" ]; then
+            say "already served on port $PORT (console ${have:-unknown})"
+        elif [ -f "$CONSOLE_PIDFILE" ] && kill -0 "$(cat "$CONSOLE_PIDFILE")" 2>/dev/null; then
+            say "port $PORT serves console '${have:-none}', this checkout is '$want' -- restarting the one this driver started"
+            console_stop >/dev/null
+            local t0=$SECONDS
+            while console_alive && [ $((SECONDS - t0)) -lt 15 ]; do sleep 0.25; done
+        else
+            warn "port $PORT is served by console '${have:-none}', but this checkout is '$want':"
+            warn "its /api/health and its page are not this checkout's. This driver did not start it,"
+            warn "so it will not stop it. Find it with:  lsof -i :$PORT"
+        fi
+    fi
+    if console_alive; then
+        :
     else
         # serve.py is `python3 -m http.server --directory kennel_console` plus a
         # POST endpoint, so the console it serves can write the run folder into
@@ -1916,6 +2521,26 @@ bridge_up() { "$REPO_ROOT/vm/test/verify-bridge-host.sh" --quiet >/dev/null 2>&1
 do_status() {
     "$REPO_ROOT/stack/transfer/kennel-transfer.sh" status
     echo
+    # The guest's version manifest (#74), refreshed on the host for the console,
+    # and the last drift report beside it (#75).
+    if guest_reachable; then
+        if fetch_manifest; then
+            manifest_summary "$MANIFEST_FILE"
+        else
+            say "no version manifest on this guest (its baseline predates #74 -- re-take it: $0 snapshot)"
+        fi
+    else
+        say "guest not reachable -- version manifest not read"
+    fi
+    if [ -f "$DRIFT_FILE" ]; then
+        python3 - "$DRIFT_FILE" <<'PY' | sed 's/^/[kennel-demo] /'
+import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+n = len(d.get("findings") or [])
+print("drift            %s (checked %s; `drift` re-checks)" % ("clean" if n == 0 else "%d finding(s)" % n, d.get("checked")))
+PY
+    fi
+    echo
     # Only when a serve.py is answering: the run folders it knows about are the
     # ones `run` would pick between, and reading them from the server rather
     # than from the filesystem is what proves the two agree about OUT. Gated on
@@ -1978,6 +2603,14 @@ do_all() {
     phase_summary
 }
 
+# `run`'s first phase: the guest, and its manifest where the console reads it
+# (#74) -- a guest that was already up never went through up_core's fetch.
+guest_with_manifest() {
+    need_guest
+    fetch_manifest || say "no version manifest on this guest (its baseline predates #74)"
+    return 0
+}
+
 # `run` is `all`'s by-hand sibling: the composition came from an operator in the
 # browser rather than from p22-console-demo.sh, so there is no compose phase and
 # the run to apply has to be FOUND -- newest folder in OUT or newest archive in
@@ -1985,7 +2618,7 @@ do_all() {
 # the same order, including the guest phase, which is what makes `run` work on a
 # host whose guest is merely powered off (need_guest brings it up).
 do_run() {
-    phase guest    need_guest
+    phase guest    guest_with_manifest
     phase transfer do_transfer "$@"
     phase launch   do_launch
     phase verify   do_verify
@@ -2015,7 +2648,10 @@ case "${1:-}" in
     status)    shift; do_status ;;
     scenario)  shift; do_scenario "$@" ;;
     all)       shift; do_all ;;
+    drift)     shift; do_drift; exit $? ;;
+    export-image) shift; do_export_image "$@" ;;
+    import)    shift; do_import "$@" ;;
     -h|--help|help) usage ;;
-    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status | scenario | mvp | cycle"
+    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status | scenario | mvp | cycle | drift | export-image | import"
        usage >&2; exit 2 ;;
 esac

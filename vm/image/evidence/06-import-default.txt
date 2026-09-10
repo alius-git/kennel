@@ -1,0 +1,74 @@
+$ demo/tools/kennel-demo.sh import /home/thales/kennel-images/kennel-vm-dcf53c5-20260910
+# 2026-09-10T19:09:47Z, kennel 9917c09
+
+==== import: verify the bundle (nothing is written until this passes) ====
+[kennel-demo] bundle           /home/thales/kennel-images/kennel-vm-dcf53c5-20260910
+[kennel-demo]   kennel-vm-dcf53c5-20260910.qcow2: OK
+[kennel-demo]   kennel-vm-dcf53c5-20260910.xml: OK
+[kennel-demo]   kennel-vm-dcf53c5-20260910.manifest.json: OK
+[kennel-demo]   kennel-vm-dcf53c5-20260910.packages.txt: OK
+[kennel-demo] verified         4 files in 12s; image_sha256 and manifest_ref agree with them
+[kennel-demo] manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
+
+==== import: this host ====
+[kennel-demo] no 'kennel-vm-baseline' here, and nothing running answers to 'kennel-vm'
+
+==== import: place the disk and the key volume ====
+[kennel-demo] disk             /home/thales/yuruna/vms/kennel-vm-baseline/kennel-vm-baseline.qcow2 (13G, copied in 24s)
+[kennel-demo] key volume       /home/thales/yuruna/vms/kennel-vm-baseline/kennel-key.iso (KENNELKEY: SHA256:rlpsNFPozqJLx/sT5rI6EVQvRwUJh7vLIG/PXT/DfqU)
+
+==== import: define the domain ====
+[kennel-demo] defined          kennel-vm-baseline (15dd23e8-e19b-4efc-9125-62c843f7def4)
+[kennel-demo] if anything below fails, watch the guest with  virsh console kennel-vm-baseline  and remove it
+[kennel-demo] with the Remove-TestVMFiles line above; the bundle is untouched.
+
+==== import: first boot (the key unit installs this host's key) ====
+[kennel-demo] domain           kennel-vm-baseline
+[kennel-demo] state            shut off
+[kennel-demo] starting it
+[kennel-demo] waiting for the DHCP lease and sshd (bounded at 600s)
+[kennel-demo] guest            kennel-vm at 192.168.122.228  (reachable after 17s)
+[kennel-demo] container started
+
+==== import: prove the guest is the shipped appliance ====
+[kennel-demo] manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c  (the guest's)
+[kennel-demo]                  78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c  (the bundle's)
+[kennel-demo]   2026-09-10T19:10:37+00:00 kennel-vm kennel-import-key[860]: authorized_keys of yuuser24 already carries the 1 key(s) on /dev/disk/by-label/KENNELKEY -- unchanged
+[kennel-demo] guest            kennel-vm at 192.168.122.228
+manifest         /home/yuuser24/kennel-manifest.json
+manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4
+findings=0 manifest_ref=78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c checked=2026-09-10T19:10:42Z
+
+==== import: freeze it as this host's baseline ====
+[kennel-demo] the KEYED guest is what gets snapshotted, so a revert never brings back the builder's key
+[kennel-demo] domain           kennel-vm-baseline
+[kennel-demo] state            running
+[kennel-demo] asking it to shut down (ACPI)
+[kennel-demo] shut off after 12s
+manifest: /home/thales/git/yuruna/test/status/runtime/snapshots/kennel-vm-baseline__kennel-vm-baseline.manifest.json
+[kennel-demo]  Name                 Creation Time               State
+[kennel-demo] -----------------------------------------------------------
+[kennel-demo]  kennel-vm-baseline   2026-09-10 16:10:56 -0300   shutoff
+[kennel-demo] 
+
+==== import: up ====
+[kennel-demo] domain           kennel-vm-baseline
+[kennel-demo] state            shut off
+[kennel-demo] starting it
+[kennel-demo] waiting for the DHCP lease and sshd (bounded at 600s)
+[kennel-demo] guest            kennel-vm at 192.168.122.228  (reachable after 12s)
+[kennel-demo] container started
+
+[kennel-demo] manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
+[kennel-demo]   pin            dcf53c596339afd45b82f12c54b1e93e8273c2f4
+[kennel-demo]   os / kernel    Ubuntu 24.04.5 LTS / 6.8.0-139-generic
+[kennel-demo]   docker / image 29.8.0 / sha256:22dca342cc01
+[kennel-demo]   ROS / Drake    humble (ros-humble-ros-base 0.10.0-1jammy.20260804.204550) / 20231218181452 9ba8f5d8d4ee6919ec41542d47509549cfa8d919
+[kennel-demo]   packages       706
+[kennel-demo]   built from     kennel 370078e21434, console 2026.09.10, guides d2b5a1c1d691 (via status-service)
+[kennel-demo]   created        2026-09-10T18:45:29Z (guest clock)
+[kennel-demo] import in 1m23s (verify 12s, copy 24s, first boot to ssh and a running container 19s)
+[kennel-demo] 'kennel-vm-baseline' is this host's baseline now: running, container up, no run applied.
+[kennel-demo] next:  demo/tools/kennel-demo.sh console   then   demo/tools/kennel-demo.sh run          (demo/tools/kennel-demo.sh reset returns here in ~90 s)
+exit=0

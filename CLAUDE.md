@@ -17,16 +17,17 @@ record before deviating from the rule.
 | [`kennel_console/`](kennel_console/) | the single-file React console, [`kennel_console/serve.py`](kennel_console/serve.py), nine `verify-*.sh` suites (serve, scope, generate, export, send, teleop, dashboard, runs, guides), and the recorded-stack fixtures they replay |
 | [`guides/`](guides/) | the pages a newcomer reads — [`first-run.md`](guides/first-run.md) (the checklist, *performed* by `scenario firstwalk`), `walkthrough.md`, `diagnosis.md`; `img/` is copies and crops of renders that exist elsewhere, built by `guides/tools/make-img.sh` |
 | [`stack/`](stack/) | running the pinned stack: [`stack/launch.md`](stack/launch.md), `transfer/`, `verify/` (the recipe, the `k14-*` sweep and its probe, [`stack/stress.md`](stack/stress.md)), `composed-run/tools/` (the `p21-*` tools), `bridge/` (the rosbridge, its live suite `verify-teleop-live.sh`, and the target watchdog), `known-good/` |
-| [`vm/`](vm/) | the appliance: [`vm/host-baseline.md`](vm/host-baseline.md), [`vm/provisioning.md`](vm/provisioning.md), [`vm/snapshot.md`](vm/snapshot.md), `vm/patches/`, and the two host-side reachability checks in `vm/test/` |
+| [`vm/`](vm/) | the appliance: [`vm/host-baseline.md`](vm/host-baseline.md), [`vm/provisioning.md`](vm/provisioning.md), [`vm/snapshot.md`](vm/snapshot.md), the version manifest [`vm/manifest.md`](vm/manifest.md), the drift check [`vm/drift.md`](vm/drift.md) (`vm/guest/`), the image [`vm/image.md`](vm/image.md) (`vm/image/`, the domain template), `vm/patches/`, and the two host-side reachability checks in `vm/test/` |
 | [`test/`](test/) | the repo **as a Yuruna project** ([`test/README.md`](test/README.md), [`test/harness.md`](test/harness.md)): the six sequences the runner discovers, `test.runner.yml`, the guest scripts under `test/ubuntu.server.24/`, the MVP `fixtures/` run folder, `evidence/` |
 | [`demo/`](demo/) | the driver [`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh), the [runbook](demo/runbook.md), the [dry run](demo/dry-run.md), the [scenario verbs](demo/scenarios.md) (`scenario disturb`, `scenario diagnose`, `scenario firstwalk`) |
 | `dfki-quad/` | the pinned upstream clone — **gitignored, never edited**; read it at the pin with `git show <PIN>:path` |
 
 Driver verbs ([`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh) `help`):
 
-- once per host — `setup`, `provision`
-- each session — `up`, `console`, `run`, `teleop [stop]`, `walk [stop]`, `down`, `reset`
+- once per host — `setup`, then `provision` or `import <bundle>`
+- each session — `up`, `console`, `run`, `teleop [stop]`, `walk [stop]`, `down`, `reset`, `drift`
 - the harness — `mvp` (the MVP Yuruna sequence), `cycle` (a whole cycle from cold)
+- the appliance — `export-image` (the baseline as a checksummed qcow2 bundle), `import` (a bundle as this host's baseline)
 - the scenarios as tests — `scenario disturb`, `scenario diagnose`, `scenario firstwalk`
 - the pieces underneath — `all`, `compose`, `transfer`, `launch`, `verify`, `status`, `snapshot`, `halt`
 

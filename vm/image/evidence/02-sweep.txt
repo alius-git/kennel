@@ -1,0 +1,60 @@
+$ sweep kennel-vm-imptest and kennel-vm-baseline
+# 2026-09-10T19:04:16Z, kennel 5b64347
+ Id   Name                 State
+-------------------------------------
+ 2    kennel-vm-imptest    running
+ -    kennel-vm-baseline   shut off
+ -    ub26_guest           shut off
+
+[kennel-demo] domain           kennel-vm-imptest
+[kennel-demo] state            running
+[kennel-demo] asking it to shut down (ACPI)
+[kennel-demo] shut off after 12s
+Host type: host.ubuntu.kvm
+
+There may be more host-health recommendations available. For a deeper report (config files, transports, framework/project staleness, RAM/CPU, host-specific feature state) run: pwsh test/Test-Config.ps1
+Stopping VMs with prefix 'kennel-vm-imptest', 'kennel-vm-baseline'...
+
+  Stopping kennel-vm-baseline [stopped]...
+    Already stopped.
+    Removed.
+  Stopping kennel-vm-imptest [stopped]...
+    Already stopped.
+    Removed.
+
+
+Removed 2 VM(s); 0 survivor(s).
+
+Releasing host virtual display (if attached)...
+
+Running orphaned VM file cleanup: /home/thales/git/yuruna/host/ubuntu.kvm/Remove-OrphanedVMFiles.ps1
+
+
+================================================================
+  WARNING: DESTRUCTIVE OPERATION
+================================================================
+
+  This script deletes VM directories under ~/yuruna/vms/
+  that are NOT registered with libvirt.
+
+  THIS CANNOT BE UNDONE.
+
+================================================================
+
+libvirt registered VMs: 1
+
+Currently registered VMs and their on-disk artifacts:
+
+  ub26_guest
+    /home/thales/yuruna/vms/ub26_guest/seed.iso  (0.40 MB)
+    /home/thales/yuruna/vms/ub26_guest/seed.src/meta-data  (0.00 MB)
+    /home/thales/yuruna/vms/ub26_guest/seed.src/user-data  (0.04 MB)
+    /home/thales/yuruna/vms/ub26_guest/ub26_guest.qcow2  (5,854.62 MB)
+
+No orphaned VM directories found. Nothing to clean up.
+exit=0
+ Id   Name         State
+-----------------------------
+ -    ub26_guest   shut off
+
+ub26_guest

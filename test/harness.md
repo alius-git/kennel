@@ -692,13 +692,21 @@ cycle was therefore reported as flaky — the one thing #25 asks this counter to
 be trustworthy about. Fixed by letting `grep` print its own count and
 defaulting only when the file is absent.
 
+**F23 (appended 2026-09-10, [#74](https://github.com/alius-git/kennel/issues/74)) —
+editing `kennel-demo.sh` while `cycle` ran made the verb's last line a syntax
+error.** A commit to the driver eleven minutes into a green cycle shifted the file
+by 24 bytes; bash, which reads a script as it runs it, resumed mid-line in the
+dispatch table after `do_cycle` returned and exited 2 — after the cycle and its
+evidence had finished. Recorded in [`vm/manifest.md`](../vm/manifest.md) §7. Do not
+edit a script a running verb reads.
+
 ## 7. Bypasses
 
 | | Retirement |
 |---|---|
 | **A checked-in fixture, not a driven browser.** The sequence applies `test/fixtures/run-<stamp>/` rather than composing in the UI, so what #24 automates is everything *after* the composer | browser automation in the full POC harness — scenario s001. Group 8 holds the line in the meantime: the fixture must remain something the console would emit today |
 | **The driver runs a clone of *local* HEAD.** `KENNEL_PROJECT_URL` defaults to `file://<this repo>`, and this PR's cycles ran a `file://` URL, because `projectUrl` selects a repository and not a branch | the maintainer's first cycle against `https://github.com/alius-git/kennel` after this merges. The mechanism is identical; only the URL changes |
-| **A green run's evidence leaves the guest only through a driver verb.** Yuruna keeps no output from a passing step and has no file-collection action, so `mvp` and `cycle` scp it | a Yuruna artifact action, or the appliance's own run-manifest store (#74/#76) |
+| **A green run's evidence leaves the guest only through a driver verb.** Yuruna keeps no output from a passing step and has no file-collection action, so `mvp` and `cycle` scp it | a Yuruna artifact action, or the appliance's own run-manifest store (#74/#76). *2026-09-10:* #74 put the version manifest in the image, and the MVP sequence now keeps it with the run record (`manifest.json`); the run-manifest store is still ahead |
 | **The MVP asserts one composition.** One fixture, one solver, one rate — not the sweep of `stack/stress.md` | more `testSets` in `test.runner.yml` once there is a reason to spend 40 minutes per composition |
 
 

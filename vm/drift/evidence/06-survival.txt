@@ -1,0 +1,13 @@
+$ survival across reset: a file in the host's ~/kennel-runs, and one in the guest's ~/kennel-staging
+# 2026-09-10T18:48:12Z, kennel dbcbf11
+--- before
+-rw-rw-r-- 1 thales thales 0 Sep 10 15:48 /home/thales/kennel-runs/keep-me.txt
+-rw-rw-r-- 1 yuuser24 yuuser24 42 Sep 10 18:56 /home/yuuser24/kennel-staging/keep/note.txt
+--- demo/tools/kennel-demo.sh reset
+reset exit=0
+--- after
+-rw-rw-r-- 1 thales thales 0 Sep 10 15:48 /home/thales/kennel-runs/keep-me.txt
+ls: cannot access '/home/yuuser24/kennel-staging/keep/note.txt': No such file or directory
+total 32
+drwxrwxr-x 4 yuuser24 yuuser24  4096 Sep 10 18:57 .
+drwxr-x--- 8 yuuser24 yuuser24  4096 Sep 10 18:57 ..

@@ -281,7 +281,7 @@ and in [`dashboard/evidence/`](dashboard/evidence/):
 | [#69](https://github.com/alius-git/kennel/issues/69), [#71](https://github.com/alius-git/kennel/issues/71) | a scenario verb can assert a verdict from a file instead of scraping stdout |
 | [#72](https://github.com/alius-git/kennel/issues/72) — **done** | named presets have a real history to be compared against; and this suite's group 7 is where their round trip is asserted, because only here is there a real server writing real run folders ([`composer-scope.md`](composer-scope.md) §7) |
 | [#24](https://github.com/alius-git/kennel/issues/24) — **done** | the Yuruna sequence keeps `report.json` beside the run it is of, and this suite gained **group 8** to keep its fixture honest (§9) |
-| [#74](https://github.com/alius-git/kennel/issues/74) | `report.json` already carries the pin; a version manifest is the next field |
+| [#74](https://github.com/alius-git/kennel/issues/74) — **done** | `/api/runs` passes each run's `manifest_ref` through beside its `choices`, so a row names the environment it was composed for ([`vm/manifest.md`](../vm/manifest.md) §4). The report itself still carries only the pin |
 
 ## 9. Group 8 — the harness fixture (#24)
 

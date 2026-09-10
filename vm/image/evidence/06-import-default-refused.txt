@@ -1,0 +1,4 @@
+$ demo/tools/kennel-demo.sh import /home/thales/kennel-images/kennel-vm-dcf53c5-20260910
+# 2026-09-10T19:04:29Z, kennel 5b64347
+NONZERO SCRIPT EXIT: libvirt network 'default' is not active; the guest would have no lease to be found by.
+exit=2

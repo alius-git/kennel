@@ -297,3 +297,4 @@ than a bypass, and added to #26's log so nobody mistakes it for the design.
 | [#4](https://github.com/alius-git/kennel/issues/4) | Half of the run-manifest store's retirement path, exercised end to end |
 | [#24](https://github.com/alius-git/kennel/issues/24) | `POST /api/runs` is a scriptable way to stage a run without a browser download directory |
 | [#26](https://github.com/alius-git/kennel/issues/26) | One bypass narrowed (`transfer.md`), and §6's non-deviation recorded as a decision |
+| [#74](https://github.com/alius-git/kennel/issues/74) — **done** | The pin warning, generalized: the export strip now names the **guest** from its version manifest and warns when its pin differs — a different question from `pinDiffers`, which compares this host's checkout with the page. `verify-send.py` group 7 is its check ([`vm/manifest.md`](../vm/manifest.md) §4) |

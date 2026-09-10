@@ -1,0 +1,66 @@
+{
+  "kennel": true,
+  "out": "/home/thales/kennel-runs",
+  "pin": "dcf53c596339afd45b82f12c54b1e93e8273c2f4",
+  "bridge": null,
+  "meshcat": null,
+  "guides": [
+    {
+      "name": "first-run.md",
+      "title": "First run \u2014 a walking robot in eight steps"
+    },
+    {
+      "name": "walkthrough.md",
+      "title": "Walkthrough \u2014 what the first run was actually doing"
+    },
+    {
+      "name": "diagnosis.md",
+      "title": "Diagnosis \u2014 reading the Dashboard"
+    }
+  ],
+  "console_version": "2026.09.10",
+  "manifest": {
+    "console_version": "2026.09.10",
+    "container_os": "Ubuntu 22.04.5 LTS",
+    "created": "2026-09-10T18:45:29Z",
+    "docker": "29.8.0",
+    "drake": "20231218181452 9ba8f5d8d4ee6919ec41542d47509549cfa8d919",
+    "drake_source": "/opt/drake/share/doc/drake/VERSION.TXT in the image (a binary tarball; docker/drake_setup.sh at the pin fetches drake-1.24.0-jammy)",
+    "guides_version": "d2b5a1c1d691a07b5141318f82daf9690e55b93c",
+    "image_id": "sha256:22dca342cc010287aa0f36f8db529e07095c1287b7a6ff22422e34bb73db1df8",
+    "image_sha256": null,
+    "kernel": "6.8.0-139-generic",
+    "os": {
+      "id": "ubuntu",
+      "pretty_name": "Ubuntu 24.04.5 LTS",
+      "version_id": "24.04"
+    },
+    "packages": {
+      "count": 706,
+      "file": "kennel-manifest.packages.txt",
+      "sha256": "05a1ee40a4b5f466a9366c4619e0e0dd357900dc08de33eaf56dd2ce841f051b"
+    },
+    "pin": "dcf53c596339afd45b82f12c54b1e93e8273c2f4",
+    "project_commit": "370078e214340c59ff8980c223de3efbe1622255",
+    "provenance": "status-service",
+    "ros_base": "ros-humble-ros-base 0.10.0-1jammy.20260804.204550",
+    "ros_distro": "humble",
+    "schema": "kennel-manifest/1"
+  },
+  "manifest_ref": "78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c",
+  "drift": {
+    "checked": "2026-09-10T19:04:27Z",
+    "manifest_ref": "78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c",
+    "findings": [
+      {
+        "class": "tracked-file",
+        "detail": " M ws/src/common/launch/simulation.launch.py"
+      },
+      {
+        "class": "package",
+        "detail": "sl 5.02-1 (added)"
+      }
+    ],
+    "notes": []
+  }
+}

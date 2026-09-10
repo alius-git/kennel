@@ -1,0 +1,42 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-09-10-19-13-04-636273-kennel-vm-413
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [simulator-1]: process started with pid [443]
+[simulator-1] [2026-09-10 19:13:04.893] [console] [warning] The std::array<Eigen::Vector3d,4ul> class is incompatible with the typename hasher that provides the type-erasure checking for AbstractValue casts, most likely because the problematic class mixes template parameters with nested classes or non-type template parameters. As a result, operations on Value<std::array<Eigen::Vector3d,4ul>> will suffer from slightly impaired performance. If the problem relates to nested classes, you may be able to resolve it by un-nesting the class in question. If the problem relates to a single non-type template parameter, you may be able to resolve it by adding 'using NonTypeTemplateParameter = ...'. See drake/common/test/value_test.cc for an example. This is the first instance of an impaired T within this process. Additional instances will not be warned about, but you may set the drake::log() level to 'debug' to see all instances.
+[simulator-1] (0) go2_description_base_link_qw, (1) go2_description_base_link_qx, (2) go2_description_base_link_qy, (3) go2_description_base_link_qz, (4) go2_description_base_link_x, (5) go2_description_base_link_y, (6) go2_description_base_link_z, (7) go2_description_fl_abad_q, (8) go2_description_fl_shoulder_q, (9) go2_description_fl_knee_q, (10) go2_description_fr_abad_q, (11) go2_description_fr_shoulder_q, (12) go2_description_fr_knee_q, (13) go2_description_bl_abad_q, (14) go2_description_bl_shoulder_q, (15) go2_description_bl_knee_q, (16) go2_description_br_abad_q, (17) go2_description_br_shoulder_q, (18) go2_description_br_knee_q, (19) go2_description_base_link_wx, (20) go2_description_base_link_wy, (21) go2_description_base_link_wz, (22) go2_description_base_link_vx, (23) go2_description_base_link_vy, (24) go2_description_base_link_vz, (25) go2_description_fl_abad_w, (26) go2_description_fl_shoulder_w, (27) go2_description_fl_knee_w, (28) go2_description_fr_abad_w, (29) go2_description_fr_shoulder_w, (30) go2_description_fr_knee_w, (31) go2_description_bl_abad_w, (32) go2_description_bl_shoulder_w, (33) go2_description_bl_knee_w, (34) go2_description_br_abad_w, (35) go2_description_br_shoulder_w, (36) go2_description_br_knee_w, 
+[simulator-1] [2026-09-10 19:13:04.904] [console] [info] Meshcat listening for connections at http://localhost:7000
+[simulator-1] [INFO] [1789067584.914000491] [drake_simulator]: COM in body frame: [0.021112, 0.000000, -0.005366]
+[simulator-1] [INFO] [1789067584.914602850] [drake_simulator]: Inertia   0.202755 0.00012166 -0.0143742
+[simulator-1] 0.00012166   0.490926  -3.12e-05
+[simulator-1] -0.0143742  -3.12e-05    0.52697
+[simulator-1] [INFO] [1789067584.914610334] [drake_simulator]: Mass  15.019
+[simulator-1] [INFO] [1789067584.914614612] [drake_simulator]: Joint [0]: Head_upper_joint
+[simulator-1] [INFO] [1789067584.914618780] [drake_simulator]: Joint [1]: Head_lower_joint
+[simulator-1] [INFO] [1789067584.914622247] [drake_simulator]: Joint [2]: fl_abad
+[simulator-1] [INFO] [1789067584.914625653] [drake_simulator]: Joint [3]: fl_shoulder
+[simulator-1] [INFO] [1789067584.914629029] [drake_simulator]: Joint [4]: fl_knee
+[simulator-1] [INFO] [1789067584.914632376] [drake_simulator]: Joint [5]: FL_calflower_joint
+[simulator-1] [INFO] [1789067584.914635982] [drake_simulator]: Joint [6]: FL_calflower1_joint
+[simulator-1] [INFO] [1789067584.914639248] [drake_simulator]: Joint [7]: fl_contact_frame
+[simulator-1] [INFO] [1789067584.914642615] [drake_simulator]: Joint [8]: fr_abad
+[simulator-1] [INFO] [1789067584.914646031] [drake_simulator]: Joint [9]: fr_shoulder
+[simulator-1] [INFO] [1789067584.914649347] [drake_simulator]: Joint [10]: fr_knee
+[simulator-1] [INFO] [1789067584.914652724] [drake_simulator]: Joint [11]: FR_calflower_joint
+[simulator-1] [INFO] [1789067584.914656030] [drake_simulator]: Joint [12]: FR_calflower1_joint
+[simulator-1] [INFO] [1789067584.914659306] [drake_simulator]: Joint [13]: fr_contact_frame
+[simulator-1] [INFO] [1789067584.914662732] [drake_simulator]: Joint [14]: bl_abad
+[simulator-1] [INFO] [1789067584.914665948] [drake_simulator]: Joint [15]: bl_shoulder
+[simulator-1] [INFO] [1789067584.914669205] [drake_simulator]: Joint [16]: bl_knee
+[simulator-1] [INFO] [1789067584.914672441] [drake_simulator]: Joint [17]: RL_calflower_joint
+[simulator-1] [INFO] [1789067584.914675707] [drake_simulator]: Joint [18]: RL_calflower1_joint
+[simulator-1] [INFO] [1789067584.914678973] [drake_simulator]: Joint [19]: bl_contact_frame
+[simulator-1] [INFO] [1789067584.914682309] [drake_simulator]: Joint [20]: br_abad
+[simulator-1] [INFO] [1789067584.914685635] [drake_simulator]: Joint [21]: br_shoulder
+[simulator-1] [INFO] [1789067584.914688821] [drake_simulator]: Joint [22]: br_knee
+[simulator-1] [INFO] [1789067584.914692097] [drake_simulator]: Joint [23]: RR_calflower_joint
+[simulator-1] [INFO] [1789067584.914695334] [drake_simulator]: Joint [24]: RR_calflower1_joint
+[simulator-1] [INFO] [1789067584.914698540] [drake_simulator]: Joint [25]: br_contact_frame
+[simulator-1] [INFO] [1789067584.914701716] [drake_simulator]: Joint [26]: joint_imu
+[simulator-1] [INFO] [1789067584.914704861] [drake_simulator]: Joint [27]: joint_belly_bottom
+[simulator-1] [INFO] [1789067584.914708097] [drake_simulator]: Joint [28]: radar_joint
+[simulator-1] [INFO] [1789067584.914711303] [drake_simulator]: Joint [29]: world_welds_to_plane_base_link
+[simulator-1] [INFO] [1789067584.914723246] [drake_simulator]: Joint [30]: base_link

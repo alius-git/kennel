@@ -11,6 +11,10 @@
 # .gitignore) replaces a formal vendoring/submodule decision.
 #   Retirement paths: manifest generator in the appliance build; the
 #   submodule-vs-vendoring decision post-MVP.
+#   2026-09-10, #74: the manifest half is RETIRED. The baseline prep script
+#   generates ~/kennel-manifest.json on the guest (vm/manifest.md); this file's
+#   `commit:` is one field of it, and the baseline, reset and MVP sequences
+#   assert the manifest's copy. The vendoring half is still open.
 #
 # Format: `key: value`, one per line, `#` comments. Greppable by future tooling
 # (`grep '^commit:' stack/pin.lock | cut -d: -f2-`), readable without it.

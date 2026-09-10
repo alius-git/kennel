@@ -50,6 +50,13 @@ Four conventions, and each of them is Yuruna's rather than ours:
 sequences — they are host-side reachability checks the driver calls by path,
 and they stay where their callers expect them.
 
+One guest tool lives outside `test/`:
+[`vm/guest/ubuntu.server.24/kennel-drift.sh`](../vm/guest/ubuntu.server.24/kennel-drift.sh)
+([#75](https://github.com/alius-git/kennel/issues/75)) is the appliance's in-VM
+drift check rather than a provisioning script, and the reset sequence's last step
+fetches it as `project/vm/guest/…`. That works because the host's status service
+serves the whole project tree, not only `test/` (§4).
+
 ## 2. Pointing a host at this repository
 
 `~/git/yuruna/test/test.config.yml` is the operator's file (gitignored
@@ -162,7 +169,7 @@ The driver wraps all of it, with preflight and evidence collection:
 |---|---|
 | `kennel-demo.sh mvp` | the MVP sequence — warm (~100 s) on a host that holds the baseline, the whole cold chain on one that does not |
 | `kennel-demo.sh cycle [--yes]` | one full cycle from cold, sweeping the guest **and its baseline** first; `KENNEL_CYCLES=2` for two in a row |
-| `kennel-demo.sh reset` / `provision` | the warm and cold paths of the baseline sequence, unchanged since #51 |
+| `kennel-demo.sh reset` / `provision` | the warm and cold paths of the baseline sequence, unchanged since #51 — except that the reset now ends with the drift check against the version manifest (#74, #75; [`vm/drift.md`](../vm/drift.md)) |
 
 Each of them clones this checkout into `$YURUNA_DIR/project` first and then
 runs its sequence with `-NoProjectClone`, so what runs is the branch you are on

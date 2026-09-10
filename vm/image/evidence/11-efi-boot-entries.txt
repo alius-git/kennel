@@ -1,0 +1,16 @@
+$ the imported guest's EFI boot entries, and the NVRAM libvirt created for it
+# 2026-09-10T19:18:56Z, kennel 854306f, guest 192.168.122.228 (kennel-vm-baseline, the real import)
+$ virsh dumpxml kennel-vm-baseline | grep -E '<loader|<nvram'
+    <loader readonly='yes' secure='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE_4M.ms.fd</loader>
+    <nvram template='/usr/share/OVMF/OVMF_VARS_4M.ms.fd'>/var/lib/libvirt/qemu/nvram/kennel-vm-baseline_VARS.fd</nvram>
+$ sudo efibootmgr   (on the guest)
+BootCurrent: 0002
+Timeout: 0 seconds
+BootOrder: 0002,0001,0000
+Boot0000* UiApp	FvVol(7cb8bdc9-f8eb-4f34-aaea-3ee4af6516a1)/FvFile(462caa21-7614-4503-836e-8ab6f4662331)
+Boot0001* UEFI Misc Device	PciRoot(0x0)/Pci(0x2,0x3)/Pci(0x0,0x0){auto_created_boot_option}
+Boot0002* Ubuntu	HD(1,GPT,a8e86c2f-4ee3-4405-be98-556221f89601,0x800,0x219800)/File(\EFI\ubuntu\shimx64.efi)
+# The NVRAM was created from OVMF_VARS_4M.ms.fd, which carries no OS entry. OVMF adds the
+# {auto_created_boot_option} ones itself; the 'Ubuntu' entry pointing at shimx64.efi is what shim's
+# fallback (EFI/BOOT/fbx64.efi, reading EFI/ubuntu/BOOTX64.CSV) writes on a first boot through the
+# removable-media path. It is now BootCurrent.

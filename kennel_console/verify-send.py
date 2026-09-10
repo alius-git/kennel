@@ -1,5 +1,8 @@
 """Acceptance checks for issue #56 — the console writes where the driver reads.
 
+Group 7 (#74, #75): the guest's version manifest and drift report reach the page
+through /api/health, and run.json references the manifest when one is known.
+
 Driven by verify-send.sh.
 Usage: verify-send.py <servePort> <plainPort> <cdpPort> <outDir> <downloadDir>
 
@@ -278,6 +281,176 @@ print("\n6. no network escaped")
 ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"
             f".filter(n=>!n.startsWith('http://localhost:'))")
 check("zero non-localhost requests", not ext, str(ext))
+
+print("\n7. the guest's version manifest reaches the page, and run.json references it (#74, #75)")
+# Appended after group 6, and it leaves groups 0-6 exactly as they were. What the
+# driver would leave under --out is written here by hand -- the manifest and the
+# drift report are FILES in a contract (serve.py reads them per request), so the
+# claim is tested at that seam, and the bytes that land are read back off disk.
+import re  # noqa: E402 -- group 7's alone
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+MANIFEST = os.path.join(OUT, ".kennel-manifest.json")
+DRIFT = os.path.join(OUT, ".kennel-drift")
+FIVE = ["run_id", "run", "generated_at", "pin", "choices"]
+
+
+def literal(path, pattern):
+    with open(path, encoding="utf-8") as f:
+        found = re.search(pattern, f.read(), re.M)
+    return found.group(1) if found else None
+
+
+def write_manifest(pin):
+    """A manifest in the prep script's shape, written its canonical way. Returns its ref."""
+    doc = {"schema": "kennel-manifest/1", "pin": pin, "created": "2026-09-10T12:00:00Z",
+           "os": {"id": "ubuntu", "version_id": "24.04", "pretty_name": "Ubuntu 24.04.5 LTS"},
+           "kernel": "6.8.0-139-generic", "docker": "29.8.0", "image_id": "sha256:" + "3f" * 32,
+           "container_os": "Ubuntu 22.04.5 LTS", "ros_distro": "humble",
+           "ros_base": "ros-humble-ros-base 0.10.0-1jammy.20260804.204550",
+           "drake": "20231218181452 9ba8f5d8d4ee6919ec41542d47509549cfa8d919",
+           "drake_source": "a suite fixture",
+           "packages": {"file": "kennel-manifest.packages.txt", "count": 1, "sha256": "0" * 64},
+           "project_commit": None, "console_version": server_v, "guides_version": None,
+           "provenance": "knobs", "image_sha256": None}
+    raw = (json.dumps(doc, indent=2, sort_keys=True) + "\n").encode()
+    with open(MANIFEST, "wb") as f:
+        f.write(raw)
+    return hashlib.sha256(raw).hexdigest()
+
+
+def reopen():
+    """Back to serve.py's origin. The page asks /api/health once, on mount."""
+    ws.call("Page.navigate", url=ORIGIN + PAGE)
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        try:
+            if "Compose experiment" in (ws.js("document.body ? document.body.innerText : ''") or ""):
+                break
+        except RuntimeError:
+            pass
+        time.sleep(0.3)
+    ws.js(HELPERS)
+
+
+def page_text_when(pred, timeout=10):
+    """The page text once pred holds -- the health probe is asynchronous -- or at the deadline."""
+    deadline = time.time() + timeout
+    text = ""
+    while time.time() < deadline:
+        text = ws.js("__txt()") or ""
+        if pred(text):
+            break
+        time.sleep(0.2)
+    return text
+
+
+def next_second(after_run):
+    """Two sends in one UTC second share a stamp and the second is refused: wait it out."""
+    while after_run and time.strftime("run-%Y%m%dT%H%M%SZ", time.gmtime()) <= after_run:
+        time.sleep(0.05)
+
+
+def send_run():
+    """Click send; the run.json that landed on disk, in file order. None if nothing did."""
+    before = {r["run"] for r in api("/api/runs")["runs"]}
+    ws.js(f"__click({SEND_LABEL!r})")
+    landed = wait_for_new_run(before)
+    return json.loads(read(os.path.join(OUT, landed, "run.json"))) if landed else None
+
+
+server_v = literal(os.path.join(HERE, "serve.py"), r'^KENNEL_CONSOLE_VERSION = "([^"]+)"')
+page_v = literal(os.path.join(HERE, "Kennel Console.dc.html"), r"^const KENNEL_CONSOLE_VERSION = '([^']+)';")
+check("serve.py and the page carry one KENNEL_CONSOLE_VERSION", bool(server_v) and server_v == page_v,
+      f"{server_v} vs {page_v}")
+for leftover in (MANIFEST, DRIFT):
+    if os.path.exists(leftover):
+        os.remove(leftover)
+health = api("/api/health")
+check("/api/health reports the console version", health.get("console_version") == server_v,
+      str(health.get("console_version")))
+check("with nothing under --out, its manifest, manifest_ref and drift are null",
+      health.get("manifest") is None and health.get("manifest_ref") is None and health.get("drift") is None,
+      str({k: health.get(k) for k in ("manifest", "manifest_ref", "drift")})[:120])
+
+ref = write_manifest(PIN)
+health = api("/api/health")
+check("once the driver has left one, health carries the guest's manifest",
+      (health.get("manifest") or {}).get("pin") == PIN, str((health.get("manifest") or {}).get("pin")))
+check("and manifest_ref is the sha256 of the file's bytes", health.get("manifest_ref") == ref,
+      str(health.get("manifest_ref"))[:16])
+reopen()
+text = page_text_when(lambda t: ("guest " + PIN[:7]) in t and SEND_LABEL in t)
+check("the export strip names the guest: its pin, its manifest, the console version",
+      all(w in text for w in ("guest " + PIN[:7], "manifest " + ref[:7], "console " + str(server_v))),
+      " | ".join(l for l in text.splitlines() if "guest " in l)[:160])
+check("and warns about nothing: one pin, one console version, no drift report",
+      not any(w in text for w in ("guest pin differs", "console version differs", "environment drifted")))
+meta = send_run()
+check("send still writes a run folder", meta is not None)
+last_run = meta["run"] if meta else None
+check("its run.json carries six keys, manifest_ref last",
+      bool(meta) and list(meta.keys()) == FIVE + ["manifest_ref"], str(list(meta.keys()) if meta else None))
+check("and that manifest_ref is the guest's", bool(meta) and meta.get("manifest_ref") == ref)
+
+ref0 = write_manifest("0" * 40)
+reopen()
+text = page_text_when(lambda t: "guest pin differs" in t)
+check("a guest at another pin is named in the strip", "guest pin differs" in text and "0" * 12 in text,
+      " | ".join(l for l in text.splitlines() if "differs" in l)[:160])
+next_second(last_run)
+meta = send_run()
+check("and a send still lands: the server's own pin is pin.lock's, not the guest's",
+      bool(meta) and meta.get("manifest_ref") == ref0, str(meta.get("manifest_ref") if meta else None)[:16])
+last_run = meta["run"] if meta else last_run
+
+# The server's half: a run composed against a manifest the guest no longer
+# carries. Stamped an hour back so it cannot collide with a send above.
+stale = time.strftime("run-%Y%m%dT%H%M%SZ", time.gmtime(time.time() - 3600))
+buf = io.BytesIO()
+with zipfile.ZipFile(buf, "w") as z:
+    for n in NAMES:
+        data = b"placeholder\n"
+        if n == "run.json":
+            data = (json.dumps({"run_id": "RUN-2026-0724-1499", "run": stale,
+                                "generated_at": "2026-09-10T11:00:00Z", "pin": PIN, "choices": {},
+                                "manifest_ref": "f" * 64}, indent=2) + "\n").encode()
+        z.writestr(zipfile.ZipInfo(f"{stale}/{n}"), data, compress_type=zipfile.ZIP_STORED)
+status, body = post(buf.getvalue())
+check("a POST composed against another manifest is written, with a warning naming both refs",
+      status == 201 and "f" * 12 in body.get("warning", "") and ref0[:12] in body.get("warning", ""),
+      f"{status} {(body.get('warning') or body.get('error') or '')[:100]}")
+
+with open(DRIFT, "w", encoding="utf-8") as f:
+    json.dump({"schema": "kennel-drift/1", "checked": "2026-09-10T12:00:00Z", "manifest_ref": ref0,
+               "findings": [{"class": "tracked-file", "detail": " M ws/src/common/launch/simulation.launch.py"},
+                            {"class": "package", "detail": "sl 5.02-1 (added)"}],
+               "notes": []}, f)
+health = api("/api/health")
+check("/api/health carries the drift report the driver left",
+      len((health.get("drift") or {}).get("findings") or []) == 2, str(health.get("drift"))[:120])
+reopen()
+text = page_text_when(lambda t: "environment drifted" in t)
+check("the strip warns: environment drifted, with the count", "environment drifted: 2 findings" in text,
+      " | ".join(l for l in text.splitlines() if "drift" in l)[:160])
+os.remove(DRIFT)
+reopen()
+text = page_text_when(lambda t: SEND_LABEL in t and ("guest " + "0" * 7) in t)
+check("and stops warning once the report is gone", "environment drifted" not in text)
+
+os.remove(MANIFEST)
+health = api("/api/health")
+check("with the manifest gone, health says so", health.get("manifest") is None and health.get("manifest_ref") is None)
+reopen()
+text = page_text_when(lambda t: SEND_LABEL in t)
+check("and the strip names no guest", ("guest " + "0" * 7) not in text and ("guest " + PIN[:7]) not in text)
+next_second(last_run)
+meta = send_run()
+check("a send with no manifest known writes the five keys export.md specifies",
+      bool(meta) and list(meta.keys()) == FIVE, str(list(meta.keys()) if meta else None))
+ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"
+            ".filter(n=>!n.startsWith('http://localhost:'))")
+check("zero non-localhost requests in this group", not ext, str(ext))
 
 print("\n" + ("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED"))
 sys.exit(0 if ok else 1)

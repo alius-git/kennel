@@ -1,0 +1,32 @@
+$ which keys the imported guest trusts
+# 2026-09-10T19:02:48Z, kennel 5b64347
+--- the throwaway key (the one on the KENNELKEY volume)
+accepted: yuuser24@kennel-vm
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFOR
+2026-09-10T19:02:13Z
+256 SHA256:EZCVWPRed9UG5axAqlfLp5hV16MHgOeb+Y288Uei0rQ kennel-import-throwaway (ED25519)
+rc=0
+--- the building host's Yuruna key (the one autoinstall put there)
+yuuser24@192.168.122.228: Permission denied (publickey,password).
+rc=255 (255 = refused)
+--- SSH host key: the original baseline, then the import
+256 SHA256:2ezxsSdUUDj+JjI9FXam4gu+Qm7Z2rVKlUy8hRgLK+A 192.168.122.228 (ED25519)
+256 SHA256:sI7pdEqC72tjHrs54w2NqxiBn5UMrrEaqzkfDpYn3C4 192.168.122.228 (ED25519)
+--- the unit's journal on the import's first boot
+2026-09-10T19:02:13+00:00 kennel-vm kennel-import-key[857]: installed 1 key(s) from /dev/disk/by-label/KENNELKEY as the authorized_keys of yuuser24: SHA256:EZCVWPRed9UG5axAqlfLp5hV16MHgOeb+Y288Uei0rQ
+2026-09-10T19:02:13+00:00 kennel-vm kennel-import-key[901]: regenerated the SSH host keys (the first import on this disk; marker /var/lib/kennel/imported)
+-- Boot 3663221cd0a94e979f708d71a588d489 --
+2026-09-10T19:02:42+00:00 kennel-vm kennel-import-key[835]: authorized_keys of yuuser24 already carries the 1 key(s) on /dev/disk/by-label/KENNELKEY -- unchanged
+--- the domain
+ Target   Source
+-----------------------------------------------------------------------------
+ vda      /home/thales/yuruna/vms/kennel-vm-imptest/kennel-vm-imptest.qcow2
+ sda      /home/thales/yuruna/vms/kennel-vm-imptest/kennel-key.iso
+
+    <loader readonly='yes' secure='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE_4M.ms.fd</loader>
+    <nvram template='/usr/share/OVMF/OVMF_VARS_4M.ms.fd'>/var/lib/libvirt/qemu/nvram/kennel-vm-imptest_VARS.fd</nvram>
+      <mac address='52:54:00:c8:27:32'/>
+ Name                Creation Time               State
+----------------------------------------------------------
+ kennel-vm-imptest   2026-09-10 16:02:34 -0300   shutoff
+

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Yuruna test-runner log</title>
+</head><body><pre style="white-space: pre-wrap; word-wrap: break-word; overflow-x: auto;">
+<span class="log-output">Log file: /home/thales/git/yuruna/test/status/log/000054.2026-09-10.19-12-45.4230bb0f56694b6582bdfe6388bff892.incomplete/000054.2026-09-10.19-12-45.4230bb0f56694b6582bdfe6388bff892.html</span>
+<span class="log-output"></span>
+<span class="log-output">=============================================</span>
+<span class="log-output">  Sequence: workload.guest.ubuntu.server.24.kennel.mvp.ssh</span>
+<span class="log-output">  Chain:    6 sequence(s), 14 total step(s)</span>
+<span class="log-output">  Range:    starting at step 1</span>
+<span class="log-output">  VM:       kennel-vm-baseline</span>
+<span class="log-output">  Guest:    guest.ubuntu.server.24</span>
+<span class="log-output">=============================================</span>
+<span class="log-output"></span>
+<span class="log-output">Step list:</span>
+<span class="log-output">  --- workload.guest.ubuntu.server.24.kennel.mvp.ssh (14 step(s))</span>
+<span class="log-output">  &gt;&gt; [1] loadDiskSnapshot: Revert the disk to &#39;kennel-vm-baseline&#39; and start the guest</span>
+<span class="log-output">  &gt;&gt; [2] sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)</span>
+<span class="log-output">  &gt;&gt; [3] sshExec: Smoke test: whoami/hostname</span>
+<span class="log-output">  &gt;&gt; [4] sshExec: Assert the restored guest&#39;s manifest carries the stack pin</span>
+<span class="log-output">  &gt;&gt; [5] sshExec: Start the dfki_quad container and assert it is running</span>
+<span class="log-output">  &gt;&gt; [6] sshFetchAndExecute: Stage the fixture and the four stack tools from the project tree (through the host)</span>
+<span class="log-output">  &gt;&gt; [7] sshExec: Assert the staged fixture&#39;s run.json is the pin and the solver this sequence expects</span>
+<span class="log-output">  &gt;&gt; [8] sshExec: Apply the fixture to the container&#39;s config paths and prove the bytes landed (repo -&gt; guest -&gt; container)</span>
+<span class="log-output">  &gt;&gt; [9] sshExec: Launch the three stack processes from the fixture&#39;s commands.txt and wait for the six-node graph</span>
+<span class="log-output">  &gt;&gt; [10] sshExec: Run the verification recipe against the composed solver (its exit code is classified next)</span>
+<span class="log-output">  &gt;&gt; [11] sshExec: Classify: the recipe could look at the stack (any other exit is an infrastructure error, not a stack verdict)</span>
+<span class="log-output">  &gt;&gt; [12] sshExec: Assert healthy and walking on PARTIAL_CONDENSING_OSQP (an assert failed = red run, with the three process logs above)</span>
+<span class="log-output">  &gt;&gt; [13] sshExec: Keep this run&#39;s record on the guest -- the report and the three process logs -- for the host to collect</span>
+<span class="log-output">  &gt;&gt; [14] sshExec: Stop the stack in the container</span>
+<span class="log-output"></span>
+<span class="log-information">Running steps 1 to 14...</span>
+<span class="log-information"></span>
+<span class="log-information"></span>
+<span class="log-information">--- workload.guest.ubuntu.server.24.kennel.mvp.ssh: local steps 1-14 of 14 (global 1-14) ---</span>
+<span class="log-information">    Sequence: Kennel (SSH): the MVP -- revert to the baseline, stage the console-exported fixture from the project tree, apply it, launch the stack from its commands.txt, assert healthy and walking on the composed solver, keep the logs, stop the stack.</span>
+<span class="log-information">       1 s [1/14] PASS loadDiskSnapshot: Revert the disk to &#39;kennel-vm-baseline&#39; and start the guest</span>
+<span class="log-information">      11 s [2/14] PASS sshWaitReady: Wait for sshd after the revert (fresh boot, new lease)</span>
+<span class="log-information">       0 s [3/14] PASS sshExec: Smoke test: whoami/hostname</span>
+<span class="log-information">       0 s [4/14] PASS sshExec: Assert the restored guest&#39;s manifest carries the stack pin</span>
+<span class="log-information">       1 s [5/14] PASS sshExec: Start the dfki_quad container and assert it is running</span>
+<span class="log-information">       1 s [6/14] PASS sshFetchAndExecute: Stage the fixture and the four stack tools from the project tree (through the host)</span>
+<span class="log-information">       0 s [7/14] PASS sshExec: Assert the staged fixture&#39;s run.json is the pin and the solver this sequence expects</span>
+<span class="log-information">       1 s [8/14] PASS sshExec: Apply the fixture to the container&#39;s config paths and prove the bytes landed (repo -&gt; guest -&gt; container)</span>
+<span class="log-information">      38 s [9/14] PASS sshExec: Launch the three stack processes from the fixture&#39;s commands.txt and wait for the six-node graph</span>
+<span class="log-information">      41 s [10/14] PASS sshExec: Run the verification recipe against the composed solver (its exit code is classified next)</span>
+<span class="log-information">       0 s [11/14] PASS sshExec: Classify: the recipe could look at the stack (any other exit is an infrastructure error, not a stack verdict)</span>
+<span class="log-information">       0 s [12/14] PASS sshExec: Assert healthy and walking on PARTIAL_CONDENSING_OSQP (an assert failed = red run, with the three process logs above)</span>
+<span class="log-information">       0 s [13/14] PASS sshExec: Keep this run&#39;s record on the guest -- the report and the three process logs -- for the host to collect</span>
+<span class="log-information">       0 s [14/14] PASS sshExec: Stop the stack in the container</span>
+<span class="log-information">      94 s [All 14 steps completed in 2 min and 34 s]</span>
+<span class="log-information"></span>
+<span class="log-information">Chain completed successfully (14 step(s) across 6 sequence(s)).</span>
+</pre></body></html>
