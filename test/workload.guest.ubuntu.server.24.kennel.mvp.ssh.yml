@@ -81,8 +81,8 @@ workload:
   # --type container: the image is called dfki_quad too, and without it the call
   # resolves the image and exits 0 (vm/provisioning.md 5a).
   - action: sshExec
-    command: "cat \"$HOME/.kennel-baseline\"; grep -qx 'pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4' \"$HOME/.kennel-baseline\""
-    description: "Assert the restored guest carries the baseline record at the stack pin"
+    command: "cat \"$HOME/kennel-manifest.json\"; p=$(jq -r .pin \"$HOME/kennel-manifest.json\"); echo \"manifest pin=$p (want dcf53c596339afd45b82f12c54b1e93e8273c2f4)\"; [ \"$p\" = dcf53c596339afd45b82f12c54b1e93e8273c2f4 ]"
+    description: "Assert the restored guest's manifest carries the stack pin"
 
   - action: sshExec
     command: "sudo docker start dfki_quad >/dev/null; s=$(sudo docker inspect --type container -f '{{.State.Status}}' dfki_quad); echo \"container=$s (want running)\"; [ \"$s\" = running ]"
@@ -156,7 +156,7 @@ workload:
   # two greps put the two headline numbers into the transcript itself, where
   # they survive whatever happens to the guest.
   - action: sshExec
-    command: "r=$(cat \"$HOME/kennel-mvp/fixture\"); d=\"$HOME/kennel-mvp/$r\"; rm -rf \"$d\"; mkdir -p \"$d\"; cp /tmp/kennel-verify/report.json \"$d/verify.json\"; cp /tmp/kennel-verify/report.txt \"$d/verify.txt\"; for l in sim legdrv ctrl; do sudo docker cp \"dfki_quad:/tmp/p21-$l.log\" \"$d/p21-$l.log\"; done; cp /tmp/yuruna-last-fetch-and-execute.log \"$d/stage.log\" 2>/dev/null || true; cp \"$HOME/kennel-staging/current-run\" \"$d/applied.txt\"; cp \"$HOME/.kennel-baseline\" \"$d/baseline.txt\"; sudo chown -R \"$(id -un)\" \"$d\"; ls -la \"$d\"; grep -o '\"verdict\"[^,]*' \"$d/verify.json\"; grep -E 'sim-clock|composed-config' \"$d/verify.txt\""
+    command: "r=$(cat \"$HOME/kennel-mvp/fixture\"); d=\"$HOME/kennel-mvp/$r\"; rm -rf \"$d\"; mkdir -p \"$d\"; cp /tmp/kennel-verify/report.json \"$d/verify.json\"; cp /tmp/kennel-verify/report.txt \"$d/verify.txt\"; for l in sim legdrv ctrl; do sudo docker cp \"dfki_quad:/tmp/p21-$l.log\" \"$d/p21-$l.log\"; done; cp /tmp/yuruna-last-fetch-and-execute.log \"$d/stage.log\" 2>/dev/null || true; cp \"$HOME/kennel-staging/current-run\" \"$d/applied.txt\"; cp \"$HOME/kennel-manifest.json\" \"$d/manifest.json\"; cp \"$HOME/kennel-manifest.packages.txt\" \"$d/manifest.packages.txt\"; sudo chown -R \"$(id -un)\" \"$d\"; ls -la \"$d\"; grep -o '\"verdict\"[^,]*' \"$d/verify.json\"; grep -E 'sim-clock|composed-config' \"$d/verify.txt\""
     timeoutSeconds: 300
     description: "Keep this run's record on the guest -- the report and the three process logs -- for the host to collect"
 

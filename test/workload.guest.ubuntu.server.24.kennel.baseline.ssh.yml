@@ -65,12 +65,13 @@ workload:
   # Independent restatement of the pin, exactly as the #10 sequence does for the
   # clone. The prep script's DFKI_QUAD_COMMIT is a derived copy of
   # stack/pin.lock; this step is the drift check between the two, and it is the
-  # last gate before the state becomes permanent.
+  # last gate before the state becomes permanent. Since #74 the record it reads
+  # is the version manifest (vm/manifest.md), not ~/.kennel-baseline.
   #
   # NB: no ${...} anywhere -- Yuruna expands ${name} in step parameters.
   - action: sshExec
-    command: "cat \"$HOME/.kennel-baseline\"; grep -qx 'pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4' \"$HOME/.kennel-baseline\""
-    description: "Assert the baseline record carries the stack pin"
+    command: "cat \"$HOME/kennel-manifest.json\"; p=$(jq -r .pin \"$HOME/kennel-manifest.json\"); echo \"manifest pin=$p (want dcf53c596339afd45b82f12c54b1e93e8273c2f4)\"; [ \"$p\" = dcf53c596339afd45b82f12c54b1e93e8273c2f4 ]"
+    description: "Assert the baseline manifest carries the stack pin"
 
   # Renames the domain to 'kennel-vm-baseline', relocates its storage, snapshots
   # it, and leaves it STOPPED. Nothing may follow.

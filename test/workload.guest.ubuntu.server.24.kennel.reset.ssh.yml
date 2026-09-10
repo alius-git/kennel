@@ -92,10 +92,11 @@ workload:
   # `provision` from clean, not a reset. This assert is what catches a snapshot
   # taken at another pin being served to a repo that has moved on; it re-states
   # the SHA independently of both stack/pin.lock and the prep script's literal,
-  # the same enforcement-by-assertion the #10 sequence uses.
+  # the same enforcement-by-assertion the #10 sequence uses. Since #74 it reads
+  # the version manifest the baseline froze (vm/manifest.md).
   - action: sshExec
-    command: "cat \"$HOME/.kennel-baseline\"; grep -qx 'pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4' \"$HOME/.kennel-baseline\""
-    description: "Assert the restored guest carries the baseline record at the stack pin"
+    command: "cat \"$HOME/kennel-manifest.json\"; p=$(jq -r .pin \"$HOME/kennel-manifest.json\"); echo \"manifest pin=$p (want dcf53c596339afd45b82f12c54b1e93e8273c2f4)\"; [ \"$p\" = dcf53c596339afd45b82f12c54b1e93e8273c2f4 ]"
+    description: "Assert the restored guest's manifest carries the stack pin"
 
   - action: sshExec
     command: "c=$(git -C \"$HOME/dfki-quad\" rev-parse HEAD); echo \"pin=$c\"; [ \"$c\" = dcf53c596339afd45b82f12c54b1e93e8273c2f4 ]"
@@ -160,5 +161,6 @@ workload:
   # seen when something else in this sequence fails -- see the note above. The
   # durable host-side record is what `kennel-demo.sh reset` prints itself.
   - action: sshExec
-    command: "echo '--- baseline record ---'; cat \"$HOME/.kennel-baseline\"; echo '--- disk ---'; df -h /; echo '--- container ---'; sudo docker ps --format '{{.Names}} {{.Status}}'"
+    command: "echo '--- version manifest ---'; cat \"$HOME/kennel-manifest.json\"; sha256sum \"$HOME/kennel-manifest.json\"; echo '--- disk ---'; df -h /; echo '--- container ---'; sudo docker ps --format '{{.Names}} {{.Status}}'"
     description: "Record what the reset returned (feeds vm/snapshot.md)"
+
