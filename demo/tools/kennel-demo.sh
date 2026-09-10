@@ -47,6 +47,9 @@
 #   mvp        Yuruna sequence workload.guest.ubuntu.server.24.kennel.mvp.ssh
 #              (#24): the demo as one sequence, asserted -- and its evidence
 #              collected off the guest, which Yuruna itself cannot do
+#   cycle      pwsh test/Invoke-TestProject.ps1 (#25): ONE Yuruna cycle from
+#              cold, the way the runner runs one -- guest and baseline swept
+#              first, the whole chain rebuilt, the evidence collected
 #
 # Usage:
 #   Once per host
@@ -79,6 +82,11 @@
 #                                      # console's fixture -> apply -> launch ->
 #                                      # assert walking on the composed solver
 #                                      # (~4 min warm, ~40 min from no baseline)
+#     kennel-demo.sh cycle [--yes]     # one full Yuruna cycle from cold, as the
+#                                      # runner runs it: DESTROYS the guest and
+#                                      # its baseline, rebuilds both, runs the
+#                                      # MVP sequence, collects the evidence
+#                                      # (~40 min; KENNEL_CYCLES=2 for two)
 #
 #   Scenarios (tests against the running stack, not demo phases)
 #     kennel-demo.sh scenario disturb  # s004: interventions, and the process
@@ -93,9 +101,13 @@
 #   YURUNA_DIR            ~/git/yuruna       framework checkout (setup, provision)
 #   YURUNA_TAG            2026.08.04         framework release setup checks out
 #   YURUNA_IMAGE_DIR      ~/yuruna/image/ubuntu.env   where Get-Image.ps1 put the ISO
-#   KENNEL_HARNESS_EVIDENCE  test/evidence     where `mvp` leaves what it
-#                                            collected off the guest and out of
-#                                            the Yuruna cycle folder
+#   KENNEL_HARNESS_EVIDENCE  test/evidence     where `mvp` and `cycle` leave
+#                                            what they collected off the guest
+#                                            and out of the Yuruna cycle folder
+#   KENNEL_CYCLES         1                  how many cycles `cycle` runs in a
+#                                            row; it stops at the first red one,
+#                                            because "green twice" is a statement
+#                                            about CONSECUTIVE cycles (#25)
 #   KENNEL_PROJECT_URL    file://<this repo> what the verbs clone into
 #                                            $YURUNA_DIR/project before running a
 #                                            sequence (#23). The default is THIS
@@ -219,6 +231,11 @@ REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 # takes the COMMITTED head, so an uncommitted edit under test/ does not run;
 # install_kennel_project says so rather than letting you wonder.
 PROJECT_URL="${KENNEL_PROJECT_URL:-file://$REPO_ROOT}"
+
+# How many cycles `cycle` runs in a row. Two consecutive green ones is #25's
+# acceptance; it stops at the first red one, because the claim is about
+# consecutive cycles and continuing past a failure would not support it.
+CYCLES="${KENNEL_CYCLES:-1}"
 
 # The origin is separate from the page URL because serve.py answers /api/
 # there as well (kennel_console/send.md section 1).
@@ -1322,6 +1339,142 @@ do_mvp() {
     say "return the guest to stock with:  $0 reset"
 }
 
+# One full Yuruna cycle from cold, as the runner runs it (#25).
+#
+# It wraps `Invoke-TestProject.ps1` -- which is, by its own contract, one cycle
+# "exactly as Invoke-TestRunner would have" run it: it wipes and re-clones
+# project/ from test.config.yml's projectUrl, runs the Test-Config gate, and
+# spawns the same inner runner every cycle spawns. NOT `Invoke-TestRunner.ps1`:
+# that one is an eternal loop that stops only on a console Ctrl+C (a signal will
+# not do it), so a script cannot own its lifetime. Running the loop itself is an
+# operator step, and test/README.md §5 has the line.
+#
+# What a cycle runs comes from test.config.yml, NOT from KENNEL_PROJECT_URL:
+# the runner does its own clone, and pointing it at this checkout is the
+# operator's choice (test/README.md §2). This verb checks that the URL is one of
+# this repo's rather than silently testing yuruna-project.
+do_cycle() {
+    local yes=0
+    [ "${1:-}" = "--yes" ] && yes=1
+    need_yuruna
+
+    local cfg="$YURUNA_DIR/test/test.config.yml" url want_url reply p missing=0
+    url="$(config_project_url "$cfg")"
+    want_url="$(kennel_origin_url)"
+    if [ "$url" != "$want_url" ] && [ "$url" != "file://$REPO_ROOT" ]; then
+        fail "repositories.projectUrl is '${url:-unset}', so a cycle would clone and run that," \
+             "not this repository. Set it in $cfg:" \
+             "  projectUrl: $want_url            # what is pushed" \
+             "  projectUrl: file://$REPO_ROOT    # or the branch you are on" \
+             "See test/README.md §2."
+        exit 2
+    fi
+    # The same three preflights `provision` runs, for the same reason: a cycle
+    # that fails on a missing patch or a missing ISO has spent forty minutes
+    # finding out.
+    for p in "$REPO_ROOT"/vm/patches/*.patch; do
+        case "$(patch_state "$p")" in
+            applied) ;;
+            *) fail "Yuruna patch not applied (or the clone is not at $YURUNA_TAG): $(basename "$p")." \
+                    "Run:  $0 setup"; missing=1 ;;
+        esac
+    done
+    [ "$missing" = 0 ] || exit 2
+    ls "$IMAGE_DIR"/*.iso >/dev/null 2>&1 || {
+        fail "no guest ISO under $IMAGE_DIR -- a cold cycle installs the guest from it." \
+             "cd $YURUNA_DIR/host/ubuntu.kvm/guest.ubuntu.server.24 && pwsh ./Get-Image.ps1"
+        exit 2
+    }
+    # A live runner owns runner.pid and Invoke-TestProject refuses to start
+    # beside it. Say so here rather than after the confirmation.
+    if pgrep -af 'Invoke-TestRunner\.ps1' >/dev/null 2>&1; then
+        fail "an Invoke-TestRunner.ps1 is running on this host; Invoke-TestProject refuses to" \
+             "start beside it. Stop it (Ctrl+C in ITS terminal) and try again."
+        exit 2
+    fi
+
+    banner "cycle: $CYCLES cycle(s) of Invoke-TestProject.ps1, from cold"
+    say "project URL      $url"
+    say "each cycle DESTROYS the '$GUEST_HOSTNAME' guest INCLUDING the baseline snapshot"
+    say "'$SNAPSHOT_ID', rebuilds both from clean, and runs $MVP_SEQUENCE"
+    say "to the end. About 40 minutes each. The rebuilt baseline is LEFT STANDING."
+    if [ "$yes" != 1 ]; then
+        reply=""
+        read -r -p "[kennel-demo] proceed? [y/N] " reply || true
+        case "$reply" in y|Y|yes) ;; *) say "aborted (pass --yes to skip the prompt)."; exit 2 ;; esac
+    fi
+
+    cd "$YURUNA_DIR" || exit 2
+    local i rc=0 t0 total=$SECONDS
+    for i in $(seq 1 "$CYCLES"); do
+        banner "cycle $i of $CYCLES"
+        virsh list --all > /dev/null    # wake socket-activated libvirtd
+        # THE COLD SWEEP, and it is what makes this cycle cold on a machine that
+        # is also a demo host. The cycle's own sweep takes vmStart.cleanupVmNamePrefixes,
+        # which on a dev host is deliberately unset (test/README.md §3): leaving
+        # the baseline standing for the next `run`. So the cycle would find the
+        # persisted VM in the way and collide at the rename. Sweeping BOTH names
+        # here removes it for the duration of the build, and the cycle ends by
+        # taking a fresh one -- which its own `test-`-only sweep then leaves alone.
+        #
+        # -Command with a real array literal: `-Prefix a,b` from a bash argv binds
+        # ONE prefix named "a,b" and silently matches nothing (vm/snapshot.md §6 F3).
+        pwsh -NoProfile -Command \
+            "& ./test/Remove-TestVMFiles.ps1 -Prefix @('test-','$SNAPSHOT_ID') -Confirm:\$false" \
+            || { fail "the pre-cycle VM sweep failed."; exit 2; }
+        t0=$SECONDS
+        pwsh test/Invoke-TestProject.ps1 || rc=$?
+        say "cycle $i ran for $(( (SECONDS-t0) / 60 ))m$(( (SECONDS-t0) % 60 ))s"
+        GUEST_IP="${KENNEL_GUEST_IP:-}"      # the cycle rebuilt the guest; re-discover
+        harness_collect "cycle$i"
+        cycle_summary
+        [ "$rc" = 0 ] || {
+            fail "cycle $i did not pass (Invoke-TestProject exit $rc)." \
+                 "The collected evidence names the failing step; status.json has its class." \
+                 "Nothing further was run: 'green twice' is a statement about consecutive cycles."
+            exit 1
+        }
+    done
+    say "all $CYCLES cycle(s) green in $(( (SECONDS-total) / 60 ))m$(( (SECONDS-total) % 60 ))s"
+    say "the guest is the one the last cycle built, with its baseline snapshot and the"
+    say "composed run applied. Back to stock in ~90 s with:  $0 reset"
+}
+
+# What the cycle recorded about itself, host-side: Yuruna's own dashboard JSON
+# is the authority on pass/fail and duration, and the events file is where a
+# warm resume would show up -- a cycle that only went green after re-running a
+# failed sequence in place is not the same as one that never failed, and #25
+# asks for flakiness to be flagged rather than absorbed.
+cycle_summary() {
+    local st="$YURUNA_DIR/test/status/runtime/status.json" cyc
+    [ -f "$st" ] || return 0
+    python3 - "$st" <<'PY' | sed 's/^/[kennel-demo] /'
+import json, sys
+d = json.load(open(sys.argv[1]))
+h = (d.get("history") or [{}])[0]
+print("cycle %s  %s  %ss" % (d.get("cycle"), (h.get("overallStatus") or d.get("overallStatus")),
+                             h.get("totalDurationSeconds")))
+for g in d.get("guests") or []:
+    print("  %-24s %-28s %s" % (g.get("guestKey"), g.get("vmName"), g.get("status")))
+    for s in g.get("steps") or []:
+        if s.get("status") != "pass" or s.get("errorMessage"):
+            print("    %-22s %s  %s" % (s.get("name"), s.get("status"), s.get("errorMessage") or ""))
+lf = d.get("lastFailure")
+if lf:
+    print("  lastFailure: %s" % json.dumps(lf)[:200])
+PY
+    cyc="$(ls -dt "$YURUNA_DIR"/test/status/log/[0-9]*/ 2>/dev/null | head -1)"
+    [ -n "$cyc" ] || return 0
+    local wr
+    wr="$(grep -c warm_resume "$cyc/cycle.events.ndjson" 2>/dev/null || echo 0)"
+    if [ "$wr" = 0 ]; then
+        say "  warm_resume events: 0 (the cycle passed without re-running a failed sequence)"
+    else
+        warn "  warm_resume events: $wr -- this cycle went green only after resuming a failed"
+        warn "  sequence in place. That is flakiness, and #25 asks for it to be flagged."
+    fi
+}
+
 # --- REGION: the console as a verb (issue #54)
 # `compose` serves the console for the length of one scripted run and takes it
 # down again. Composing BY HAND needs the opposite: a server that outlives the
@@ -1843,6 +1996,7 @@ case "${1:-}" in
     halt)      shift; do_halt ;;
     reset)     shift; do_reset ;;
     mvp)       shift; do_mvp ;;
+    cycle)     shift; do_cycle "$@" ;;
     snapshot)  shift; do_snapshot "$@" ;;
     console)   shift; do_console "$@" ;;
     run)       shift; do_run "$@" ;;
@@ -1857,6 +2011,6 @@ case "${1:-}" in
     scenario)  shift; do_scenario "$@" ;;
     all)       shift; do_all ;;
     -h|--help|help) usage ;;
-    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status | scenario | mvp"
+    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status | scenario | mvp | cycle"
        usage >&2; exit 2 ;;
 esac
