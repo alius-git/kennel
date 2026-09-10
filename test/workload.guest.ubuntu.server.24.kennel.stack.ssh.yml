@@ -1,13 +1,14 @@
-# yaml-language-server: $schema=../schemas/sequence.schema.yml
-# (schema path is relative to test/sequences/ in the Yuruna clone, where this
-#  file is copied to run -- see vm/provisioning.md)
+# yaml-language-server: $schema=../../test/schemas/sequence.schema.yml
+# (this repo is a Yuruna PROJECT: the runner clones it into <yuruna>/project/
+#  and discovers this file at project/test/, which is where that schema path
+#  resolves -- see test/README.md)
 
 # Kennel stack provisioning -- issue #10.
 #
 # Takes the sized kennel-vm guest to "stack ready": Docker CE, the pinned
 # dfki-quad fork, upstream's Docker image, the container running headless, and
 # the go2 colcon workspace compiled. The work itself lives in the guest script
-# guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh; this sequence is the
+# test/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh; this sequence is the
 # harness around it plus the acceptance assertions.
 #
 # Declares no sizing variables on purpose: the planner cascades them down from
@@ -50,7 +51,7 @@ workload:
   # it. Measured wall-clock lands in vm/guest-sizing.md §5.4; this bound only
   # exists so a wedged build eventually fails instead of hanging the cycle.
   - action: sshFetchAndExecute
-    command: "/usr/local/lib/yuruna/fetch-and-execute.sh guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh"
+    command: "/usr/local/lib/yuruna/fetch-and-execute.sh project/test/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh"
     timeoutSeconds: 14400
     description: "Provision Docker + the pinned dfki-quad stack"
 
@@ -61,7 +62,7 @@ workload:
   # guard failed to hold, this step rebuilds and blows the 1800 s bound, which
   # is exactly the failure we want surfaced rather than a silent slow re-run.
   - action: sshFetchAndExecute
-    command: "/usr/local/lib/yuruna/fetch-and-execute.sh guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh"
+    command: "/usr/local/lib/yuruna/fetch-and-execute.sh project/test/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh"
     timeoutSeconds: 1800
     description: "Re-run to prove idempotency (must be a no-op refresh)"
 

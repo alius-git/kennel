@@ -1,0 +1,53 @@
+[?1h=[?1h=]0;
+Note: on a NAT-networked caching proxy each cycle installs systemd forwarder units with sudo -- you may be prompted for your password mid-cycle.
+  Elevation is needed to:
+    * write/remove /etc/systemd/system/yuruna-cacheproxy-p<port>.{socket,service}
+    * systemctl daemon-reload + enable/disable those units (Add-PortMap / Remove-PortMap)
+  An /etc/sudoers.d drop-in granting those commands NOPASSWD avoids it entirely.
+Yuruna boot recovery: archivedCycles=2 clearedPidFiles=0 archivedBreakActive=False clearedPauseFlags=0 warnings=0
+
+=============================================
+  Yuruna outer runner
+  Inner:        /home/thales/git/yuruna/test/modules/Invoke-TestRunnerInnerLoop.ps1
+  Backoff cap:  60 min
+  Commit poll:  5 min
+  Step timeout: 2700 s (testCycle.stepTimeoutSeconds; default 2700)
+  Preamble:     600 s (testCycle.preambleTimeoutSeconds; default 600)
+  Stop:         Ctrl+C
+  Forwarded env to inner:
+    YURUNA_CONFIG_PATH = /home/thales/git/yuruna/test/test.config.yml
+    YURUNA_LOG_DIR = /home/thales/git/yuruna/test/status/log
+    YURUNA_RUNTIME_DIR = /home/thales/git/yuruna/test/status/runtime
+=============================================
+[?1h=]0;[?1h=]0;[?1h=]0;[?1h=]0;[?1h=]0;Yuruna runner: installing /etc/sudoers.d/yuruna-runner so unattended cycles never need a password (sudo may prompt once)...
+sudo: a terminal is required to read the password; either use the -S option to read from standard input or configure an askpass helper
+sudo: a password is required
+[?1h=]0;WARNING: Yuruna runner: could not configure passwordless sudo -- could not write /etc/sudoers.d/yuruna-runner (sudo tee exit 1).
+[?1h=]0;
+================================================================
+  RUNNER NOT STARTED -- elevation required
+================================================================
+
+  Host type: host.ubuntu.kvm
+  Account:   thales
+
+  This host needs passwordless sudo for the commands below. Without
+  it a cycle would stop mid-run on a password prompt that nobody is
+  present to answer, and the status page would keep reporting the
+  last cycle as healthy.
+
+    * /usr/bin/systemctl -- enable/disable/stop the yuruna-cacheproxy forwarder units and daemon-reload
+    * /usr/bin/tee -- write the yuruna-cacheproxy unit files under /etc/systemd/system
+    * /usr/bin/rm -- remove those unit files when the cache moves or goes external
+
+  Fix (needs onsite / console access -- this cannot be repaired
+  remotely, for the same reason a network fault cannot):
+
+  echo 'thales ALL=(root) NOPASSWD: /usr/bin/systemctl, /usr/bin/tee, /usr/bin/rm' | sudo tee /etc/sudoers.d/yuruna-runner >/dev/null
+  sudo chmod 0440 /etc/sudoers.d/yuruna-runner && sudo visudo -cf /etc/sudoers.d/yuruna-runner
+
+  Then re-run: pwsh test/Invoke-TestRunner.ps1
+================================================================
+
+
+[pty] runner exited 1 after 1s

@@ -7,15 +7,22 @@
 #
 # Runs on the HOST. Every verb wraps the existing per-phase tool -- this script
 # adds orchestration only (guest discovery, scp, ordering, timing), so the
-# per-phase tools stay the source of truth for what each step does:
+# per-phase tools stay the source of truth for what each step does.
+#
+# Since #23 this repository is a Yuruna PROJECT: every verb that runs a sequence
+# first CLONES this checkout's committed HEAD into $YURUNA_DIR/project (the
+# framework's own project directory) and then runs the sequence with
+# -NoProjectClone. Nothing is copied into the framework's own tree any more, and
+# what runs is what is committed -- see test/README.md and KENNEL_PROJECT_URL.
 #
 #   setup      the once-per-host prerequisites of demo/runbook.md 2, checked
 #              and where possible done (Yuruna clone, tag, patches, config,
 #              Enable-TestAutomation.ps1, guest ISO, Test-Config gate)
 #   provision  Yuruna sequence workload.guest.ubuntu.server.24.kennel.reset.ssh
 #              (cold path: start -> sizing -> stack -> baseline -> reset)
-#   snapshot   vm/guest/.../ubuntu.server.24.kennel-baseline-prep.sh (on guest)
-#              + Yuruna.Host's Save-VMDiskSnapshot   (on an already-green guest)
+#   snapshot   test/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh
+#              (on guest) + Yuruna.Host's Save-VMDiskSnapshot
+#              (on an already-green guest)
 #   reset      Yuruna sequence workload.guest.ubuntu.server.24.kennel.reset.ssh
 #              (warm path: revert the disk snapshot, ~1-3 min)
 #   up         virsh start + lease/SSH wait + docker start
@@ -37,6 +44,12 @@
 #   teleop     stack/bridge/kennel-bridge.sh (on guest) + verify-bridge-host.sh,
 #              then the console: drive the robot from the browser joystick
 #   down       stack/known-good/tools/k13-stop.sh   (in the container)
+#   mvp        Yuruna sequence workload.guest.ubuntu.server.24.kennel.mvp.ssh
+#              (#24): the demo as one sequence, asserted -- and its evidence
+#              collected off the guest, which Yuruna itself cannot do
+#   cycle      pwsh test/Invoke-TestProject.ps1 (#25): ONE Yuruna cycle from
+#              cold, the way the runner runs one -- guest and baseline swept
+#              first, the whole chain rebuilt, the evidence collected
 #
 # Usage:
 #   Once per host
@@ -64,6 +77,17 @@
 #     kennel-demo.sh snapshot [--yes]  # re-take the baseline from a green guest
 #     kennel-demo.sh halt              # power the guest down cleanly
 #
+#   Harness (the Yuruna sequences this repo ships as a project -- test/README.md)
+#     kennel-demo.sh mvp               # the MVP sequence: revert -> stage the
+#                                      # console's fixture -> apply -> launch ->
+#                                      # assert walking on the composed solver
+#                                      # (~4 min warm, ~40 min from no baseline)
+#     kennel-demo.sh cycle [--yes]     # one full Yuruna cycle from cold, as the
+#                                      # runner runs it: DESTROYS the guest and
+#                                      # its baseline, rebuilds both, runs the
+#                                      # MVP sequence, collects the evidence
+#                                      # (~40 min; KENNEL_CYCLES=2 for two)
+#
 #   Scenarios (tests against the running stack, not demo phases)
 #     kennel-demo.sh scenario disturb  # s004: interventions, and the process
 #                                      # set that never changes (#69)
@@ -77,6 +101,21 @@
 #   YURUNA_DIR            ~/git/yuruna       framework checkout (setup, provision)
 #   YURUNA_TAG            2026.08.04         framework release setup checks out
 #   YURUNA_IMAGE_DIR      ~/yuruna/image/ubuntu.env   where Get-Image.ps1 put the ISO
+#   KENNEL_HARNESS_EVIDENCE  test/evidence     where `mvp` and `cycle` leave
+#                                            what they collected off the guest
+#                                            and out of the Yuruna cycle folder
+#   KENNEL_CYCLES         1                  how many cycles `cycle` runs in a
+#                                            row; it stops at the first red one,
+#                                            because "green twice" is a statement
+#                                            about CONSECUTIVE cycles (#25)
+#   KENNEL_PROJECT_URL    file://<this repo> what the verbs clone into
+#                                            $YURUNA_DIR/project before running a
+#                                            sequence (#23). The default is THIS
+#                                            checkout, so a verb runs the branch
+#                                            you are on -- but its COMMITTED
+#                                            head: git clone, never the working
+#                                            tree. Point it at the GitHub URL to
+#                                            run what is pushed instead
 #   KENNEL_DEMO_OUT       ~/kennel-runs      where compose unpacks run folders,
 #                                            and where the console's send button
 #                                            writes them through serve.py
@@ -184,6 +223,19 @@ YURUNA_BUILD_DOMAIN="${KENNEL_BUILD_DOMAIN:-test-guest.ubuntu.server.24-01}"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
+
+# What gets cloned into $YURUNA_DIR/project before a sequence runs (#23). A
+# clone URL, exactly as Yuruna's own repositories.projectUrl is -- and the
+# default is this checkout, so `provision`, `reset` and the harness verbs run
+# the branch you are sitting on rather than whatever main holds. `git clone`
+# takes the COMMITTED head, so an uncommitted edit under test/ does not run;
+# install_kennel_project says so rather than letting you wonder.
+PROJECT_URL="${KENNEL_PROJECT_URL:-file://$REPO_ROOT}"
+
+# How many cycles `cycle` runs in a row. Two consecutive green ones is #25's
+# acceptance; it stops at the first red one, because the claim is about
+# consecutive cycles and continuing past a failure would not support it.
+CYCLES="${KENNEL_CYCLES:-1}"
 
 # The origin is separate from the page URL because serve.py answers /api/
 # there as well (kennel_console/send.md section 1).
@@ -511,15 +563,48 @@ applied_run_dir() {
     return 1
 }
 
-# Install the kennel sequences + guest scripts into the framework clone
-# (provisioning.md 4.2). Idempotent, so every verb that runs a sequence does it
-# rather than trusting memory -- skipping it is dry-run finding F3, a failure
-# twenty minutes into the cycle. It also causes the yellow 'fetch-and-execute
-# fallback ... differs from HEAD' warning on a healthy run (F5) -- expected.
-install_kennel_files() {
-    cp "$REPO_ROOT"/vm/test/*.kennel*.yml "$YURUNA_DIR/test/sequences/" || return 2
-    cp "$REPO_ROOT"/vm/guest/ubuntu.server.24/*.sh "$YURUNA_DIR/guest/ubuntu.server.24/" || return 2
-    say "kennel files installed into the Yuruna clone (provisioning.md 4.2)"
+# Put this repository where Yuruna discovers a project: a fresh clone at
+# $YURUNA_DIR/project (#23). Every verb that runs a sequence does it rather than
+# trusting memory -- skipping it is dry-run finding F3, a failure twenty minutes
+# into the cycle -- and every such verb then passes -NoProjectClone, so what
+# runs is THIS clone and not a re-clone from test.config.yml's projectUrl.
+#
+# It replaces the copy-into-the-framework-tree step of provisioning.md 4.2,
+# which is what retires that bypass AND its yellow 'fetch-and-execute fallback
+# ... differs from HEAD' warning (F5): the served file is now a committed file
+# of a real clone, so its digest matches its own HEAD.
+#
+# Wipe-and-clone, like Yuruna's own Update-ProjectClone, so nothing from a
+# previous run can leak forward -- with the same guard it has: refuse to delete
+# anything that is not literally <YURUNA_DIR>/project.
+install_kennel_project() {
+    local dst="$YURUNA_DIR/project" sha subj dirty
+    case "$dst" in
+        */project) ;;
+        *) fail "refusing to remove '$dst' -- it is not a .../project path."; return 2 ;;
+    esac
+    rm -rf "$dst" || { fail "could not remove the old project clone at $dst."; return 2; }
+    git clone -q "$PROJECT_URL" "$dst" 2>/dev/null || {
+        fail "could not clone the project into $dst." \
+             "  url: $PROJECT_URL" \
+             "A private repo needs a non-interactive credential on this host:  gh auth login" \
+             "Point KENNEL_PROJECT_URL somewhere else to run a different tree (test/README.md 2)."
+        return 2
+    }
+    sha="$(git -C "$dst" rev-parse --short HEAD)"
+    subj="$(git -C "$dst" log -1 --pretty=%s)"
+    say "project clone    $sha  $subj"
+    # The one thing a clone cannot carry: what you have not committed. Only
+    # worth saying when the clone came from this checkout -- from any other URL
+    # the local tree was never the subject.
+    if [ "$PROJECT_URL" = "file://$REPO_ROOT" ]; then
+        dirty="$(git -C "$REPO_ROOT" status --porcelain -- test/ demo/ stack/ kennel_console/ guides/ 2>/dev/null)"
+        [ -n "$dirty" ] && {
+            warn "uncommitted changes are NOT in that clone -- the sequences will run HEAD:"
+            printf '%s\n' "$dirty" | sed 's/^/[kennel-demo]        /' >&2
+        }
+    fi
+    return 0
 }
 
 # applied | missing | unknown, for one patch file. `git apply --reverse
@@ -564,21 +649,40 @@ setup_fix() { local l; for l in "$@"; do printf '[kennel-demo]        %s\n' "$l"
 
 # Changes in the Yuruna clone that this repo did NOT put there. Everything the
 # kennel workflow writes into the clone is accounted for: the three patches touch
-# exactly the files they name, `install_kennel_files` copies the sequences and
-# guest scripts, and test.config.yml is gitignored upstream. Whatever is left is
-# somebody's own work, and `setup` will not check out over it.
+# exactly the files they name, the project clone lives at project/ (gitignored
+# upstream) and test.config.yml is the operator's (also gitignored). Whatever is
+# left is somebody's own work, and `setup` will not check out over it.
+# Where an older kennel copied its files inside the framework clone, for the
+# ones this repo still ships. Paths are relative to $YURUNA_DIR, one per line,
+# and only the ones that actually exist there are printed -- so on a host that
+# never ran an older kennel this is empty and `setup` reports `ok`.
+retired_kennel_copies() {
+    local f p
+    for f in "$REPO_ROOT"/test/*.kennel*.yml; do
+        p="test/sequences/$(basename "$f")"
+        [ -e "$YURUNA_DIR/$p" ] && echo "$p"
+    done
+    for f in "$REPO_ROOT"/test/ubuntu.server.24/*.sh; do
+        p="guest/ubuntu.server.24/$(basename "$f")"
+        [ -e "$YURUNA_DIR/$p" ] && echo "$p"
+    done
+    return 0
+}
+
 yuruna_unexpected_changes() {
     local expected=() f pth line known
     for f in "$REPO_ROOT"/vm/patches/*.patch; do
         while read -r pth; do [ -n "$pth" ] && expected+=("$pth"); done \
             < <(sed -n 's|^+++ b/||p' "$f")
     done
-    for f in "$REPO_ROOT"/vm/test/*.kennel*.yml; do
-        [ -e "$f" ] && expected+=("test/sequences/$(basename "$f")")
-    done
-    for f in "$REPO_ROOT"/vm/guest/ubuntu.server.24/*.sh; do
-        [ -e "$f" ] && expected+=("guest/ubuntu.server.24/$(basename "$f")")
-    done
+    # The RETIRED copies. Before #23 this driver copied the sequences and the
+    # guest scripts into the framework's own tree; a host that ran an older
+    # kennel still has them. They are this repo's litter rather than somebody
+    # else's work, so they must never block a checkout -- `setup` item 8 deletes
+    # them instead. Derived from what this repo ships now, under the names it
+    # used to ship them as.
+    while read -r pth; do [ -n "$pth" ] && expected+=("$pth"); done \
+        < <(retired_kennel_copies)
     # IFS= is load-bearing. Porcelain writes two status columns then a space:
     # a MODIFIED file is " M path" and a plain `read` would eat that leading
     # space, shifting every tracked path by one character -- which silently turns
@@ -597,6 +701,25 @@ yuruna_unexpected_changes() {
 # The guestSequence list as it currently stands, one key per line.
 config_guest_sequence() {   # $1 = path to test.config.yml
     awk '/^guestSequence:/ {inb=1; next} inb && /^- / {sub(/^- /, ""); print; next} inb {exit}' "$1"
+}
+
+# repositories.projectUrl as it currently stands, or empty. Read the same way
+# guestSequence is -- by line, not by a YAML parser -- because this file carries
+# the operator's comments and nothing here may reformat it.
+config_project_url() {   # $1 = path to test.config.yml
+    sed -n 's/^[[:space:]]*projectUrl:[[:space:]]*//p' "$1" 2>/dev/null \
+        | head -1 | tr -d '"'"'" | sed 's/[[:space:]]*$//'
+}
+
+# This repository's clone URL, as an operator would write it into
+# test.config.yml: the origin, without the .git suffix Yuruna's own examples
+# omit. Falls back to the local path, which is what a checkout with no origin
+# actually is.
+kennel_origin_url() {
+    local u
+    u="$(git -C "$REPO_ROOT" remote get-url origin 2>/dev/null)" || u=""
+    [ -n "$u" ] || { echo "file://$REPO_ROOT"; return 0; }
+    echo "${u%.git}"
 }
 
 do_setup() {
@@ -715,8 +838,11 @@ do_setup() {
                 /^guestSequence:/ { print; print "- " g; inb=1; next }
                 inb && /^- / { next }
                 inb { inb=0 }
+                { print }' "$cfg" > "$cfg.tmp" && mv "$cfg.tmp" "$cfg" && \
+            awk -v u="$(kennel_origin_url)" '
+                /^ *projectUrl:/ { sub(/projectUrl:.*/, "projectUrl: " u) }
                 { print }' "$cfg" > "$cfg.tmp" && mv "$cfg.tmp" "$cfg"
-            setup_item did "test.config" "created from the template, guestSequence scoped to $GUEST_KEY"
+            setup_item did "test.config" "created from the template, guestSequence scoped to $GUEST_KEY, projectUrl set to this repo"
         fi
     else
         seq="$(config_guest_sequence "$cfg" | tr '\n' ' ' | sed 's/ *$//')"
@@ -729,6 +855,28 @@ do_setup() {
             setup_item info "test.config" "guestSequence is '$seq'"
             setup_fix "Kennel validates only $GUEST_KEY; the others cost a full guest build each." \
                       "Scope it in $cfg (vm/host-baseline.md §3)."
+        fi
+
+        # 5a. projectUrl -- which repository a CYCLE clones and runs (#23). The
+        #     driver's own verbs do not read it (they clone KENNEL_PROJECT_URL
+        #     themselves and pass -NoProjectClone), so this is only inspected,
+        #     never rewritten in a file that already exists: an operator who
+        #     points it somewhere else has done so on purpose.
+        local url want_url
+        url="$(config_project_url "$cfg")"
+        want_url="$(kennel_origin_url)"
+        if [ "$url" = "$want_url" ]; then
+            setup_item ok "projectUrl" "$url"
+        elif [ "$url" = "file://$REPO_ROOT" ]; then
+            setup_item info "projectUrl" "$url  (this checkout -- a cycle runs the branch you are on)"
+        else
+            setup_item needs "projectUrl" "is '${url:-unset}', not this repository"
+            setup_fix "A Yuruna cycle clones that URL and runs ITS test/ -- so today a cycle" \
+                      "would not run Kennel at all. Set in $cfg:" \
+                      "  repositories:" \
+                      "    projectUrl: $want_url            # what is pushed" \
+                      "    #projectUrl: file://$REPO_ROOT   # or the branch you are on" \
+                      "See test/README.md §2."
         fi
     fi
 
@@ -781,28 +929,43 @@ do_setup() {
         esac
     fi
 
-    # 8. The kennel sequences and guest scripts. `provision` and `reset` do this
-    #    too, on every run -- omitting it is dry-run finding F3, a failure twenty
-    #    minutes in -- so this is a convenience, not the contract.
-    # Reported as `ok` when the clone already carries the same bytes, so a second
-    # `setup` on a ready host is genuinely all-`ok` rather than reporting work it
-    # did not do. The copy itself is still unconditional -- see install_kennel_files.
-    local stale=0 src dst
-    for src in "$REPO_ROOT"/vm/test/*.kennel*.yml; do
-        cmp -s "$src" "$YURUNA_DIR/test/sequences/$(basename "$src")" || { stale=1; break; }
-    done
-    if [ "$stale" = 0 ]; then
-        for src in "$REPO_ROOT"/vm/guest/ubuntu.server.24/*.sh; do
-            cmp -s "$src" "$YURUNA_DIR/guest/ubuntu.server.24/$(basename "$src")" || { stale=1; break; }
-        done
+    # 8. The project clone (#23). `provision`, `reset` and the harness verbs do
+    #    this too, on every run -- omitting it is dry-run finding F3, a failure
+    #    twenty minutes in -- so this is a convenience, not the contract.
+    #
+    #    It also SWEEPS the retired copies an older kennel left inside the
+    #    framework's own tree. That is not tidiness: Test-Config parses every
+    #    sequence under test/sequences/ and scans it for logical usernames, so a
+    #    stale copy there is a second, older definition of a sequence that has
+    #    moved into the project -- and the project's copy is the one that runs.
+    local retired n=0 pth
+    retired="$(retired_kennel_copies)"
+    if [ -n "$retired" ]; then
+        while IFS= read -r pth; do
+            [ -n "$pth" ] || continue
+            rm -f "$YURUNA_DIR/$pth" && n=$((n + 1))
+        done <<< "$retired"
+        setup_item did "retired copies" "removed $n pre-#23 file(s) from the framework tree"
+        setup_fix "They were copies of this repo's sequences and guest scripts; the project" \
+                  "clone below is where Yuruna reads them from now (test/README.md §1)."
     fi
-    if ! install_kennel_files >/dev/null 2>&1; then
-        setup_item needs "kennel files" "could not copy them into $YURUNA_DIR"
-        setup_fix "See vm/provisioning.md §4.2 for what goes where."
-    elif [ "$stale" = 0 ]; then
-        setup_item ok "kennel files" "sequences + guest scripts already current in the clone"
+    # Reported as `ok` when the clone is already this checkout's HEAD, so a
+    # second `setup` on a ready host is genuinely all-`ok` rather than reporting
+    # work it did not do. The clone itself is still unconditional -- see
+    # install_kennel_project.
+    local had_clone=0 old_head=""
+    if [ -d "$YURUNA_DIR/project/.git" ]; then
+        had_clone=1
+        old_head="$(git -C "$YURUNA_DIR/project" rev-parse HEAD 2>/dev/null)"
+    fi
+    if ! install_kennel_project >/dev/null 2>&1; then
+        setup_item needs "project clone" "could not clone $PROJECT_URL into $YURUNA_DIR/project"
+        setup_fix "A private repo needs a non-interactive credential here:  gh auth login" \
+                  "See test/README.md §4 for the credential, §2 for the URL."
+    elif [ "$had_clone" = 1 ] && [ "$old_head" = "$(git -C "$YURUNA_DIR/project" rev-parse HEAD 2>/dev/null)" ]; then
+        setup_item ok "project clone" "$YURUNA_DIR/project already at $(git -C "$YURUNA_DIR/project" rev-parse --short HEAD)"
     else
-        setup_item did "kennel files" "sequences + guest scripts copied into the clone"
+        setup_item did "project clone" "cloned $PROJECT_URL at $(git -C "$YURUNA_DIR/project" rev-parse --short HEAD)"
     fi
 
     # 9. The gate. Last, because the items above are what it would otherwise
@@ -872,7 +1035,7 @@ do_provision() {
     fi
     say "guest ISO        $(ls "$IMAGE_DIR"/*.iso | head -1)"
 
-    install_kennel_files || exit 2
+    install_kennel_project || exit 2
     say "this DESTROYS any existing '$GUEST_HOSTNAME' guest -- INCLUDING the baseline"
     say "snapshot '$SNAPSHOT_ID' -- and rebuilds it from clean (~35 min)."
     say "To return to the baseline instead, without rebuilding:  $0 reset"
@@ -917,7 +1080,7 @@ do_provision() {
     # i.e. provisioning now ENDS in a snapshot and proves the revert on the way
     # out. Step count is not the invariant (it changes whenever a sequence gains
     # a step) -- 0 FAIL is.
-    pwsh test/Invoke-TestSequence.ps1 -SequenceName "$SEQUENCE" || {
+    pwsh test/Invoke-TestSequence.ps1 -SequenceName "$SEQUENCE" -NoProjectClone || {
         fail "the sequence did not pass -- see the transcript above (expect 0 FAIL)."
         exit 1
     }
@@ -1010,7 +1173,7 @@ do_snapshot() {
         read -r -p "[kennel-demo] proceed? [y/N] " reply || true
         case "$reply" in y|Y|yes) ;; *) say "aborted (pass --yes to skip the prompt)."; exit 2 ;; esac
     fi
-    guest_stage vm/guest/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh
+    guest_stage test/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh
     ssh "${SSH_OPTS[@]}" "$TARGET" "/tmp/ubuntu.server.24.kennel-baseline-prep.sh" || {
         local rc=$?
         fail "the guest is not a clean baseline (prep exited $rc) -- refusing to snapshot it." \
@@ -1067,7 +1230,7 @@ PSEOF
 
 do_reset() {
     need_yuruna
-    install_kennel_files || exit 2
+    install_kennel_project || exit 2
     cd "$YURUNA_DIR" || exit 2
     virsh list --all > /dev/null    # wake socket-activated libvirtd
 
@@ -1075,7 +1238,7 @@ do_reset() {
     say "no Test-Config gate here: reset spends seconds, not the 35 minutes the gate"
     say "exists to protect. provision still gates."
     local t0=$SECONDS
-    pwsh test/Invoke-TestSequence.ps1 -SequenceName "$SEQUENCE" || {
+    pwsh test/Invoke-TestSequence.ps1 -SequenceName "$SEQUENCE" -NoProjectClone || {
         fail "the reset sequence did not pass -- see the transcript above (expect 0 FAIL)." \
              "'requiresSnapshot: snapshot ... not on host' means there is no baseline yet:" \
              "take one with  $0 snapshot , or rebuild with  $0 provision ."
@@ -1095,6 +1258,226 @@ do_reset() {
     ssh "${SSH_OPTS[@]}" "$TARGET" "cat ~/.kennel-baseline" | sed 's/^/[kennel-demo] /'
     echo
     do_status
+}
+
+# --- REGION: the harness verbs (issues #24, #25)
+# `mvp` runs the MVP sequence; `cycle` runs a whole Yuruna cycle. Both wrap a
+# Yuruna entry point rather than reimplementing one, and both COLLECT: Yuruna
+# keeps a step's output only when the step fails, and has no action that copies
+# a file back to the host, so a green run's evidence has to be fetched.
+MVP_SEQUENCE="workload.guest.ubuntu.server.24.kennel.mvp.ssh"
+HARNESS_EVIDENCE="${KENNEL_HARNESS_EVIDENCE:-$REPO_ROOT/test/evidence}"
+
+# Everything a run leaves behind, into $HARNESS_EVIDENCE/<label>-<stamp>/:
+# the guest's ~/kennel-mvp (the verify report and the three process logs the
+# MVP sequence assembled there), the newest Yuruna cycle folder (HTML
+# transcript, cycle.events.ndjson, manifest.json), status.json and the newest
+# per-step perf rows. Best-effort by design -- a failed collection must not
+# turn a green run red, and on a RED run it is the more useful half.
+#
+# No .yml is ever copied: this lands under test/, and every directory named
+# `test` in a project is a sequence directory -- a stray sequence file there
+# would be discovered as one.
+harness_collect() {   # $1 = label
+    local label="$1" dest cyc
+    dest="$HARNESS_EVIDENCE/$label-$(date -u +%Y%m%dT%H%M%SZ)"
+    mkdir -p "$dest" || return 0
+    if guest_reachable; then
+        scp "${SSH_OPTS[@]}" -qr "$TARGET:kennel-mvp" "$dest/" 2>/dev/null \
+            && say "collected        the guest's run record -> $dest/kennel-mvp/"
+    else
+        warn "the guest is not reachable -- its run record was left on it."
+    fi
+    cyc="$(ls -dt "$YURUNA_DIR"/test/status/log/[0-9]*/ 2>/dev/null | head -1)"
+    if [ -n "$cyc" ]; then
+        mkdir -p "$dest/cycle"
+        cp "$cyc"/*.html "$cyc"/*.ndjson "$cyc"/manifest.json "$dest/cycle/" 2>/dev/null
+        say "collected        $(basename "$cyc") -> $dest/cycle/"
+    fi
+    cp "$YURUNA_DIR/test/status/runtime/status.json" "$dest/status.json" 2>/dev/null
+    cp "$(ls -t "$YURUNA_DIR"/test/status/perf/cycles/*.jsonl 2>/dev/null | head -1)" \
+       "$dest/perf.jsonl" 2>/dev/null
+    say "evidence         $dest"
+    return 0
+}
+
+# The MVP sequence as a verb (#24). Warm on a host that holds the baseline --
+# revert, stage, apply, launch, assert, record, stop, about four minutes -- and
+# the whole cold chain on a host that does not, which is `provision` plus this.
+do_mvp() {
+    need_yuruna
+    install_kennel_project || exit 2
+    cd "$YURUNA_DIR" || exit 2
+    virsh list --all > /dev/null    # wake socket-activated libvirtd
+
+    # Which path this will take, asked of the host rather than assumed -- the
+    # difference is four minutes against forty, and an operator should know
+    # which one they just started.
+    if virsh snapshot-list "$SNAPSHOT_ID" 2>/dev/null | grep -q "$SNAPSHOT_ID"; then
+        banner "mvp: $MVP_SEQUENCE (warm path -- the baseline is on this host)"
+        say "revert -> stage the fixture -> apply -> launch -> assert walking (~4 min)"
+    else
+        banner "mvp: $MVP_SEQUENCE (COLD path -- no '$SNAPSHOT_ID' snapshot on this host)"
+        say "the whole chain runs first: start -> sizing -> stack -> baseline -> reset (~40 min)."
+        say "To build the appliance deliberately instead:  $0 provision"
+    fi
+    local t0=$SECONDS rc=0
+    pwsh test/Invoke-TestSequence.ps1 -SequenceName "$MVP_SEQUENCE" -NoProjectClone || rc=1
+    say "mvp in $(( (SECONDS-t0) / 60 ))m$(( (SECONDS-t0) % 60 ))s"
+
+    # Collected on BOTH paths, because a red run is the one whose logs matter.
+    GUEST_IP="${KENNEL_GUEST_IP:-}"      # the revert re-DHCPs; re-discover
+    harness_collect mvp
+    [ "$rc" = 0 ] || {
+        fail "the MVP sequence did not pass -- see the transcript above (expect 0 FAIL)." \
+             "The failing step's description says which class it is: ASSERT_FAILED is a red" \
+             "stack, INFRASTRUCTURE is the recipe not being able to look (stack/verify.md §1)." \
+             "'requiresSnapshot: snapshot ... not on host' means there is no baseline yet."
+        exit 1
+    }
+    say "the stack ran the fixture and walked on it. The run stays applied;"
+    say "return the guest to stock with:  $0 reset"
+}
+
+# One full Yuruna cycle from cold, as the runner runs it (#25).
+#
+# It wraps `Invoke-TestProject.ps1` -- which is, by its own contract, one cycle
+# "exactly as Invoke-TestRunner would have" run it: it wipes and re-clones
+# project/ from test.config.yml's projectUrl, runs the Test-Config gate, and
+# spawns the same inner runner every cycle spawns. NOT `Invoke-TestRunner.ps1`:
+# that one is an eternal loop that stops only on a console Ctrl+C (a signal will
+# not do it), so a script cannot own its lifetime. Running the loop itself is an
+# operator step, and test/README.md §5 has the line.
+#
+# What a cycle runs comes from test.config.yml, NOT from KENNEL_PROJECT_URL:
+# the runner does its own clone, and pointing it at this checkout is the
+# operator's choice (test/README.md §2). This verb checks that the URL is one of
+# this repo's rather than silently testing yuruna-project.
+do_cycle() {
+    local yes=0
+    [ "${1:-}" = "--yes" ] && yes=1
+    need_yuruna
+
+    local cfg="$YURUNA_DIR/test/test.config.yml" url want_url reply p missing=0
+    url="$(config_project_url "$cfg")"
+    want_url="$(kennel_origin_url)"
+    if [ "$url" != "$want_url" ] && [ "$url" != "file://$REPO_ROOT" ]; then
+        fail "repositories.projectUrl is '${url:-unset}', so a cycle would clone and run that," \
+             "not this repository. Set it in $cfg:" \
+             "  projectUrl: $want_url            # what is pushed" \
+             "  projectUrl: file://$REPO_ROOT    # or the branch you are on" \
+             "See test/README.md §2."
+        exit 2
+    fi
+    # The same three preflights `provision` runs, for the same reason: a cycle
+    # that fails on a missing patch or a missing ISO has spent forty minutes
+    # finding out.
+    for p in "$REPO_ROOT"/vm/patches/*.patch; do
+        case "$(patch_state "$p")" in
+            applied) ;;
+            *) fail "Yuruna patch not applied (or the clone is not at $YURUNA_TAG): $(basename "$p")." \
+                    "Run:  $0 setup"; missing=1 ;;
+        esac
+    done
+    [ "$missing" = 0 ] || exit 2
+    ls "$IMAGE_DIR"/*.iso >/dev/null 2>&1 || {
+        fail "no guest ISO under $IMAGE_DIR -- a cold cycle installs the guest from it." \
+             "cd $YURUNA_DIR/host/ubuntu.kvm/guest.ubuntu.server.24 && pwsh ./Get-Image.ps1"
+        exit 2
+    }
+    # A live runner owns runner.pid and Invoke-TestProject refuses to start
+    # beside it. Say so here rather than after the confirmation.
+    if pgrep -af 'Invoke-TestRunner\.ps1' >/dev/null 2>&1; then
+        fail "an Invoke-TestRunner.ps1 is running on this host; Invoke-TestProject refuses to" \
+             "start beside it. Stop it (Ctrl+C in ITS terminal) and try again."
+        exit 2
+    fi
+
+    banner "cycle: $CYCLES cycle(s) of Invoke-TestProject.ps1, from cold"
+    say "project URL      $url"
+    say "each cycle DESTROYS the '$GUEST_HOSTNAME' guest INCLUDING the baseline snapshot"
+    say "'$SNAPSHOT_ID', rebuilds both from clean, and runs $MVP_SEQUENCE"
+    say "to the end. About 40 minutes each. The rebuilt baseline is LEFT STANDING."
+    if [ "$yes" != 1 ]; then
+        reply=""
+        read -r -p "[kennel-demo] proceed? [y/N] " reply || true
+        case "$reply" in y|Y|yes) ;; *) say "aborted (pass --yes to skip the prompt)."; exit 2 ;; esac
+    fi
+
+    cd "$YURUNA_DIR" || exit 2
+    local i rc=0 t0 total=$SECONDS
+    for i in $(seq 1 "$CYCLES"); do
+        banner "cycle $i of $CYCLES"
+        virsh list --all > /dev/null    # wake socket-activated libvirtd
+        # THE COLD SWEEP, and it is what makes this cycle cold on a machine that
+        # is also a demo host. The cycle's own sweep takes vmStart.cleanupVmNamePrefixes,
+        # which on a dev host is deliberately unset (test/README.md §3): leaving
+        # the baseline standing for the next `run`. So the cycle would find the
+        # persisted VM in the way and collide at the rename. Sweeping BOTH names
+        # here removes it for the duration of the build, and the cycle ends by
+        # taking a fresh one -- which its own `test-`-only sweep then leaves alone.
+        #
+        # -Command with a real array literal: `-Prefix a,b` from a bash argv binds
+        # ONE prefix named "a,b" and silently matches nothing (vm/snapshot.md §6 F3).
+        pwsh -NoProfile -Command \
+            "& ./test/Remove-TestVMFiles.ps1 -Prefix @('test-','$SNAPSHOT_ID') -Confirm:\$false" \
+            || { fail "the pre-cycle VM sweep failed."; exit 2; }
+        t0=$SECONDS
+        pwsh test/Invoke-TestProject.ps1 || rc=$?
+        say "cycle $i ran for $(( (SECONDS-t0) / 60 ))m$(( (SECONDS-t0) % 60 ))s"
+        GUEST_IP="${KENNEL_GUEST_IP:-}"      # the cycle rebuilt the guest; re-discover
+        harness_collect "cycle$i"
+        cycle_summary
+        [ "$rc" = 0 ] || {
+            fail "cycle $i did not pass (Invoke-TestProject exit $rc)." \
+                 "The collected evidence names the failing step; status.json has its class." \
+                 "Nothing further was run: 'green twice' is a statement about consecutive cycles."
+            exit 1
+        }
+    done
+    say "all $CYCLES cycle(s) green in $(( (SECONDS-total) / 60 ))m$(( (SECONDS-total) % 60 ))s"
+    say "the guest is the one the last cycle built, with its baseline snapshot and the"
+    say "composed run applied. Back to stock in ~90 s with:  $0 reset"
+}
+
+# What the cycle recorded about itself, host-side: Yuruna's own dashboard JSON
+# is the authority on pass/fail and duration, and the events file is where a
+# warm resume would show up -- a cycle that only went green after re-running a
+# failed sequence in place is not the same as one that never failed, and #25
+# asks for flakiness to be flagged rather than absorbed.
+cycle_summary() {
+    local st="$YURUNA_DIR/test/status/runtime/status.json" cyc
+    [ -f "$st" ] || return 0
+    python3 - "$st" <<'PY' | sed 's/^/[kennel-demo] /'
+import json, sys
+d = json.load(open(sys.argv[1]))
+h = (d.get("history") or [{}])[0]
+print("cycle %s  %s  %ss" % (d.get("cycle"), (h.get("overallStatus") or d.get("overallStatus")),
+                             h.get("totalDurationSeconds")))
+for g in d.get("guests") or []:
+    print("  %-24s %-28s %s" % (g.get("guestKey"), g.get("vmName"), g.get("status")))
+    for s in g.get("steps") or []:
+        if s.get("status") != "pass" or s.get("errorMessage"):
+            print("    %-22s %s  %s" % (s.get("name"), s.get("status"), s.get("errorMessage") or ""))
+lf = d.get("lastFailure")
+if lf:
+    print("  lastFailure: %s" % json.dumps(lf)[:200])
+PY
+    cyc="$(ls -dt "$YURUNA_DIR"/test/status/log/[0-9]*/ 2>/dev/null | head -1)"
+    [ -n "$cyc" ] || return 0
+    # `grep -c` PRINTS 0 and EXITS 1 when nothing matches, so `|| echo 0` appends
+    # a second line and the count becomes "0\n0" -- which is not the string 0,
+    # and every clean cycle was then reported as flaky. Let grep print its own
+    # count and only default when the file is missing.
+    local wr=0
+    [ -f "$cyc/cycle.events.ndjson" ] \
+        && wr="$(grep -c warm_resume "$cyc/cycle.events.ndjson" 2>/dev/null)"
+    if [ "${wr:-0}" = 0 ]; then
+        say "  warm_resume events: 0 (the cycle passed without re-running a failed sequence)"
+    else
+        warn "  warm_resume events: $wr -- this cycle went green only after resuming a failed"
+        warn "  sequence in place. That is flakiness, and #25 asks for it to be flagged."
+    fi
 }
 
 # --- REGION: the console as a verb (issue #54)
@@ -1617,6 +2000,8 @@ case "${1:-}" in
     up)        shift; do_up ;;
     halt)      shift; do_halt ;;
     reset)     shift; do_reset ;;
+    mvp)       shift; do_mvp ;;
+    cycle)     shift; do_cycle "$@" ;;
     snapshot)  shift; do_snapshot "$@" ;;
     console)   shift; do_console "$@" ;;
     run)       shift; do_run "$@" ;;
@@ -1631,6 +2016,6 @@ case "${1:-}" in
     scenario)  shift; do_scenario "$@" ;;
     all)       shift; do_all ;;
     -h|--help|help) usage ;;
-    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status | scenario"
+    *) fail "expected a verb: setup | provision | up | halt | reset | snapshot | console | run | all | compose | transfer | launch | verify | walk | teleop | down | status | scenario | mvp | cycle"
        usage >&2; exit 2 ;;
 esac

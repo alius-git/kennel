@@ -157,7 +157,7 @@ those plus `compose`. Timings are the single measured sample from
 
 | Command | What it wraps | Success looks like | Time |
 |---|---|---|---|
-| `kennel-demo.sh setup` | the once-per-host prerequisites of §2 — release checkout, the three patches, `test.config.yml`, `Enable-TestAutomation.ps1`, the guest ISO, the kennel files, the config gate | one line per item, all `ok`/`did`, exit 0 | ~5 s ready; ~9 min if it fetches the ISO |
+| `kennel-demo.sh setup` | the once-per-host prerequisites of §2 — release checkout, the three patches, `test.config.yml` (**and its `projectUrl`**), `Enable-TestAutomation.ps1`, the guest ISO, **the project clone**, the config gate | one line per item, all `ok`/`did`, exit 0 | ~5 s ready; ~9 min if it fetches the ISO |
 | `kennel-demo.sh provision` | Yuruna sequence `workload.guest.ubuntu.server.24.kennel.reset.ssh`, cold path — the whole chain, ending in a snapshot ([`vm/provisioning.md` §4.3](../vm/provisioning.md), [`vm/snapshot.md`](../vm/snapshot.md)) | **0 FAIL**, exit 0, and `virsh snapshot-list kennel-vm-baseline` shows one snapshot | ~35 min |
 | `kennel-demo.sh up` | `virsh start` + a bounded wait for the DHCP lease and sshd + `docker start` | `guest kennel-vm at 192.168.122.x`, then `status` | ~15 s |
 | `kennel-demo.sh halt` | `virsh shutdown` (ACPI, never `destroy`) + a bounded wait for the domain to stop | `shut off after <n>s` | ~20 s |
@@ -166,12 +166,14 @@ those plus `compose`. Timings are the single measured sample from
 | `kennel-demo.sh teleop` | [`kennel-bridge.sh`](../stack/bridge/kennel-bridge.sh) on the guest + [`verify-bridge-host.sh`](../vm/test/verify-bridge-host.sh), then the console: stops any held trot, starts rosbridge **and the target watchdog**, hands the URL to the page ([`stack/bridge.md`](../stack/bridge.md)) | the `ws://` and Meshcat URLs, a line about the watchdog, then *Dashboard → Interventions → connect bridge* | ~15 s |
 | `kennel-demo.sh teleop stop` | zero the target and return to STAND, **then** stop the bridge — in that order | `gait returned to STAND`, `bridge stopped` | ~10 s |
 | `kennel-demo.sh reset` | the same sequence, warm path — revert the disk snapshot and re-assert the appliance ([`vm/snapshot.md` §3](../vm/snapshot.md)) | **12/12 PASS**, then the baseline record printed | ~90 s |
-| `kennel-demo.sh snapshot` | [the baseline prep script](../vm/guest/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh) on the guest, then Yuruna's `Save-VMDiskSnapshot` | `this guest is a clean baseline`, then the new snapshot listed | ~35 s |
+| `kennel-demo.sh snapshot` | [the baseline prep script](../test/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh) on the guest, then Yuruna's `Save-VMDiskSnapshot` | `this guest is a clean baseline`, then the new snapshot listed | ~35 s |
 | `kennel-demo.sh compose` | [`p22-console-demo.sh`](tools/p22-console-demo.sh) — serves the console if nothing else is, makes both choices in the UI, clicks Generate run, unpacks the download | `run folder  ~/kennel-runs/run-<stamp>` | ~1 min |
 | `kennel-demo.sh transfer` | [`kennel-transfer.sh apply`](../stack/transfer/kennel-transfer.sh) on the newest run — a folder, or a `.zip` it validates and unpacks first | the run it picked and why, then four matching checksum columns, exit 0 | ~1 min |
 | `kennel-demo.sh launch` | [`p21-launch-from-commands.sh`](../stack/composed-run/tools/p21-launch-from-commands.sh) on the guest — the three shells of `commands.txt`, waited on **by observing the stack**, never by sleeping ([F8](dry-run.md)) | `all three are up`, controller reached "Starting controller", **and the six-node graph is complete with no duplicates** ([#52](https://github.com/alius-git/kennel/issues/52)) | ~2 min |
 | `kennel-demo.sh verify` | [`kennel-verify.sh`](../stack/verify/kennel-verify.sh) on the guest, with the launch log and `--expect-solver` **taken from the applied run's `run.json`** (§3.3); then files the report in that run's folder as `verify.json` + `verify.txt` ([`verify.md` §7](../stack/verify.md)) | `expect solver <X> (from run-<stamp>/run.json)`, then `pass=10 fail=0`, exit 0, then `verify report  …/verify.json (verdict completed)` | ~1 min |
 | `kennel-demo.sh walk` | [`verify-meshcat-host.sh`](../vm/test/verify-meshcat-host.sh) + [`p21-trot-hold.sh start`](../stack/composed-run/tools/p21-trot-hold.sh) | the Meshcat URL, robot trotting until `walk stop` | ~1 min |
+| `kennel-demo.sh mvp` | the Yuruna sequence [`workload…kennel.mvp.ssh`](../test/workload.guest.ubuntu.server.24.kennel.mvp.ssh.yml) ([#24](https://github.com/alius-git/kennel/issues/24)) — revert to the baseline, stage the console's committed fixture, apply it, launch, assert walking on the composed solver, keep the logs, stop; then collects the evidence off the guest ([`test/harness.md`](../test/harness.md)) | **14/14 PASS**, then `evidence  test/evidence/mvp-<stamp>` | ~90 s warm |
+| `kennel-demo.sh cycle` | one **whole Yuruna cycle** from cold, as the runner runs one ([#25](https://github.com/alius-git/kennel/issues/25)): sweeps the guest *and its baseline*, then `Invoke-TestProject.ps1` — clone the project, gate, build the appliance, run the MVP sequence — then collects | Yuruna's `overallStatus pass`, `warm_resume events: 0`, and a rebuilt baseline left standing | ~40 min |
 
 Also there when needed:
 
@@ -311,6 +313,9 @@ tools that define them.
 | `KENNEL_S001_GUIDE` / `KENNEL_S001_EVIDENCE` | `guides/first-run.md` / `demo/evidence/s001-firstwalk` | the page `scenario firstwalk` performs, and where its transcripts land |
 | `KENNEL_MAP` | *(untouched)* | `flat_plane` / `obstacle_terrain` — an unset knob leaves the control alone, which is not the same as setting it to stock |
 | `KENNEL_HPIPM_MODE` / `KENNEL_CONDENSED` | *(untouched)* | the two solver-dependent MPC fields, for the sweep |
+| `KENNEL_PROJECT_URL` | `file://<this repo>` | what `provision`, `reset` and `mvp` clone into `$YURUNA_DIR/project` before running a sequence ([#23](https://github.com/alius-git/kennel/issues/23)). The default is this checkout, so a verb runs the branch you are on — but its **committed** head; an uncommitted edit under `test/` does not run, and the verb says so |
+| `KENNEL_CYCLES` | `1` | how many cycles `cycle` runs in a row; it stops at the first red one, because "green twice" is a claim about *consecutive* cycles |
+| `KENNEL_HARNESS_EVIDENCE` | `test/evidence` | where `mvp` and `cycle` leave what they collected off the guest and out of the Yuruna cycle folder |
 | `YURUNA_DIR` | `~/git/yuruna` | framework checkout, for `setup` and `provision` |
 | `YURUNA_TAG` | `2026.08.04` | the Yuruna release `setup` checks out and validates against |
 | `YURUNA_IMAGE_DIR` | `~/yuruna/image/ubuntu.env` | where `Get-Image.ps1` puts the guest ISO |

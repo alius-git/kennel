@@ -19,6 +19,7 @@ table was reading fiction. This suite is about the two halves of the fix:
 Runs are composed by driving the console, never by writing folders behind its
 back: what is under test includes the console's own idea of what a run is.
 """
+import hashlib
 import json
 import os
 import re
@@ -27,6 +28,8 @@ import sys
 import time
 import urllib.error
 import urllib.request
+
+import yaml
 
 from cdp import attach
 
@@ -414,6 +417,167 @@ for name in ("Stock Go2 walk", "Solver benchmark A (HPIPM)",
 ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"
             ".filter(n=>!n.startsWith('http://localhost:'))")
 check("zero non-localhost requests through the whole round trip", not ext, str(ext))
+
+# ---------------------------------------------------------------- 8
+group("8. the harness fixture is what the console emits (#24)")
+# test/fixtures/run-<stamp>/ is the composition issue #24's Yuruna sequence
+# applies: a run folder the console EXPORTED, committed, and never hand-edited.
+# Two things have to stay true of it, and neither is visible by reading it.
+#
+#   a. It is a console export -- the same four files, the same bytes the
+#      emitters produce, the pin it claims. Asserted statically here and then
+#      by round-tripping it through the real Runs table, which is the only
+#      place in this repo where a run folder becomes a composition again.
+#   b. The MVP sequence restates its name, the pin, the solver and the sha256
+#      of each YAML, so a fixture regenerated without the sequence being
+#      updated is a red run at the apply step rather than a quietly different
+#      experiment. Those literals are compared against the fixture below.
+#
+# Regenerate with `demo/tools/kennel-demo.sh compose` (no knobs), never by
+# editing a file -- see test/harness.md.
+REPO = os.path.dirname(HERE)
+FIXROOT = os.path.join(REPO, "test", "fixtures")
+RUN_FILES = ("simulator_params_go2.yaml", "mit_controller_sim_go2.yaml",
+             "commands.txt", "run.json")
+
+fixdirs = sorted(n for n in os.listdir(FIXROOT)) if os.path.isdir(FIXROOT) else []
+check("exactly one fixture run folder", len(fixdirs) == 1, str(fixdirs))
+FIXNAME = fixdirs[0] if fixdirs else ""
+FIX = os.path.join(FIXROOT, FIXNAME)
+check("it is named run-<stamp>", re.fullmatch(r"run-\d{8}T\d{6}Z", FIXNAME) is not None, FIXNAME)
+check("it holds the four files an export carries, and nothing else",
+      sorted(os.listdir(FIX)) == sorted(RUN_FILES), str(sorted(os.listdir(FIX))))
+
+fix_bytes = {n: open(os.path.join(FIX, n), "rb").read() for n in RUN_FILES}
+fix_json = json.loads(fix_bytes["run.json"])
+fix_sha = {n: hashlib.sha256(fix_bytes[n]).hexdigest() for n in RUN_FILES}
+
+pin = ""
+for line in open(os.path.join(REPO, "stack", "pin.lock")):
+    if line.startswith("commit:"):
+        pin = line.split(":", 1)[1].strip()
+check("run.json's pin is stack/pin.lock's commit", fix_json.get("pin") == pin, fix_json.get("pin", ""))
+
+# The composition, as literals. The suite states what the fixture must be
+# rather than reading it out of the thing under test -- the same rule group 7
+# follows for the shipped presets.
+check("the fixture composes the driver's default: OSQP",
+      fix_json["choices"]["mpc_solver"] == "PARTIAL_CONDENSING_OSQP",
+      fix_json["choices"]["mpc_solver"])
+check("...at realtime rate 0.75",
+      fix_json["choices"]["simulator_realtime_rate"] == 0.75,
+      str(fix_json["choices"]["simulator_realtime_rate"]))
+check("...on the flat plane, ground truth on",
+      fix_json["choices"]["world_urdf"].endswith("plane.urdf")
+      and fix_json["choices"]["publish_quad_state"] is True)
+check("both are non-stock, so the sequence's assert is a real one",
+      fix_json["choices"]["mpc_solver"] != "PARTIAL_CONDENSING_HPIPM"
+      and fix_json["choices"]["simulator_realtime_rate"] != 1,
+      "stock is HPIPM at rate 1")
+
+# commands.txt, split by p21-launch-from-commands.sh's own rule: the payload is
+# every non-comment, non-blank line, and a block ends at its `ros2 launch` (or
+# `ros2 run`) line. Three blocks, the canonical three, in order, no fourth.
+payload = [l for l in fix_bytes["commands.txt"].decode().splitlines()
+           if l.strip() and not l.lstrip().startswith("#")]
+blocks = [l for l in payload if l.startswith("ros2 launch ") or l.startswith("ros2 run ")]
+check("commands.txt splits into exactly three shells", len(blocks) == 3, str(len(blocks)))
+check("...the canonical three of stack/launch.md §1.1, in order",
+      blocks == ["ros2 launch simulator simulator.launch.py sim:=go2",
+                 "ros2 launch drivers leg_driver_launch.py sim:=go2",
+                 "ros2 launch controllers mit_controller.launch.py sim:=go2"],
+      str(blocks))
+check("...and no fourth block: the fixture composes no disturbances",
+      not any(l.startswith("ros2 run ") for l in payload)
+      and fix_json["choices"].get("disturbances") in (None, False))
+
+# The round trip, through a real server and the real Runs table: the fixture
+# loads back into the composer and the emitters reproduce it byte for byte.
+# This is what makes "it is a console export" a measurement rather than a
+# claim -- a hand-edited YAML would not survive it.
+shutil.copytree(FIX, os.path.join(OUT, FIXNAME), dirs_exist_ok=True)
+shutil.copyfile(os.path.join(FIXTURES, "verify-completed-osqp.json"),
+                os.path.join(OUT, FIXNAME, "verify.json"))
+goto()
+ws.js(PRESET_HELPERS)
+ws.js("window.__rowIndexOf = name => window.__rows().findIndex(r => (r[1]||'').startsWith(name));\ntrue")
+view("Runs")
+idx = ws.js("__rowIndexOf(%r)" % FIXNAME)
+check("the fixture appears in the Runs table", isinstance(idx, int) and idx >= 0, str(idx))
+if isinstance(idx, int) and idx >= 0:
+    check("its `load` control is there", ws.js("__loadRow(%d)" % idx) is not False)
+    time.sleep(0.7)
+    check("load lands on Compose", "Compose experiment" in (ws.js("__txt()") or ""))
+    sim_f, ctrl_f = pane(SIM_TAB), pane(CTRL_TAB)
+    check("the composer regenerates the fixture's simulator YAML byte for byte",
+          sim_f == fix_bytes["simulator_params_go2.yaml"].decode())
+    check("...and its controller YAML byte for byte",
+          ctrl_f == fix_bytes["mit_controller_sim_go2.yaml"].decode())
+    # And out again: a send from that state writes the same bytes, so the
+    # fixture is a fixed point of the console rather than an old export the
+    # emitters have since drifted away from.
+    ws.js("__click('Compose')")
+    time.sleep(0.3)
+    before = {r["run"] for r in api("/api/runs")[1]["runs"]}
+    ws.js("__click(__sendBtn().textContent.trim())")
+    wait_for(lambda: {r["run"] for r in api("/api/runs")[1]["runs"]} - before, timeout=15)
+    new = sorted({r["run"] for r in api("/api/runs")[1]["runs"]} - before)
+    check("a fresh send writes a new run folder", bool(new), str(new))
+    if new:
+        again = {n: open(os.path.join(OUT, new[-1], n), "rb").read() for n in RUN_FILES}
+        check("its two YAMLs are the fixture's, byte for byte",
+              hashlib.sha256(again["simulator_params_go2.yaml"]).hexdigest()
+              == fix_sha["simulator_params_go2.yaml"]
+              and hashlib.sha256(again["mit_controller_sim_go2.yaml"]).hexdigest()
+              == fix_sha["mit_controller_sim_go2.yaml"],
+              "the emitters have not drifted since the fixture was exported")
+        check("its commands.txt is the fixture's too",
+              hashlib.sha256(again["commands.txt"]).hexdigest() == fix_sha["commands.txt"])
+        check("only run.json differs, and only in its stamp",
+              json.loads(again["run.json"])["choices"] == fix_json["choices"]
+              and json.loads(again["run.json"])["run"] != fix_json["run"],
+              "export.md §1: three files are deterministic, run.json carries the stamp")
+
+# The other half of (b): the MVP sequence's four literals. It restates them so
+# that a fixture regenerated on its own fails LOUDLY at the apply step -- which
+# only works while they agree, and nothing else in the repo compares them.
+SEQ = os.path.join(REPO, "test", "workload.guest.ubuntu.server.24.kennel.mvp.ssh.yml")
+seq_text = open(SEQ).read() if os.path.exists(SEQ) else ""
+check("the MVP sequence is there to compare against", bool(seq_text), SEQ)
+check("it stages the fixture this repo ships",
+      ("KENNEL_MVP_RUN=%s " % FIXNAME) in seq_text, FIXNAME)
+check("it expects the pin run.json carries", ("KENNEL_PIN=%s " % pin) in seq_text, pin)
+check("it expects the solver the fixture composes",
+      "--expect-solver PARTIAL_CONDENSING_OSQP" in seq_text
+      and "KENNEL_EXPECT_SOLVER" not in seq_text)
+check("it restates the simulator YAML's sha256",
+      ("KENNEL_EXPECT_SIM_SHA=%s " % fix_sha["simulator_params_go2.yaml"]) in seq_text,
+      fix_sha["simulator_params_go2.yaml"][:16] + "...")
+check("it restates the controller YAML's sha256",
+      ("KENNEL_EXPECT_CTRL_SHA=%s " % fix_sha["mit_controller_sim_go2.yaml"]) in seq_text,
+      fix_sha["mit_controller_sim_go2.yaml"][:16] + "...")
+# And the fixture is what a cycle would actually run: test.runner.yml's
+# top-level has to be the sequence that applies it.
+runner = yaml.safe_load(open(os.path.join(REPO, "test", "test.runner.yml")))
+check("a cycle's top-level is the sequence that applies it",
+      runner.get("sequences") == ["workload.guest.ubuntu.server.24.kennel.mvp.ssh"],
+      str(runner.get("sequences")))
+# Every YAML under test/ has to PARSE, because Yuruna's pre-cycle gate parses
+# each one and refuses to start the cycle over a single bad file -- and a plain
+# scalar carrying ": " is invalid YAML that reads perfectly well to a human.
+# Found the hard way: a testSets description did exactly that and the gate
+# refused the MVP run four seconds in.
+for name in sorted(n for n in os.listdir(os.path.join(REPO, "test")) if n.endswith(".yml")):
+    try:
+        yaml.safe_load(open(os.path.join(REPO, "test", name)))
+        parsed, why = True, ""
+    except Exception as exc:                       # noqa: BLE001 - report any parse failure
+        parsed, why = False, str(exc).splitlines()[0]
+    check("test/%s parses as YAML" % name, parsed, why)
+
+ext = ws.js("performance.getEntriesByType('resource').map(e=>e.name)"
+            ".filter(n=>!n.startsWith('http://localhost:'))")
+check("zero non-localhost requests while round-tripping the fixture", not ext, str(ext))
 
 print()
 for g in groups:

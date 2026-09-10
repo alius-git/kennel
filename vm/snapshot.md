@@ -37,9 +37,9 @@ this changes most.
 
 | Artifact | Purpose |
 |----------|---------|
-| [`vm/guest/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh`](guest/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh) | Guest-side: make this guest a clean baseline, and **refuse** if it is not one |
-| [`vm/test/workload.guest.ubuntu.server.24.kennel.baseline.ssh.yml`](test/workload.guest.ubuntu.server.24.kennel.baseline.ssh.yml) | Producer sequence: prep, assert, `saveDiskSnapshot` |
-| [`vm/test/workload.guest.ubuntu.server.24.kennel.reset.ssh.yml`](test/workload.guest.ubuntu.server.24.kennel.reset.ssh.yml) | Consumer sequence: `loadDiskSnapshot`, then prove what came back is the appliance |
+| [`test/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh`](../test/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh) | Guest-side: make this guest a clean baseline, and **refuse** if it is not one |
+| [`test/workload.guest.ubuntu.server.24.kennel.baseline.ssh.yml`](../test/workload.guest.ubuntu.server.24.kennel.baseline.ssh.yml) | Producer sequence: prep, assert, `saveDiskSnapshot` |
+| [`test/workload.guest.ubuntu.server.24.kennel.reset.ssh.yml`](../test/workload.guest.ubuntu.server.24.kennel.reset.ssh.yml) | Consumer sequence: `loadDiskSnapshot`, then prove what came back is the appliance |
 | [`demo/tools/kennel-demo.sh`](../demo/tools/kennel-demo.sh) | Verbs `up`, `reset`, `snapshot`; `provision` now sweeps both names and ends in the snapshot |
 
 The chain, with the two new links at the end:
@@ -95,6 +95,18 @@ with one host's config — but a host running the **full cycle**
 ([#25](https://github.com/alius-git/kennel/issues/25)) should set
 `cleanupVmNamePrefixes: [kennel-vm-baseline]` there too, because the cycle sweep
 does not go through `kennel-demo.sh`.
+
+**Measured, 2026-09-10 ([#25](https://github.com/alius-git/kennel/issues/25),
+[`test/harness.md`](../test/harness.md) §4.1):** that setting is right for a
+*CI* host and wrong for this one. The sweep runs with the same prefixes at
+**cycle start and again at cycle end** (`Test.RunnerInnerLoop.psm1:2524`,
+`:2874`), so setting the key means every cycle also destroys the baseline on
+its way out and leaves the host with no guest until the next one. A host that
+is also a demo machine therefore leaves it **unset** and runs cycles through
+`kennel-demo.sh cycle`, which sweeps both names itself before each build: the
+build is just as cold, and the baseline the cycle takes survives its
+`test-`-only end sweep. Both roles are written up in
+[`test/README.md` §3](../test/README.md).
 
 ### 2.2 Why the rename must precede the snapshot
 

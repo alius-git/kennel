@@ -1,0 +1,170 @@
+# yaml-language-server: $schema=../../test/schemas/sequence.schema.yml
+# (this repo is a Yuruna PROJECT: the runner clones it into <yuruna>/project/
+#  and discovers this file at project/test/, which is where that schema path
+#  resolves -- see test/README.md)
+
+# Kennel MVP -- issue #24. The demo as one Yuruna sequence:
+#
+#   revert to the baseline -> stage the console's fixture and the stack tools
+#   from the project tree -> apply the fixture to the container's config paths
+#   -> launch the three stack processes from its own commands.txt -> assert
+#   HEALTHY AND WALKING on the composed solver -> keep the record -> stop.
+#
+# Chains onto the reset sequence and, like it, declares requiresSnapshot. Two
+# paths, chosen by the runner before any work:
+#
+#   WARM (the snapshot is on the host): every prereq is skipped and only the
+#     steps below run -- about four minutes, and the everyday way to run it.
+#   COLD (a cycle, or a host with no baseline yet): the whole chain runs first
+#     -- start -> sizing (#9) -> stack (#10) -> baseline (#51) -> reset (#51)
+#     -> THIS. About forty minutes, and it is what `Invoke-TestProject.ps1`
+#     does with this file as test.runner.yml's top-level.
+#
+# Its own loadDiskSnapshot is the first EXECUTED step so both paths start from
+# the same disk. On the cold path that means a second revert, a minute after
+# the reset sequence's own -- about fifteen seconds, and the price of one file
+# being correct on both paths.
+#
+# BYPASS (tracking-issue #8, #26): the composition is a CHECKED-IN FIXTURE that
+# the console exported -- test/fixtures/<RUN>/ -- rather than the browser driven
+# by the harness. Retirement path: browser automation in the full POC harness,
+# which is what scenario s001 describes. The fixture is never hand-edited;
+# kennel_console/verify-runs.py group 8 proves it is still what the console
+# emits, and regenerating it goes through `kennel-demo.sh compose`.
+#
+# FOUR LITERALS ARE RESTATED HERE ON PURPOSE -- the fixture's name, the stack
+# pin, the expected solver, and the sha256 of each YAML. A fixture regenerated
+# without this file being updated is then a RED RUN at the apply step, naming
+# the mismatch, instead of a quietly different experiment. It is the same
+# idiom stack/pin.lock uses for the pin, one link further down the chain.
+#
+# WHY THE VARIABLES ARE RESTATED: sizing is declared once, in the start
+# sequence, and cascaded down the chain -- which is exactly what the warm path
+# does not do. They must stay equal to the start sequence's values.
+
+sequenceGuid: 429cd7d3-f996-4df6-ae53-a4ac8ea5dc1e
+sequenceRevision: 1
+
+description: "Kennel (SSH): the MVP -- revert to the baseline, stage the console-exported fixture from the project tree, apply it, launch the stack from its commands.txt, assert healthy and walking on the composed solver, keep the logs, stop the stack."
+keystrokeMechanism: ssh
+requiresSnapshot:
+  id: kennel-vm-baseline
+resource:
+  ubuntu.server.24:
+    - workload.guest.ubuntu.server.24.kennel.reset.ssh
+variables:
+  username: yuuser24
+  hostname: kennel-vm
+  memoryStartupBytes: 16GB
+  cores: 8
+
+component:
+  # Must be the first executed step: the runner skips its pre-sequence Start-VM
+  # only when it is, because this handler starts the VM itself after the
+  # restore. Executed steps are component ++ workload (vm/snapshot.md 3).
+  - action: loadDiskSnapshot
+    id: kennel-vm-baseline
+    description: "Revert the disk to 'kennel-vm-baseline' and start the guest"
+
+  - action: sshWaitReady
+    timeoutSeconds: 600
+    description: "Wait for sshd after the revert (fresh boot, new lease)"
+
+  - action: sshExec
+    command: "whoami && hostname"
+    description: "Smoke test: whoami/hostname"
+
+workload:
+  # NB: no ${...} anywhere in these commands -- Yuruna expands ${name} in step
+  # parameters before the shell ever sees them, so a $HOME or a $(...) is the
+  # guest's and a ${...} would be silently eaten. Every `docker inspect` passes
+  # --type container: the image is called dfki_quad too, and without it the call
+  # resolves the image and exits 0 (vm/provisioning.md 5a).
+  - action: sshExec
+    command: "cat \"$HOME/.kennel-baseline\"; grep -qx 'pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4' \"$HOME/.kennel-baseline\""
+    description: "Assert the restored guest carries the baseline record at the stack pin"
+
+  - action: sshExec
+    command: "sudo docker start dfki_quad >/dev/null; s=$(sudo docker inspect --type container -f '{{.State.Status}}' dfki_quad); echo \"container=$s (want running)\"; [ \"$s\" = running ]"
+    description: "Start the dfki_quad container and assert it is running"
+
+  # Everything the rest of the sequence runs arrives here, fetched from the
+  # host's serving of the PROJECT CLONE -- the revision under test, not the
+  # guest's own frozen copy of the project. Nothing has touched the stack yet,
+  # so a failure here is exit 2 on an untouched guest.
+  - action: sshFetchAndExecute
+    command: "KENNEL_MVP_RUN=run-20260910T025021Z /usr/local/lib/yuruna/fetch-and-execute.sh project/test/ubuntu.server.24/ubuntu.server.24.kennel-mvp-stage.sh"
+    timeoutSeconds: 300
+    description: "Stage the fixture and the four stack tools from the project tree (through the host)"
+
+  # The first of the four restatements: the staged fixture has to be the
+  # composition this file says it is, checked before it is applied to anything.
+  - action: sshExec
+    command: "r=$(cat \"$HOME/kennel-mvp/fixture\"); j=\"$HOME/kennel-staging/runs/$r/run.json\"; p=$(sed -n 's/.*\"pin\"[[:space:]]*:[[:space:]]*\"\\([0-9a-f]*\\)\".*/\\1/p' \"$j\" | head -1); s=$(sed -n 's/.*\"mpc_solver\"[[:space:]]*:[[:space:]]*\"\\([A-Z_]*\\)\".*/\\1/p' \"$j\" | head -1); echo \"fixture=$r pin=$p solver=$s\"; echo 'want   pin=dcf53c596339afd45b82f12c54b1e93e8273c2f4 solver=PARTIAL_CONDENSING_OSQP'; [ \"$p\" = dcf53c596339afd45b82f12c54b1e93e8273c2f4 ] && [ \"$s\" = PARTIAL_CONDENSING_OSQP ]"
+    description: "Assert the staged fixture's run.json is the pin and the solver this sequence expects"
+
+  # The applier proves the whole chain in one place: the sha256 this file
+  # states, the bytes that arrived on the guest, and the bytes visible INSIDE
+  # the container through the bind mount and the --symlink-install install
+  # space. Its exit codes are distinct on purpose (stack/transfer.md): 1 = the
+  # bytes are not what was asked for, 2 = could not look, 3 = pin mismatch.
+  - action: sshExec
+    command: "r=$(cat \"$HOME/kennel-mvp/fixture\"); KENNEL_MODE=apply KENNEL_RUN=\"$r\" KENNEL_PIN=dcf53c596339afd45b82f12c54b1e93e8273c2f4 KENNEL_EXPECT_SIM_SHA=1715821fea8922b8af83de4f32cfc2506af521708db0d16809b0dbdf0693df99 KENNEL_EXPECT_CTRL_SHA=3c69d87ff866dd3910a29ed0ff17e16da26ad5a36e874a424ea17e4562476962 \"$HOME/kennel-staging/guest-apply-config.sh\""
+    timeoutSeconds: 300
+    description: "Apply the fixture to the container's config paths and prove the bytes landed (repo -> guest -> container)"
+
+  # The launcher answers #24's "non-blocking launch pattern over SSH" work
+  # item: each ros2 launch blocks forever, so it starts them with `docker exec
+  # -d` and waits by OBSERVING THE STACK -- /quad_state, the leg driver, the
+  # controller's own log line, then the complete six-node graph. Never a sleep.
+  # On failure it names the stage; the tails below are what a red run leaves in
+  # the transcript, since Yuruna keeps step output only when a step fails.
+  - action: sshExec
+    command: "/tmp/p21-launch-from-commands.sh || { rc=$?; echo \"LAUNCH_FAILED rc=$rc\"; for l in sim legdrv ctrl; do echo \"--- /tmp/p21-$l.log (tail) ---\"; sudo docker exec dfki_quad tail -n 60 \"/tmp/p21-$l.log\" 2>/dev/null; done; exit $rc; }"
+    timeoutSeconds: 900
+    description: "Launch the three stack processes from the fixture's commands.txt and wait for the six-node graph"
+
+  # The recipe runs ONCE and its exit code is classified by the two steps that
+  # follow. A Yuruna step has one failure class; stack/verify.md 1 has two, and
+  # they call for different things: 2 means the recipe could not even look (a
+  # different bug, in a different place), 1 means it looked and the stack is
+  # not healthy or not walking -- a red run with logs to collect. The failing
+  # step's DESCRIPTION is what status.json and the dashboard show, so the class
+  # is readable without opening a transcript.
+  #
+  # The classifier asks whether the code is one the RECIPE produces, not
+  # whether it is 2: a 126 or a 127 comes from the shell, means the recipe
+  # never ran at all, and reporting that as "the stack is not walking" would
+  # blame the robot for a missing file. Found by the negative control, which
+  # produced exactly that 127.
+  - action: sshExec
+    command: "mkdir -p \"$HOME/kennel-mvp\"; /tmp/kennel-verify.sh --expect-solver PARTIAL_CONDENSING_OSQP --controller-log /tmp/p21-ctrl.log; rc=$?; echo \"$rc\" > \"$HOME/kennel-mvp/verify.rc\"; echo \"verify_rc=$rc\"; exit 0"
+    timeoutSeconds: 900
+    description: "Run the verification recipe against the composed solver (its exit code is classified next)"
+
+  - action: sshExec
+    command: "rc=$(cat \"$HOME/kennel-mvp/verify.rc\"); case \"$rc\" in 0|1) echo \"the recipe ran and reported (exit $rc)\" ;; *) echo \"INFRASTRUCTURE: kennel-verify.sh exit $rc -- it could not even look. 2 is its own 'no container, broken source chain, unusable arguments'; 126/127 mean the shell could not run it at all. This is NOT a verdict about the stack.\"; echo '--- the newest report on the guest, which PREDATES this run (the recipe wrote none):'; cat /tmp/kennel-verify/report.txt 2>/dev/null; exit 2 ;; esac"
+    description: "Classify: the recipe could look at the stack (any other exit is an infrastructure error, not a stack verdict)"
+
+  - action: sshExec
+    command: "rc=$(cat \"$HOME/kennel-mvp/verify.rc\"); cat /tmp/kennel-verify/report.txt; [ \"$rc\" = 0 ] || { echo \"ASSERT_FAILED: kennel-verify.sh exit $rc -- the stack is up but not healthy/walking\"; for l in sim legdrv ctrl; do echo \"--- /tmp/p21-$l.log (tail) ---\"; sudo docker exec dfki_quad tail -n 60 \"/tmp/p21-$l.log\" 2>/dev/null; done; exit 1; }"
+    description: "Assert healthy and walking on PARTIAL_CONDENSING_OSQP (an assert failed = red run, with the three process logs above)"
+
+  # Yuruna keeps a step's output only when the step FAILS, and it has no action
+  # that copies a file back to the host. So a green run's evidence is assembled
+  # here, on the guest, and `kennel-demo.sh mvp` / `cycle` scp it off. The last
+  # two greps put the two headline numbers into the transcript itself, where
+  # they survive whatever happens to the guest.
+  - action: sshExec
+    command: "r=$(cat \"$HOME/kennel-mvp/fixture\"); d=\"$HOME/kennel-mvp/$r\"; rm -rf \"$d\"; mkdir -p \"$d\"; cp /tmp/kennel-verify/report.json \"$d/verify.json\"; cp /tmp/kennel-verify/report.txt \"$d/verify.txt\"; for l in sim legdrv ctrl; do sudo docker cp \"dfki_quad:/tmp/p21-$l.log\" \"$d/p21-$l.log\"; done; cp /tmp/yuruna-last-fetch-and-execute.log \"$d/stage.log\" 2>/dev/null || true; cp \"$HOME/kennel-staging/current-run\" \"$d/applied.txt\"; cp \"$HOME/.kennel-baseline\" \"$d/baseline.txt\"; sudo chown -R \"$(id -un)\" \"$d\"; ls -la \"$d\"; grep -o '\"verdict\"[^,]*' \"$d/verify.json\"; grep -E 'sim-clock|composed-config' \"$d/verify.txt\""
+    timeoutSeconds: 300
+    description: "Keep this run's record on the guest -- the report and the three process logs -- for the host to collect"
+
+  # Bounded teardown, by recorded pid and then by EXACT process name; never
+  # `pkill -f`, which would match the reaping shell itself. The container is
+  # left running and the run stays applied: `reset` is what returns the guest
+  # to stock, and a cycle's next iteration reverts the disk anyway.
+  - action: sshExec
+    command: "sudo docker exec dfki_quad bash /root/k13-stop.sh; echo 'stack stopped; container still up; the composed run stays applied (reset returns to stock)'"
+    timeoutSeconds: 300
+    description: "Stop the stack in the container"

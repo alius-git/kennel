@@ -122,6 +122,23 @@ here as they are.
   and rendered from the console: the route, the markdown subset, and the
   checklist that a verb performs.
 
+## Harness — the repo as a Yuruna project
+
+Point a Yuruna host's `repositories.projectUrl` at this repository and the
+runner clones it, discovers the sequences in `test/`, and runs them.
+
+- [`test/README.md`](../test/README.md) — the operator page: the layout and the
+  four conventions behind it, the `test.config.yml` keys, the two host roles,
+  how the guest gets project files, and the commands.
+- [`test/harness.md`](../test/harness.md) — the implementation record: what a
+  Yuruna project *is* at this release, the MVP sequence step by step, the
+  exit-code contract as three steps, what the harness cannot do, and the
+  measured cycles.
+- [`test/test.runner.yml`](../test/test.runner.yml) — what a **cycle** runs.
+- [`test/fixtures/`](../test/fixtures/) — the console-exported run folder the
+  MVP sequence applies. Never hand-edited; regenerate with
+  `kennel-demo.sh compose`.
+
 ## Upstream
 
 - [`dfki-quad/`](../dfki-quad/) — the vendored upstream DFKI quadruped stack at

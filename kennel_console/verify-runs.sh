@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Version: 2026.09.09
+# Version: 2026.09.10
 # Verify the Runs view: real verdicts, real counters, a one-key config diff (#64),
 # and a shipped preset's round trip through a run folder the server wrote (#72).
 #
@@ -22,7 +22,14 @@
 # through the Runs view's own `load` -- the round trip is a byte comparison of
 # what the emitters produce at both ends.
 #
-# 84 checks.
+# Group 8 is #24's, and it is the same idea pointed at one committed folder:
+# test/fixtures/run-<stamp>/ is the composition the MVP Yuruna sequence applies,
+# so it has to stay a console EXPORT (round-tripped here through the real Runs
+# table) and the sequence's restatement of its name, pin, solver and sha256s has
+# to stay equal to it. Regenerate the fixture with `kennel-demo.sh compose`,
+# never by editing a file.
+#
+# 119 checks.
 #
 # Requires google-chrome.
 #
@@ -41,6 +48,15 @@ PAGE="Kennel%20Console.dc.html"
 
 if ! command -v google-chrome >/dev/null 2>&1; then
   echo "google-chrome is required to drive the console -- install it, or run verify-serve.sh only."
+  exit 2
+fi
+
+# Group 8 parses every sequence YAML the way Yuruna's own gate does, so pyyaml
+# is a hard requirement here rather than the optional convenience it is in
+# verify-generate.sh. Exit 2: could not run the checks, not a failed check.
+if ! python3 -c 'import yaml' 2>/dev/null; then
+  echo "NONZERO SCRIPT EXIT: python3 pyyaml is required by group 8 (the fixture and sequence checks)." >&2
+  echo "  sudo apt install python3-yaml    # or: pip install pyyaml" >&2
   exit 2
 fi
 
