@@ -87,6 +87,19 @@ lists what it found in `/api/health`. `guides/` is outside the docroot, so this
 is the only way a guide reaches a browser -- which is what makes the console's
 **Guides** item exist exactly when this server does.
 
+Since [#74](https://github.com/alius-git/kennel/issues/74) and
+[#75](https://github.com/alius-git/kennel/issues/75) `/api/health` also carries
+the **guest's version manifest**, its `manifest_ref` (the sha256 of the file's
+bytes), `console_version` (the `KENNEL_CONSOLE_VERSION` literal this server and
+the page share, bumped by hand) and the **last drift report** -- read per
+request from `<out>/.kennel-manifest.json` and `<out>/.kennel-drift`, which
+`kennel-demo.sh up` / `status` / `reset` and `drift` leave there. The page names
+the guest in its export strip and warns when the guest's pin or the server's
+console version differs from its own, or when the guest drifted; `run.json`
+gains `manifest_ref` when one is known. Served by plain `http.server` none of it
+exists, like every other `/api/` key ([`vm/manifest.md`](../vm/manifest.md) §4,
+[`vm/drift.md`](../vm/drift.md) §4).
+
 **`python3 -m http.server` is not deprecated by it.** It is still the command
 this record proved the offline claim on, still exactly what §2–§5 below assert,
 and still the one to use to check that nothing here depends on a live server:
@@ -264,3 +277,4 @@ vendored path reproduces the CDN path pixel for pixel:
 | [#26](https://github.com/alius-git/kennel/issues/26) | The bypass note above, for the consolidated log |
 | [#27](https://github.com/alius-git/kennel/issues/27) | §1 verbatim, plus the `%20` warning |
 | [#23](https://github.com/alius-git/kennel/issues/23), [#25](https://github.com/alius-git/kennel/issues/25) | `verify-serve.sh` as a host-side assert with no VM dependency |
+| [#74](https://github.com/alius-git/kennel/issues/74), [#75](https://github.com/alius-git/kennel/issues/75) — **done** | `/api/health` as the seam the guest's version manifest and drift report reach the page through ([`vm/manifest.md`](../vm/manifest.md), [`vm/drift.md`](../vm/drift.md)) |

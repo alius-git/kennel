@@ -1,0 +1,63 @@
+# P12 -- the nine console suites, the scripts' syntax, the YAML, the suite diff
+# 2026-09-10T19:16:55Z, kennel 854306f (the docs commit follows; no code after it)
+
+verify-serve      exit=0  passed   17  failed 0  skipped 0     1s
+verify-scope      exit=0  passed   78  failed 0  skipped 0    45s
+verify-generate   exit=0  passed   57  failed 0  skipped 0    16s
+verify-export     exit=0  passed   72  failed 0  skipped 0    15s
+verify-send       exit=0  passed   63  failed 0  skipped 0     8s
+verify-teleop     exit=0  passed   96  failed 0  skipped 0    86s
+verify-dashboard  exit=0  passed   85  failed 0  skipped 0    88s
+verify-runs       exit=0  passed  119  failed 0  skipped 0    83s
+verify-guides     exit=0  passed   62  failed 0  skipped 0    17s
+total passed: 649   suites not exit 0: 0   (629 at origin/main in a checkout + 20 in verify-send group 7 = 649)
+
+$ bash -n <every shell script this PR touches>
+  ok  demo/tools/kennel-demo.sh
+  ok  stack/transfer/kennel-transfer.sh
+  ok  vm/guest/ubuntu.server.24/kennel-drift.sh
+  ok  test/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh
+  ok  kennel_console/verify-send.sh
+  ok  kennel_console/dashboard-shot.sh
+$ python3 -m py_compile kennel_console/serve.py kennel_console/verify-send.py
+  ok
+$ every test/*.yml parses (what Yuruna's pre-cycle gate does)
+  ok  7 files
+$ template placeholders render to XML
+  ok
+
+$ git diff --stat origin/main -- kennel_console/verify-*
+ kennel_console/verify-send.py | 173 ++++++++++++++++++++++++++++++++++++++++++
+ kennel_console/verify-send.sh |   6 +-
+ 2 files changed, 177 insertions(+), 2 deletions(-)
+$ lines REMOVED from the suites (expect only the two header lines verify-send.sh rewrote)
+-# Version: 2026.08.30
+-# Verify that the console writes its run folder where the driver reads (#56).
+
+$ git status --short (before the docs commit)
+ M CLAUDE.md
+ M README.md
+ M demo/runbook.md
+ M docs/README.md
+ M kennel_console/export.md
+ M kennel_console/runs.md
+ M kennel_console/send.md
+ M kennel_console/serve.md
+ M slides/slides.md
+ M stack/pin.lock
+ M stack/transfer.md
+ M test/README.md
+ M test/harness.md
+ M vm/provisioning.md
+ M vm/snapshot.md
+?? slides/global-top.vue
+?? slides/public/img/console-prototype.png
+?? slides/public/img/dashboard.png
+?? slides/public/img/runs.png
+?? slides/style.css
+?? vm/drift.md
+?? vm/drift/
+?? vm/image.md
+?? vm/image/evidence/
+?? vm/manifest.md
+?? vm/manifest/

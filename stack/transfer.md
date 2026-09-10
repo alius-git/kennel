@@ -213,6 +213,13 @@ wire both steps the same way.
 | 4 | Guest unreachable over SSH *(host wrapper only)* |
 | 5 | Guest IP could not be discovered *(host wrapper only)* |
 
+Since [#74](https://github.com/alius-git/kennel/issues/74) `apply` also asks the
+guest for the sha256 of its `~/kennel-manifest.json` and compares it with the
+run's `manifest_ref`. A difference, or a guest with no manifest, is a **warning**
+on stderr and never an exit code: the pin decides whether a run means anything
+here, and `kennel-demo.sh drift` names what changed
+([`vm/manifest.md`](../vm/manifest.md) §4).
+
 ### 4.3 The one thing the script will not do for you
 
 The stack reads these YAMLs **at launch**. Applying to a running stack changes
@@ -404,6 +411,12 @@ resolve check alone.
 - **Wall-clock numbers are the development host's**, which loses ~10 %
   ([`vm/provisioning.md`](../vm/provisioning.md) §6a). The ~1.8 s re-apply is
   quoted as "seconds, not minutes", not as a benchmark.
+- **The staging directory does not survive `reset`** (2026-09-10,
+  [#75](https://github.com/alius-git/kennel/issues/75)). A qcow2 revert restores
+  the whole disk, so `~/kennel-staging` — runs, stock backup, `current-run` — is
+  gone after one, by design: it is *staging*. The workspace that survives a reset
+  is the host's `~/kennel-runs`, where the console writes and `verify` files its
+  report ([`vm/drift.md`](../vm/drift.md) §5).
 
 ## 8. Notes for whoever touches this next
 
@@ -434,7 +447,8 @@ resolve check alone.
 | [#21](https://github.com/alius-git/kennel/issues/21) | The transfer half of the PoC, already demonstrated end to end in §6.2 — plus the §6.3 warning about which map to compose |
 | [#24](https://github.com/alius-git/kennel/issues/24) | The staging contract (§3) and the applier, `sshExec`-able with three environment variables; the `0/1/2` exit contract already matches `stack/verify.md`'s |
 | [#27](https://github.com/alius-git/kennel/issues/27) | The three commands of §1, and §4.3's "relaunch or nothing happens" |
+| [#74](https://github.com/alius-git/kennel/issues/74) — **done** | A place to compare the run's `manifest_ref` with the guest's, where the guest is being sshed anyway |
 
 ---
 
-Last review: 2026-08-06
+Last review: 2026-09-10

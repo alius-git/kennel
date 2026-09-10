@@ -57,6 +57,13 @@ start.guest.ubuntu.server.24.kennel.ssh                    # create the 8 vCPU /
 `requiresSnapshot` probe looks for the snapshot before doing anything, and takes
 the cold path or the warm one accordingly.
 
+> **Since [#74](https://github.com/alius-git/kennel/issues/74)–[#76](https://github.com/alius-git/kennel/issues/76)
+> (2026-09-10).** The baseline record is the **version manifest**,
+> `~/kennel-manifest.json` ([`manifest.md`](manifest.md)). `~/.kennel-baseline` is
+> still written for one release, read by nothing, and **deprecated**. The reset
+> sequence has a thirteenth step, the drift check ([`drift.md`](drift.md)), and a
+> baseline can leave this host as an image ([`image.md`](image.md)).
+
 ## 2. What Yuruna already provided
 
 Yuruna `2026.08.04` has the whole mechanism; Kennel had simply never used it. No
@@ -174,7 +181,10 @@ assumed, and the script **refuses** rather than producing a bad baseline.
 | assert the clone is stock | no **tracked** file differs from the pin | This is what catches a composed run: `transfer` overwrites the two YAMLs in place |
 | assert the workspace is built | build stamp **and** `ws/install/setup.bash` | A baseline without a build freezes the 35 minutes back in |
 | clear the staging directory | — | No run is "current" in a baseline |
-| record the baseline | writes `pin`, `image_id`, `created` | A revert that cannot say what it returned is not a baseline |
+| hold the package set still *(#75)* | the periodic apt timers are off, and no apt run is in flight | A baseline that upgrades itself on the first boot after a revert is not the one its manifest describes |
+| install the first-boot key unit *(#76)* | the unit is enabled, and its dry run on this disk is a no-op | An exported copy must re-key itself for the host that imports it |
+| record the baseline | writes `pin`, `image_id`, `created` — **deprecated** since #74 | A revert that cannot say what it returned is not a baseline |
+| attest the build inputs, write the version manifest *(#74)* | the manifest records the pin it was asked for | The identity every later check compares against ([`manifest.md`](manifest.md)) |
 | reclaim | — | Every reclaimed byte is a byte the snapshot carries forever |
 
 The stock assertion runs **before** the staging directory is cleared, which is a
@@ -519,6 +529,10 @@ the wrong seam.
 - **The baseline is host-local.** It is a libvirt snapshot on one machine, not a
   distributable image. Another host must `provision`. That is the OVA's job
   (see the bypass note).
+  **Retired for KVM by [#76](https://github.com/alius-git/kennel/issues/76),
+  2026-09-10:** `export-image` ships the baseline as a checksummed qcow2 bundle
+  and `import` makes it another host's baseline ([`image.md`](image.md)). The OVA
+  is still ahead.
 - **One baseline, overwritten in place.** There is no history of baselines and no
   snapshot chain. `snapshot` replaces; it does not accumulate. This is
   deliberate — a chain of qcow2 snapshots is a performance and correctness
@@ -547,4 +561,4 @@ the wrong seam.
 
 ---
 
-Last review: 2026-08-30
+Last review: 2026-09-10

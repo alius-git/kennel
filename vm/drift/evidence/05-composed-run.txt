@@ -1,0 +1,11 @@
+$ demo/tools/kennel-demo.sh drift   (with run-20260910T184807Z applied)
+# 2026-09-10T18:48:10Z, kennel dbcbf11
+[kennel-demo] guest            kennel-vm at 192.168.122.228
+manifest         /home/yuuser24/kennel-manifest.json
+manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4
+DRIFT tracked-file   M ws/src/controllers/config/mit_controller_sim_go2.yaml
+DRIFT tracked-file   M ws/src/simulator/config/simulator_params_go2.yaml
+note: a composed run is applied (run-20260910T184807Z). Its two YAMLs are tracked files overwritten in place, so an applied run IS drift and is reported above; kennel-demo.sh reset returns them to stock.
+findings=2 manifest_ref=78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c checked=2026-09-10T18:56:13Z
+exit=1

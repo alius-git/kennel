@@ -24,6 +24,7 @@ release checkout, the three patches, the config, the guest ISO, the gate
 ```bash
 demo/tools/kennel-demo.sh setup       # once per host — checks and does the prerequisites
 demo/tools/kennel-demo.sh provision   # once per host, ~35 min — creates the kennel-vm guest
+                                      #   …or instead: kennel-demo.sh import <bundle>, ~1.5 min
 demo/tools/kennel-demo.sh console     # compose a run in the browser, click "send to kennel-runs"
 demo/tools/kennel-demo.sh run         # the newest run, into the VM and walking — ~5 min
 demo/tools/kennel-demo.sh down        # stop the stack (container stays up)
@@ -59,7 +60,14 @@ full cycle from cold.
 
 `provision` ends by freezing the guest as a **baseline snapshot**, so no mistake
 ever costs 35 minutes again: `reset` returns to it in about ninety seconds and
-proves the guest came back intact ([`vm/snapshot.md`](vm/snapshot.md)). Each
+proves the guest came back intact ([`vm/snapshot.md`](vm/snapshot.md)). A host
+given a bundle another host exported (`kennel-demo.sh export-image`) skips the 35
+minutes altogether: `import` verifies it, keys it for this host and makes it the
+baseline in about a minute and a half, and a robot was walking under three minutes
+after that command started ([`vm/image.md`](vm/image.md)). The baseline knows what
+it is — a version manifest of its OS, stack, packages and build — and `drift` says
+when a guest no longer matches it ([`vm/manifest.md`](vm/manifest.md),
+[`vm/drift.md`](vm/drift.md)). Each
 phase, what it wraps, and what success looks like:
 [`demo/runbook.md`](demo/runbook.md).
 
@@ -72,7 +80,7 @@ The in-depth documentation is indexed in [`docs/`](docs/README.md):
 - [Demo](docs/README.md#demo--running-it-end-to-end) — the runbook, the
   recorded dry run, and its evidence.
 - [VM](docs/README.md#vm--host-baseline-and-the-kennel-vm-appliance) — host
-  baseline, guest sizing, provisioning, the baseline snapshot, Meshcat exposure.
+  baseline, guest sizing, provisioning, the baseline snapshot, the version manifest, the drift check, the appliance image, Meshcat exposure.
 - [Stack](docs/README.md#stack--running-the-pinned-dfki-quad) — launch,
   mapping, transfer, verify, and the composed run.
 - [Console](docs/README.md#console--the-kennel-console-prototype) — serving,

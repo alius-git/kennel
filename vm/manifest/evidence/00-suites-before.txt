@@ -1,0 +1,57 @@
+# P0 -- the nine console suites at the branch base, before any change of this PR
+# base: b880567031d70dfe2de2c24d5f6019794dc53104 (origin/main), run 2026-09-10T17:58:05Z from a scratch worktree
+#     [ OK ] console booted offline, Compose view rendered, 0 unresolved placeholders
+#   
+#   PASS — one command serves an offline-capable console.
+verify-serve exit=0 1s
+#     [PASS] zero non-localhost requests — []
+#   
+#   ALL CHECKS PASSED
+verify-scope exit=0 45s
+#     [PASS] zero non-localhost requests — []
+#   
+#   ALL CHECKS PASSED
+verify-generate exit=0 15s
+#     [PASS] zero non-localhost requests — []
+#   
+#   ALL CHECKS PASSED
+verify-export exit=0 16s
+#     [serve.py] 17:59:27Z refused 400 the body is not a readable zip archive (File is not a zip file).
+#     [serve.py] 17:59:27Z "POST /api/runs HTTP/1.1" 400 -
+#     [serve.py] 17:59:27Z refused 400 top-level entry '..' is not a run-<stamp>/ folder.
+verify-send exit=0 6s
+#   ALL CHECKS PASSED
+#   
+#   the fake bridges recorded 108, 31, 65, 323 and 119 ops.
+verify-teleop exit=0 86s
+#   ALL CHECKS PASSED
+#   
+#   the fake meshcat logged 6 requests; the fake bridge recorded 814 ops.
+verify-dashboard exit=0 87s
+#   ALL CHECKS PASSED
+#   
+#   the run directory ended with: run-20260910T025021Z run-20260910T180229Z run-20260910T180229Z.zip run-20260910T180232Z run-20260910T180232Z.zip run-20260910T180235Z run-20260910T180235Z.zip run-20260910T180240Z run-20260910T180240Z.zip run-20260910T180301Z run-20260910T180301Z.zip run-20260910T180311Z run-20260910T180311Z.zip run-20260910T180322Z run-20260910T180322Z.zip run-20260910T180333Z run-20260910T180333Z.zip run-20260910T180344Z run-20260910T180344Z.zip 
+verify-runs exit=0 83s
+#     8. no network escaped                                                    2/2
+#   
+#   ALL CHECKS PASSED
+verify-guides exit=0 17s
+
+# checks passed per suite (PASS / [ OK ] lines), SKIPs in brackets, from the same outputs:
+#   verify-serve        17
+#   verify-scope        78
+#   verify-generate     54  [1 SKIP]
+#   verify-export       72
+#   verify-send         43
+#   verify-teleop       96
+#   verify-dashboard    85
+#   verify-runs        119
+#   verify-guides       62
+#   total              626
+#
+# verify-generate SKIPs here and not in a checkout: its stock-file comparison reads the
+# gitignored dfki-quad/ clone at the pin (verify-generate.py line 86), and a fresh
+# worktree has none. The line:
+#   13:  [SKIP] nested dfki-quad clone absent (CalledProcessError) — template provenance is recorded by sha256 in generate.md
+# In the maintainer's checkout the same suite passes 57 (PR #84's total, 629, counts it
+# that way); the branch's own run in §P12 is compared against 629.

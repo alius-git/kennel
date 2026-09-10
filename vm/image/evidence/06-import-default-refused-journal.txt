@@ -1,0 +1,34 @@
+# F25 -- why import's network preflight refused an active network (P10b, first attempt)
+# captured 2026-09-10T19:09:58Z; host clock ~480 s slow, local time -03:00
+
+--- the refused attempt: see 06-import-default-refused.txt (exit 2 at 16:04:29 local, nothing written)
+
+$ journalctl -u libvirtd --since '2026-09-10 16:02:30' --until '2026-09-10 16:06:00' -o short-iso
+2026-09-10T16:02:44-03:00 k8-thales dnsmasq-dhcp[2544]: DHCPDISCOVER(virbr0) 52:54:00:c8:27:32
+2026-09-10T16:02:44-03:00 k8-thales dnsmasq-dhcp[2544]: DHCPOFFER(virbr0) 192.168.122.228 52:54:00:c8:27:32
+2026-09-10T16:02:44-03:00 k8-thales dnsmasq-dhcp[2544]: DHCPREQUEST(virbr0) 192.168.122.228 52:54:00:c8:27:32
+2026-09-10T16:02:44-03:00 k8-thales dnsmasq-dhcp[2544]: DHCPACK(virbr0) 192.168.122.228 52:54:00:c8:27:32 kennel-vm
+2026-09-10T16:04:29-03:00 k8-thales libvirtd[1332996]: libvirt version: 10.0.0, package: 10.0.0-2ubuntu8.16 (Ubuntu)
+2026-09-10T16:04:29-03:00 k8-thales libvirtd[1332996]: hostname: k8-thales
+2026-09-10T16:04:29-03:00 k8-thales libvirtd[1332996]: End of file while reading data: Input/output error
+
+# The first two lines are libvirt's log header. libvirtd is socket-activated here, and pid 1332996
+# had been running since 16:01:19 (start_time below) -- started by the throwaway import's first
+# virsh call after going idle during the export. Its first logged event since, at the refusal's
+# second, is a client connection ending in an I/O error; the cause of that is not established.
+# (Annotation corrected 2026-09-10: it first said the daemon was starting at 16:04:29.)
+$ systemctl show -p ExecStart --value libvirtd.service; systemctl is-active libvirtd.socket libvirtd.service
+{ path=/usr/sbin/libvirtd ; argv[]=/usr/sbin/libvirtd $LIBVIRTD_ARGS ; ignore_errors=no ; start_time=[Thu 2026-09-10 16:01:19 -03] ; stop_time=[n/a] ; pid=1332996 ; code=(null) ; status=0/0 }
+active active 
+
+--- the network was active before, during and after:
+$ virsh net-info default   (after the refusal)
+Active:         yes   Persistent: yes   Autostart: yes   (read once at the time of this capture's diagnosis, 16:1x local)
+
+--- the first theory, measured and discarded: grep -q + pipefail + SIGPIPE on virsh
+observed in this session, host otherwise idle:        'virsh net-info default | grep -Eq ^Active: +yes' under pipefail: 0 of 300 false
+observed in this session, under 16 busy loops:        0 of 300 false
+$ grep --version | head -1
+ugrep 7.8.4 x86_64-pc-linux-gnu +sse2; -P:pcre2jit; -z:zlib,bzip2,zstd,brotli,7z,tar/pax/cpio/zip
+$ { printf 'Active: yes\n'; sleep 2; printf 'x\n'; } | grep -q Active   # timed
+status 0, elapsed 2.0 s -- this grep's -q reads the pipe to EOF, so the producer is never cut off

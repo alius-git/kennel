@@ -1,0 +1,876 @@
+{
+  "schemaVersion": 1,
+  "host": "host.ubuntu.kvm",
+  "hostname": "k8-thales",
+  "hostId": "4230bb0f56694b6582bdfe6388bff892",
+  "cycleStartUtc": "2026-09-10T19:12:45Z",
+  "startedAt": "2026-09-10T19:12:45Z",
+  "finishedAt": "2026-09-10T19:14:20Z",
+  "overallStatus": "pass",
+  "stepPaused": false,
+  "cyclePaused": false,
+  "gitCommits": [
+    {
+      "sha": "f0d4d3b1",
+      "repoUrl": "https://github.com/alissonsol/yuruna"
+    }
+  ],
+  "repoUrl": "https://github.com/alissonsol/yuruna",
+  "lastGetImageAt": "2026-09-10T03:16:37Z",
+  "cycle": 54,
+  "cycleFolderUrl": "log/000054.2026-09-10.19-12-45.4230bb0f56694b6582bdfe6388bff892/",
+  "lastFailure": null,
+  "guests": [
+    {
+      "guestKey": "guest.ubuntu.server.24",
+      "vmName": "kennel-vm-baseline",
+      "topLevel": "workload.guest.ubuntu.server.24.kennel.mvp.ssh",
+      "status": "pass",
+      "steps": [
+        {
+          "name": "Sequence",
+          "status": "pass",
+          "startedAt": "2026-09-10T19:12:45Z",
+          "finishedAt": "2026-09-10T19:14:20Z",
+          "skipped": false,
+          "errorMessage": null
+        }
+      ],
+      "provenanceFilename": "",
+      "provenanceUrl": "",
+      "failureArtifacts": "",
+      "quarantined": false,
+      "quarantinedUntilCommit": ""
+    }
+  ],
+  "sequences": [],
+  "nested": {},
+  "history": [
+    {
+      "cycleStartUtc": "2026-09-10T19:12:45Z",
+      "startedAt": "2026-09-10T19:12:45Z",
+      "finishedAt": "2026-09-10T19:14:20Z",
+      "totalDurationSeconds": 95,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000054.2026-09-10.19-12-45.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 95
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T19:11:19Z",
+      "startedAt": "2026-09-10T19:11:19Z",
+      "finishedAt": "2026-09-10T19:12:33Z",
+      "totalDurationSeconds": 74,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000053.2026-09-10.19-11-19.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 74
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T18:56:39Z",
+      "startedAt": "2026-09-10T18:56:39Z",
+      "finishedAt": "2026-09-10T18:57:52Z",
+      "totalDurationSeconds": 73,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000052.2026-09-10.18-56-39.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 72
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T18:55:02Z",
+      "startedAt": "2026-09-10T18:55:02Z",
+      "finishedAt": "2026-09-10T18:56:14Z",
+      "totalDurationSeconds": 72,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000051.2026-09-10.18-55-02.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 72
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T18:50:06Z",
+      "startedAt": "2026-09-10T18:50:06Z",
+      "finishedAt": "2026-09-10T18:51:19Z",
+      "totalDurationSeconds": 73,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000050.2026-09-10.18-50-06.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 73
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T18:48:22Z",
+      "startedAt": "2026-09-10T18:48:22Z",
+      "finishedAt": "2026-09-10T18:49:34Z",
+      "totalDurationSeconds": 72,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000049.2026-09-10.18-48-22.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 72
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T18:46:36Z",
+      "startedAt": "2026-09-10T18:46:36Z",
+      "finishedAt": "2026-09-10T18:47:48Z",
+      "totalDurationSeconds": 72,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000048.2026-09-10.18-46-36.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 72
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T17:54:49Z",
+      "startedAt": "2026-09-10T17:54:49Z",
+      "finishedAt": "2026-09-10T18:40:31Z",
+      "totalDurationSeconds": 2742,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        },
+        {
+          "sha": "370078e",
+          "repoUrl": "file:///home/thales/kennel"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000047.2026-09-10.17-54-49.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "New-VM": 2,
+            "Start-VM": 0,
+            "Start-GuestOS": 607,
+            "New-VM.Resource": 15,
+            "Start-GuestWorkload": 2074
+          },
+          "failureArtifacts": "log/000047.2026-09-10.17-54-49.4230bb0f56694b6582bdfe6388bff892/test-guest.ubuntu.server.24-01/"
+        }
+      },
+      "sequenceSummary": [
+        {
+          "name": "workload.guest.ubuntu.server.24.kennel.mvp.ssh",
+          "status": "pass",
+          "folderUrl": "log/000047.2026-09-10.17-54-49.4230bb0f56694b6582bdfe6388bff892/test-guest.ubuntu.server.24-01/"
+        }
+      ],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T17:52:20Z",
+      "startedAt": "2026-09-10T17:52:20Z",
+      "finishedAt": "2026-09-10T17:53:32Z",
+      "totalDurationSeconds": 72,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000046.2026-09-10.17-52-20.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 72
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T14:51:36Z",
+      "startedAt": "2026-09-10T14:51:36Z",
+      "finishedAt": "2026-09-10T15:27:12Z",
+      "totalDurationSeconds": 2136,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000045.2026-09-10.14-51-36.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 2136
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T03:59:20Z",
+      "startedAt": "2026-09-10T03:59:20Z",
+      "finishedAt": "2026-09-10T04:37:26Z",
+      "totalDurationSeconds": 2286,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        },
+        {
+          "sha": "a754254",
+          "repoUrl": "file:///home/thales/kennel"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000044.2026-09-10.03-59-20.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "New-VM": 2,
+            "Start-VM": 0,
+            "Start-GuestOS": 504,
+            "New-VM.Resource": 15,
+            "Start-GuestWorkload": 1720
+          },
+          "failureArtifacts": "log/000044.2026-09-10.03-59-20.4230bb0f56694b6582bdfe6388bff892/test-guest.ubuntu.server.24-01/"
+        }
+      },
+      "sequenceSummary": [
+        {
+          "name": "workload.guest.ubuntu.server.24.kennel.mvp.ssh",
+          "status": "pass",
+          "folderUrl": "log/000044.2026-09-10.03-59-20.4230bb0f56694b6582bdfe6388bff892/test-guest.ubuntu.server.24-01/"
+        }
+      ],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T03:16:23Z",
+      "startedAt": "2026-09-10T03:16:23Z",
+      "finishedAt": "2026-09-10T03:54:04Z",
+      "totalDurationSeconds": 2261,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        },
+        {
+          "sha": "a754254",
+          "repoUrl": "file:///home/thales/kennel"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000043.2026-09-10.03-16-23.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "New-VM": 2,
+            "Start-VM": 0,
+            "Start-GuestOS": 538,
+            "New-VM.Resource": 15,
+            "Start-GuestWorkload": 1660
+          },
+          "failureArtifacts": "log/000043.2026-09-10.03-16-23.4230bb0f56694b6582bdfe6388bff892/test-guest.ubuntu.server.24-01/"
+        }
+      },
+      "sequenceSummary": [
+        {
+          "name": "workload.guest.ubuntu.server.24.kennel.mvp.ssh",
+          "status": "pass",
+          "folderUrl": "log/000043.2026-09-10.03-16-23.4230bb0f56694b6582bdfe6388bff892/test-guest.ubuntu.server.24-01/"
+        }
+      ],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T03:12:12Z",
+      "startedAt": "2026-09-10T03:12:12Z",
+      "finishedAt": "2026-09-10T03:13:03Z",
+      "totalDurationSeconds": 51,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000042.2026-09-10.03-12-12.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 51
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T03:10:26Z",
+      "startedAt": "2026-09-10T03:10:26Z",
+      "finishedAt": "2026-09-10T03:11:56Z",
+      "totalDurationSeconds": 90,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000041.2026-09-10.03-10-26.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 90
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T03:07:47Z",
+      "startedAt": "2026-09-10T03:07:47Z",
+      "finishedAt": "2026-09-10T03:07:48Z",
+      "totalDurationSeconds": 1,
+      "overallStatus": "fail",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000040.2026-09-10.03-07-47.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "fail",
+          "stepDurationsSeconds": {
+            "Sequence": 1
+          },
+          "errorMessage": "chain 'workload.guest.ubuntu.server.24.kennel.mvp.ssh' (StartStep=10)"
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T03:06:06Z",
+      "startedAt": "2026-09-10T03:06:06Z",
+      "finishedAt": "2026-09-10T03:06:56Z",
+      "totalDurationSeconds": 50,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000039.2026-09-10.03-06-06.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 50
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T03:03:57Z",
+      "startedAt": "2026-09-10T03:03:57Z",
+      "finishedAt": "2026-09-10T03:05:29Z",
+      "totalDurationSeconds": 92,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000038.2026-09-10.03-03-57.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 92
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T03:01:53Z",
+      "startedAt": "2026-09-10T03:01:53Z",
+      "finishedAt": "2026-09-10T03:03:23Z",
+      "totalDurationSeconds": 90,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000037.2026-09-10.03-01-53.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 90
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-10T02:48:33Z",
+      "startedAt": "2026-09-10T02:48:33Z",
+      "finishedAt": "2026-09-10T02:49:45Z",
+      "totalDurationSeconds": 72,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000036.2026-09-10.02-48-33.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 72
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-09T18:43:32Z",
+      "startedAt": "2026-09-09T18:43:32Z",
+      "finishedAt": "2026-09-09T18:44:43Z",
+      "totalDurationSeconds": 71,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000035.2026-09-09.18-43-32.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 71
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-09T18:35:24Z",
+      "startedAt": "2026-09-09T18:35:24Z",
+      "finishedAt": "2026-09-09T18:36:36Z",
+      "totalDurationSeconds": 72,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000034.2026-09-09.18-35-24.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 72
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-08T20:26:58Z",
+      "startedAt": "2026-09-08T20:26:58Z",
+      "finishedAt": "2026-09-08T20:28:08Z",
+      "totalDurationSeconds": 70,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000033.2026-09-08.20-26-58.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 70
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-08T20:05:54Z",
+      "startedAt": "2026-09-08T20:05:54Z",
+      "finishedAt": "2026-09-08T20:07:06Z",
+      "totalDurationSeconds": 72,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000032.2026-09-08.20-05-54.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 72
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-06T21:33:35Z",
+      "startedAt": "2026-09-06T21:33:35Z",
+      "finishedAt": "2026-09-06T21:34:48Z",
+      "totalDurationSeconds": 73,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000031.2026-09-06.21-33-35.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 73
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-06T21:19:46Z",
+      "startedAt": "2026-09-06T21:19:46Z",
+      "finishedAt": "2026-09-06T21:20:59Z",
+      "totalDurationSeconds": 73,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000030.2026-09-06.21-19-46.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 73
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-06T21:16:54Z",
+      "startedAt": "2026-09-06T21:16:54Z",
+      "finishedAt": "2026-09-06T21:18:06Z",
+      "totalDurationSeconds": 72,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000029.2026-09-06.21-16-54.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 72
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-06T21:14:02Z",
+      "startedAt": "2026-09-06T21:14:02Z",
+      "finishedAt": "2026-09-06T21:15:14Z",
+      "totalDurationSeconds": 72,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000028.2026-09-06.21-14-02.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 72
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-06T21:11:07Z",
+      "startedAt": "2026-09-06T21:11:07Z",
+      "finishedAt": "2026-09-06T21:12:18Z",
+      "totalDurationSeconds": 71,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000027.2026-09-06.21-11-07.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 71
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-06T21:05:16Z",
+      "startedAt": "2026-09-06T21:05:16Z",
+      "finishedAt": "2026-09-06T21:06:27Z",
+      "totalDurationSeconds": 71,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000026.2026-09-06.21-05-16.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 71
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    },
+    {
+      "cycleStartUtc": "2026-09-06T21:01:35Z",
+      "startedAt": "2026-09-06T21:01:35Z",
+      "finishedAt": "2026-09-06T21:02:48Z",
+      "totalDurationSeconds": 73,
+      "overallStatus": "pass",
+      "gitCommits": [
+        {
+          "sha": "f0d4d3b1",
+          "repoUrl": "https://github.com/alissonsol/yuruna"
+        }
+      ],
+      "host": "host.ubuntu.kvm",
+      "hostname": "k8-thales",
+      "cycleFolderUrl": "log/000025.2026-09-06.21-01-35.4230bb0f56694b6582bdfe6388bff892/",
+      "guestSummary": {
+        "guest.ubuntu.server.24": {
+          "status": "pass",
+          "stepDurationsSeconds": {
+            "Sequence": 73
+          }
+        }
+      },
+      "sequenceSummary": [],
+      "lastFailure": null
+    }
+  ]
+}

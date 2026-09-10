@@ -1,0 +1,82 @@
+$ demo/tools/kennel-demo.sh export-image
+# 2026-09-10T18:58:53Z, kennel 5b64347
+[kennel-demo] domain           kennel-vm-baseline
+[kennel-demo] disk             /home/thales/yuruna/vms/kennel-vm-baseline/kennel-vm-baseline.qcow2
+
+==== export-image: the guest must be its baseline ====
+[kennel-demo] guest            kennel-vm at 192.168.122.228
+[kennel-demo] manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
+[kennel-demo]   pin            dcf53c596339afd45b82f12c54b1e93e8273c2f4
+[kennel-demo]   os / kernel    Ubuntu 24.04.5 LTS / 6.8.0-139-generic
+[kennel-demo]   docker / image 29.8.0 / sha256:22dca342cc01
+[kennel-demo]   ROS / Drake    humble (ros-humble-ros-base 0.10.0-1jammy.20260804.204550) / 20231218181452 9ba8f5d8d4ee6919ec41542d47509549cfa8d919
+[kennel-demo]   packages       706
+[kennel-demo]   built from     kennel 370078e21434, console 2026.09.10, guides d2b5a1c1d691 (via status-service)
+[kennel-demo]   created        2026-09-10T18:45:29Z (guest clock)
+[kennel-demo] guest            kennel-vm at 192.168.122.228
+manifest         /home/yuuser24/kennel-manifest.json
+manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4
+findings=0 manifest_ref=78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c checked=2026-09-10T19:06:57Z
+
+==== export-image: the domain is the machine the template describes ====
+[kennel-demo]   machine      pc-q35-noble       ok
+[kennel-demo]   firmware     efi                ok
+[kennel-demo]   vcpu         8                  ok
+[kennel-demo]   memory       16777216 KiB       ok
+[kennel-demo]   disks        1                  ok
+[kennel-demo]   disk bus     virtio             ok
+[kennel-demo]   disk format  qcow2              ok
+[kennel-demo] bundle           /home/thales/kennel-images/kennel-vm-dcf53c5-20260910
+[kennel-demo] source           25GiB allocated in the qcow2 (snapshot + active layer)
+
+==== export-image: halt the guest (qemu-img needs the disk unlocked) ====
+[kennel-demo] domain           kennel-vm-baseline
+[kennel-demo] state            running
+[kennel-demo] asking it to shut down (ACPI)
+[kennel-demo] shut off after 12s
+
+==== export-image: convert the snapshot layer ====
+[kennel-demo] qemu-img convert -W -O qcow2 -c -l snapshot.name=kennel-vm-baseline /home/thales/yuruna/vms/kennel-vm-baseline/kennel-vm-baseline.qcow2 /home/thales/kennel-images/kennel-vm-dcf53c5-20260910/kennel-vm-dcf53c5-20260910.qcow2
+[kennel-demo] converted        25GiB -> 13GiB in 2m2s; qemu-img check clean; no internal snapshots
+
+==== export-image: the bundle ====
+
+==== export-image: done ====
+[kennel-demo]   total 13384620
+[kennel-demo]   -rw-rw-r-- 1 thales thales        1429 Sep 10 16:01 kennel-vm-dcf53c5-20260910.manifest.json
+[kennel-demo]   -rw-rw-r-- 1 thales thales       23201 Sep 10 16:01 kennel-vm-dcf53c5-20260910.packages.txt
+[kennel-demo]   -rw-r--r-- 1 thales thales 13767147520 Sep 10 16:01 kennel-vm-dcf53c5-20260910.qcow2
+[kennel-demo]   -rw-rw-r-- 1 thales thales        8498 Sep 10 16:01 kennel-vm-dcf53c5-20260910.xml
+[kennel-demo]   -rw-rw-r-- 1 thales thales         409 Sep 10 16:01 SHA256SUMS
+[kennel-demo] image_sha256     d51511800ae242eda70e88e1769b52689e88780f1d89feb4161490579dcc3ca5 (hashed in 10s)
+[kennel-demo] manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
+[kennel-demo] export-image in 2m27s (the conversion 2m2s)
+[kennel-demo] the guest is shut off, as after snapshot. Bring it back with:  demo/tools/kennel-demo.sh up
+[kennel-demo] on another host:  demo/tools/kennel-demo.sh import <this directory, copied whole>
+exit=0
+$ qemu-img info /home/thales/kennel-images/kennel-vm-dcf53c5-20260910/*.qcow2
+image: /home/thales/kennel-images/kennel-vm-dcf53c5-20260910/kennel-vm-dcf53c5-20260910.qcow2
+file format: qcow2
+virtual size: 64 GiB (68719476736 bytes)
+disk size: 12.8 GiB
+cluster_size: 65536
+Format specific information:
+    compat: 1.1
+    compression type: zlib
+    lazy refcounts: false
+    refcount bits: 16
+    corrupt: false
+    extended l2: false
+Child node '/file':
+    filename: /home/thales/kennel-images/kennel-vm-dcf53c5-20260910/kennel-vm-dcf53c5-20260910.qcow2
+    protocol type: file
+    file length: 12.8 GiB (13767147520 bytes)
+    disk size: 12.8 GiB
+$ ls -l /home/thales/kennel-images/kennel-vm-dcf53c5-20260910
+total 13384620
+-rw-rw-r-- 1 thales thales        1429 Sep 10 16:01 kennel-vm-dcf53c5-20260910.manifest.json
+-rw-rw-r-- 1 thales thales       23201 Sep 10 16:01 kennel-vm-dcf53c5-20260910.packages.txt
+-rw-r--r-- 1 thales thales 13767147520 Sep 10 16:01 kennel-vm-dcf53c5-20260910.qcow2
+-rw-rw-r-- 1 thales thales        8498 Sep 10 16:01 kennel-vm-dcf53c5-20260910.xml
+-rw-rw-r-- 1 thales thales         409 Sep 10 16:01 SHA256SUMS

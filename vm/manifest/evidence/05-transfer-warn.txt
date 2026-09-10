@@ -1,0 +1,50 @@
+$ stack/transfer/kennel-transfer.sh apply <a copy of run-20260910T185449Z whose run.json names manifest_ref 000…0>
+# 2026-09-10T18:54:49Z, kennel 5b64347
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+run folder       run-20260910T185449Z
+  simulator_params_go2.yaml  1715821f
+  mit_controller_sim_go2.yaml  3c69d87f
+guest            kennel-vm at 192.168.122.228 (libvirt 'default')
+manifest         78f09058655a  (the guest's)
+WARNING: this run was composed against manifest 000000000000, but the guest carries 78f09058655a:
+WARNING: the environment is not the one the run was composed for. Applying anyway --
+WARNING: demo/tools/kennel-demo.sh drift names what differs from the guest's own baseline.
+staged           ~/kennel-staging/runs/run-20260910T185449Z
+
+[apply] stock backup materialized: simulator_params_go2.yaml (blob c0a8113b)
+[apply] stock backup materialized: mit_controller_sim_go2.yaml (blob 7fa96720)
+[apply] applying run 'run-20260910T185449Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      1715821f  1715821f  1715821f  1715821f  OK
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+[apply] OK -- the container's config paths carry run 'run-20260910T185449Z'.
+[apply] The stack reads these at LAUNCH; relaunch for them to take effect (stack/launch.md section 1).
+exit=0
+
+--- and the run as composed, whose manifest_ref IS the guest's
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+run folder       run-20260910T185449Z
+  simulator_params_go2.yaml  1715821f
+  mit_controller_sim_go2.yaml  3c69d87f
+guest            kennel-vm at 192.168.122.228 (libvirt 'default')
+manifest         78f09058655a  (the guest's)
+                 run.json names the same manifest
+staged           ~/kennel-staging/runs/run-20260910T185449Z
+
+[apply] applying run 'run-20260910T185449Z'
+[apply]   -> /root/ros2_ws/src/simulator/config/simulator_params_go2.yaml
+[apply]   -> /root/ros2_ws/src/controllers/config/mit_controller_sim_go2.yaml
+
+  file                           staging   guest     ctr-src   ctr-read  result
+  ------------------------------ --------- --------- --------- --------- ------
+  simulator_params_go2.yaml      1715821f  1715821f  1715821f  1715821f  OK
+  mit_controller_sim_go2.yaml    3c69d87f  3c69d87f  3c69d87f  3c69d87f  OK
+
+[apply] OK -- the container's config paths carry run 'run-20260910T185449Z'.
+[apply] The stack reads these at LAUNCH; relaunch for them to take effect (stack/launch.md section 1).
+exit=0

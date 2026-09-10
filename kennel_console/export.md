@@ -131,6 +131,16 @@ Absent is what off means: a run composed today with the toggle off has a
 with no YAML key at all — it composes a fourth COMMAND
 ([`generate.md`](generate.md) §1.3).
 
+`manifest_ref` is a **sixth top-level key**, appended after `choices` and written
+**only when the page knows the guest's version manifest** — only when `serve.py`'s
+`/api/health` carried one ([#74](https://github.com/alius-git/kennel/issues/74),
+[`vm/manifest.md`](../vm/manifest.md) §4). It is the sha256 of the manifest's
+bytes: the environment the run was composed for. Absent is what "no manifest
+known" means, by the same rule as `disturbances`: every export under plain
+`http.server` — which is what §4's group 3 drives — still carries exactly the five
+keys above. `kennel-transfer.sh` compares it with the guest's at apply time and
+warns on a difference; it never refuses ([`stack/transfer.md`](../stack/transfer.md) §4.2).
+
 - **`choices` holds the seven fields the composer owns**, under their
   [`stack/mapping.md`](../stack/mapping.md) names rather than the composer's
   internal ones, so a reader can grep `run.json` against the YAMLs directly. Not

@@ -1,0 +1,37 @@
+$ demo/tools/kennel-demo.sh status
+# 2026-09-10T18:54:35Z, kennel 5b64347
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4  (/home/thales/kennel/stack/pin.lock)
+guest            kennel-vm at 192.168.122.228 (libvirt 'default')
+
+[status] staging     /home/yuuser24/kennel-staging
+[status] clone       /home/yuuser24/dfki-quad (HEAD dcf53c5)
+[status] container   dfki_quad (running)
+[status] applied run <none -- stock, or never applied>
+[status] runs staged 
+
+  file                           guest     ctr-src   ctr-read  matches
+  ------------------------------ --------- --------- --------- -------
+  simulator_params_go2.yaml      eb31c744  eb31c744  eb31c744  unknown
+  mit_controller_sim_go2.yaml    40683000  40683000  40683000  unknown
+
+
+[kennel-demo] manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
+[kennel-demo]   pin            dcf53c596339afd45b82f12c54b1e93e8273c2f4
+[kennel-demo]   os / kernel    Ubuntu 24.04.5 LTS / 6.8.0-139-generic
+[kennel-demo]   docker / image 29.8.0 / sha256:22dca342cc01
+[kennel-demo]   ROS / Drake    humble (ros-humble-ros-base 0.10.0-1jammy.20260804.204550) / 20231218181452 9ba8f5d8d4ee6919ec41542d47509549cfa8d919
+[kennel-demo]   packages       706
+[kennel-demo]   built from     kennel 370078e21434, console 2026.09.10, guides d2b5a1c1d691 (via status-service)
+[kennel-demo]   created        2026-09-10T18:45:29Z (guest clock)
+[kennel-demo] drift            clean (checked 2026-09-10T18:59:22Z; `drift` re-checks)
+
+[kennel-demo] console runs in /home/thales/kennel-runs (newest first):
+[kennel-demo]   run-20260910T184807Z
+[kennel-demo]   run-20260910T025021Z
+[kennel-demo]   run-20260909T184456Z
+[kennel-demo]   run-20260909T183948Z
+[kennel-demo]   run-20260909T183701Z
+
+[kennel-demo] Meshcat not reachable (simulator not running, or guest down).
+[kennel-demo] bridge not up (start it with:  demo/tools/kennel-demo.sh teleop)
+exit=0

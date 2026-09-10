@@ -1,0 +1,12 @@
+$ demo/tools/kennel-demo.sh console --no-open
+# 2026-09-10T18:54:34Z, kennel 5b64347
+[kennel-demo] serving          kennel_console/ on port 8000 (pid 1329054)
+[kennel-demo] console          http://localhost:8000/Kennel%20Console.dc.html
+
+[kennel-demo] compose the run in the browser, then either:
+[kennel-demo]   * click 'send to kennel-runs' -- it writes the run folder straight into /home/thales/kennel-runs
+[kennel-demo]   * or click 'generate run' and let the archive land in /home/thales/Downloads
+[kennel-demo] then, in this terminal:
+[kennel-demo]     demo/tools/kennel-demo.sh run
+[kennel-demo] it finds whichever of the two is newer by itself -- no unzip, no path.
+[kennel-demo] stop the server with:  demo/tools/kennel-demo.sh console stop

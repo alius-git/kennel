@@ -1,0 +1,35 @@
+$ import onto a host that already holds a baseline, then a tampered bundle
+# 2026-09-10T19:14:21Z, kennel 9917c09
+--- 1. the good bundle, with kennel-vm-baseline defined
+
+==== import: verify the bundle (nothing is written until this passes) ====
+[kennel-demo] bundle           /home/thales/kennel-images/kennel-vm-dcf53c5-20260910
+[kennel-demo]   kennel-vm-dcf53c5-20260910.qcow2: OK
+[kennel-demo]   kennel-vm-dcf53c5-20260910.xml: OK
+[kennel-demo]   kennel-vm-dcf53c5-20260910.manifest.json: OK
+[kennel-demo]   kennel-vm-dcf53c5-20260910.packages.txt: OK
+[kennel-demo] verified         4 files in 11s; image_sha256 and manifest_ref agree with them
+[kennel-demo] manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
+
+==== import: this host ====
+NONZERO SCRIPT EXIT: a 'kennel-vm-baseline' baseline already exists on this host (a libvirt domain, or /home/thales/yuruna/vms/kennel-vm-baseline).
+  import never replaces one. Remove it deliberately first, from /home/thales/git/yuruna:
+    pwsh -NoProfile -Command "& ./test/Remove-TestVMFiles.ps1 -Prefix @('kennel-vm-baseline') -Confirm:\$false"
+exit=1
+--- 2. the tampered bundle: one hex digit of the image's line in SHA256SUMS flipped
+1c1
+< d51511800ae242eda70e88e1769b52689e88780f1d89feb4161490579dcc3ca5  kennel-vm-dcf53c5-20260910.qcow2
+---
+> 051511800ae242eda70e88e1769b52689e88780f1d89feb4161490579dcc3ca5  kennel-vm-dcf53c5-20260910.qcow2
+
+==== import: verify the bundle (nothing is written until this passes) ====
+[kennel-demo] bundle           /home/thales/kennel-images/tampered-kennel-vm-dcf53c5-20260910
+[kennel-demo]   kennel-vm-dcf53c5-20260910.qcow2: FAILED
+[kennel-demo]   kennel-vm-dcf53c5-20260910.xml: OK
+[kennel-demo]   kennel-vm-dcf53c5-20260910.manifest.json: OK
+[kennel-demo]   kennel-vm-dcf53c5-20260910.packages.txt: OK
+[kennel-demo]   sha256sum: WARNING: 1 computed checksum did NOT match
+NONZERO SCRIPT EXIT: the bundle does not match its SHA256SUMS (the FAILED line above names the file).
+  Nothing was written. Copy the bundle again, or export it again.
+exit=1
+nothing was written: ~/yuruna/vms, the libvirt domains and the snapshot sidecars are unchanged

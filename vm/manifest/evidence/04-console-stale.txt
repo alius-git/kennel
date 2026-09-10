@@ -1,0 +1,25 @@
+$ F24: kennel-demo.sh console with a pre-branch serve.py already on port 8000
+# 2026-09-10T18:54:10Z, kennel dbcbf11 + the uncommitted console fix; the old server is b880567's serve.py
+
+--- 1. the old server, started the way yesterday's console started it: its pid in the driver's pidfile
+  old serve.py pid 1328916
+  /api/health: console_version = None | manifest key present: False
+$ demo/tools/kennel-demo.sh console --no-open
+[kennel-demo] port 8000 serves console 'none', this checkout is '2026.09.10' -- restarting the one this driver started
+[kennel-demo] serving          kennel_console/ on port 8000 (pid 1328942)
+[kennel-demo] console          http://localhost:8000/Kennel%20Console.dc.html
+
+[1]+  Terminated              python3 $O/kennel_console/serve.py --port 8000 --dir kennel_console --out ~/kennel-runs > $S/old-serve.log 2>&1
+  /api/health: console_version = '2026.09.10' | manifest key present: True
+
+--- 2. the same old server, but NOT this driver's: no pidfile
+  someone else's serve.py pid 1328955
+  /api/health: console_version = None | manifest key present: False
+$ demo/tools/kennel-demo.sh console --no-open
+[kennel-demo] WARNING: port 8000 is served by console 'none', but this checkout is '2026.09.10':
+[kennel-demo] WARNING: its /api/health and its page are not this checkout's. This driver did not start it,
+[kennel-demo] WARNING: so it will not stop it. Find it with:  lsof -i :8000
+[kennel-demo] console          http://localhost:8000/Kennel%20Console.dc.html
+
+  pid 1328955 still serving: warned about, not stopped
+  /api/health: console_version = None | manifest key present: False

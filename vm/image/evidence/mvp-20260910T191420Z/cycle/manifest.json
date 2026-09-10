@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 2,
+  "cycleFolder": "000054.2026-09-10.19-12-45.4230bb0f56694b6582bdfe6388bff892",
+  "writtenAtUtc": "2026-09-10T19:14:20.6794995Z",
+  "artifactCount": 3,
+  "artifacts": [
+    {
+      "kind": "other",
+      "sizeBytes": 208,
+      "path": ".incomplete",
+      "sha256": "85F4C222C233737764A48966EEF99615757CA7EAD8E7FA0BEDE7D72B61AC03FA",
+      "modifiedUtc": "2026-09-10T19:12:46.0066958Z"
+    },
+    {
+      "kind": "transcript",
+      "sizeBytes": 6265,
+      "path": "000054.2026-09-10.19-12-45.4230bb0f56694b6582bdfe6388bff892.html",
+      "sha256": "BF1C41CDC0F61DABBBBE3326EB512A3F3F3974F9894CD33652C0DA69DE474DF9",
+      "modifiedUtc": "2026-09-10T19:14:20.6666685Z"
+    },
+    {
+      "kind": "ndjson",
+      "sizeBytes": 10471,
+      "path": "cycle.events.ndjson",
+      "sha256": "57109FE36B3603A9446688EA8124027C48DD85D354EE2E2D759A6F6B54ED016D",
+      "modifiedUtc": "2026-09-10T19:14:20.6656685Z"
+    }
+  ]
+}

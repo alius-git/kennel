@@ -1,0 +1,11 @@
+$ inject the two deviations, demo/tools/kennel-demo.sh drift, then what the console is served
+# 2026-09-10T18:56:18Z, kennel 5b64347
+sl	5.02-1
+[kennel-demo] guest            kennel-vm at 192.168.122.228
+manifest         /home/yuuser24/kennel-manifest.json
+manifest_ref     78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
+pin              dcf53c596339afd45b82f12c54b1e93e8273c2f4
+DRIFT tracked-file   M ws/src/common/launch/simulation.launch.py
+DRIFT package       sl 5.02-1 (added)
+findings=2 manifest_ref=78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c checked=2026-09-10T19:04:27Z
+exit=1

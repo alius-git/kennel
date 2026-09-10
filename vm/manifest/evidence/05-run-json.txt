@@ -1,0 +1,20 @@
+$ cat /home/thales/kennel-runs/run-20260910T185449Z/run.json; the guest's manifest_ref
+# 2026-09-10T18:54:49Z, kennel 5b64347
+{
+  "run_id": "RUN-2026-0724-1401",
+  "run": "run-20260910T185449Z",
+  "generated_at": "2026-09-10T18:54:49Z",
+  "pin": "dcf53c596339afd45b82f12c54b1e93e8273c2f4",
+  "choices": {
+    "world_urdf": "src/common/model/urdf/plane.urdf",
+    "world_fix_link": "plane_base_link",
+    "simulator_realtime_rate": 0.75,
+    "publish_quad_state": true,
+    "mpc_solver": "PARTIAL_CONDENSING_OSQP",
+    "mpc_hpipm_mode": "SPEED",
+    "mpc_condensed_size": 5
+  },
+  "manifest_ref": "78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c"
+}
+keys: ['run_id', 'run', 'generated_at', 'pin', 'choices', 'manifest_ref']
+guest manifest_ref: 78f09058655ac922ffa7de457db9342100d6d36cbbb269925bd32db00d5cf85c
