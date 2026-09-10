@@ -59,12 +59,12 @@ pinned:         2026-08-05
 # The provisioning script cannot read this file: Yuruna fetch-and-executes it
 # standalone into the guest, with no checkout of the kennel repo present. So
 # `DFKI_QUAD_COMMIT` in
-# vm/guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh is a DERIVED COPY of
+# test/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh is a DERIVED COPY of
 # `commit:` above and must be updated with it.
 #
 # The enforcement point is the Yuruna sequence: the "Assert the clone sits at
 # the stack pin" step in
-# vm/test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml re-states the SHA
+# test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml re-states the SHA
 # independently and fails the run if the provisioned guest is not sitting on it.
 # A drift between the three therefore surfaces as a red sequence, not as a
 # quietly wrong measurement.

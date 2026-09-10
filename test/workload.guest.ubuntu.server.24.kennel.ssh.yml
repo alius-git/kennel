@@ -1,6 +1,7 @@
-# yaml-language-server: $schema=../schemas/sequence.schema.yml
-# (schema path is relative to test/sequences/ in the Yuruna clone, where this
-#  file is copied to run -- see vm/guest-sizing.md §3)
+# yaml-language-server: $schema=../../test/schemas/sequence.schema.yml
+# (this repo is a Yuruna PROJECT: the runner clones it into <yuruna>/project/
+#  and discovers this file at project/test/, which is where that schema path
+#  resolves -- see test/README.md)
 
 # Sizing acceptance for the kennel guest -- issue #9.
 #

@@ -1,0 +1,38 @@
+# Per-cycle runner definition for the kennel repo as a Yuruna project.
+#
+# The runner reads this file at cycle start -- as project/test/test.runner.yml
+# inside the framework clone, where Update-ProjectClone puts this repository --
+# to learn which TOP-LEVEL sequences a cycle runs. Everything else is derived:
+# each top-level's `resource:` chain is walked, `start.*` entries run in the
+# cycle's Start-GuestOS step and the rest in Start-GuestWorkload.
+#
+# The chain behind the top-level below, in order:
+#
+#   start.guest.ubuntu.server.24.kennel.ssh         create the 8 vCPU / 16 GiB guest
+#     -> workload...kennel.ssh                      assert the sizing landed (#9)
+#       -> workload...kennel.stack.ssh              Docker + the pinned stack (#10)
+#         -> workload...kennel.baseline.ssh         clean it, freeze it (#51)
+#           -> workload...kennel.reset.ssh          revert to it, prove it (#51)
+#
+# A cold cycle is that whole chain (~40 min). `Invoke-TestSequence.ps1` on a
+# host that already holds the `kennel-vm-baseline` snapshot takes the warm path
+# and runs only the top-level (~90 s), because the top-level declares
+# `requiresSnapshot`. The cycle runner has no warm path -- it always builds from
+# cold. See test/README.md for both, and for the two host roles.
+#
+# NB the MVP sequence of issue #24 (workload...kennel.mvp.ssh) becomes this
+# file's top-level when it lands; the reset sequence then stays available as the
+# `baseline` test set below.
+
+sequences:
+  - workload.guest.ubuntu.server.24.kennel.reset.ssh
+
+# Optional named groupings a pool can be assigned instead of the whole list; the
+# implicit set "all" always exists and needs no declaration. displayName and
+# description are what a non-technical operator sees on the pool-control board.
+testSets:
+  - name: baseline
+    displayName: Baseline only
+    description: Provision the appliance and freeze it, then revert and prove what came back. No stack run.
+    sequences:
+      - workload.guest.ubuntu.server.24.kennel.reset.ssh

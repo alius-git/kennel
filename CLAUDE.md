@@ -17,7 +17,8 @@ record before deviating from the rule.
 | [`kennel_console/`](kennel_console/) | the single-file React console, [`kennel_console/serve.py`](kennel_console/serve.py), nine `verify-*.sh` suites (serve, scope, generate, export, send, teleop, dashboard, runs, guides), and the recorded-stack fixtures they replay |
 | [`guides/`](guides/) | the pages a newcomer reads — [`first-run.md`](guides/first-run.md) (the checklist, *performed* by `scenario firstwalk`), `walkthrough.md`, `diagnosis.md`; `img/` is copies and crops of renders that exist elsewhere, built by `guides/tools/make-img.sh` |
 | [`stack/`](stack/) | running the pinned stack: [`stack/launch.md`](stack/launch.md), `transfer/`, `verify/` (the recipe, the `k14-*` sweep and its probe, [`stack/stress.md`](stack/stress.md)), `composed-run/tools/` (the `p21-*` tools), `bridge/` (the rosbridge, its live suite `verify-teleop-live.sh`, and the target watchdog), `known-good/` |
-| [`vm/`](vm/) | the appliance: [`vm/host-baseline.md`](vm/host-baseline.md), [`vm/provisioning.md`](vm/provisioning.md), [`vm/snapshot.md`](vm/snapshot.md), and the Yuruna sequences under `vm/test/` |
+| [`vm/`](vm/) | the appliance: [`vm/host-baseline.md`](vm/host-baseline.md), [`vm/provisioning.md`](vm/provisioning.md), [`vm/snapshot.md`](vm/snapshot.md), `vm/patches/`, and the two host-side reachability checks in `vm/test/` |
+| [`test/`](test/) | the repo **as a Yuruna project** ([`test/README.md`](test/README.md)): the sequences the runner discovers, `test.runner.yml`, and the guest scripts under `test/ubuntu.server.24/` |
 | [`demo/`](demo/) | the driver [`demo/tools/kennel-demo.sh`](demo/tools/kennel-demo.sh), the [runbook](demo/runbook.md), the [dry run](demo/dry-run.md), the [scenario verbs](demo/scenarios.md) (`scenario disturb`, `scenario diagnose`, `scenario firstwalk`) |
 | `dfki-quad/` | the pinned upstream clone — **gitignored, never edited**; read it at the pin with `git show <PIN>:path` |
 
@@ -76,8 +77,8 @@ copies that must change with it are named in
 [`stack/composed-run.md`](stack/composed-run.md) §9.2.
 
 **Yuruna step `command:` strings** carry no `${…}` — Yuruna substitutes it
-first ([`vm/test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml`](vm/test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml)
-line 89) — and every `docker inspect` needs `--type container`, because the
+first ([`test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml`](test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml)
+line 90) — and every `docker inspect` needs `--type container`, because the
 image is called `dfki_quad` too and without it the call resolves the image and
 exits 0 ([`vm/provisioning.md`](vm/provisioning.md) §5a).
 

@@ -1,6 +1,7 @@
-# yaml-language-server: $schema=../schemas/sequence.schema.yml
-# (schema path is relative to test/sequences/ in the Yuruna clone, where this
-#  file is copied to run -- see vm/provisioning.md section 4.2)
+# yaml-language-server: $schema=../../test/schemas/sequence.schema.yml
+# (this repo is a Yuruna PROJECT: the runner clones it into <yuruna>/project/
+#  and discovers this file at project/test/, which is where that schema path
+#  resolves -- see test/README.md)
 
 # Kennel baseline snapshot -- issue #51.
 #
@@ -57,7 +58,7 @@ workload:
   # 900 s is generous for what is a container stop plus a few file operations:
   # the only slow thing in it is `docker stop`, which is itself bounded.
   - action: sshFetchAndExecute
-    command: "/usr/local/lib/yuruna/fetch-and-execute.sh guest/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh"
+    command: "/usr/local/lib/yuruna/fetch-and-execute.sh project/test/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh"
     timeoutSeconds: 900
     description: "Clean the guest to a baseline (stop stack, assert stock + built, clear staging)"
 

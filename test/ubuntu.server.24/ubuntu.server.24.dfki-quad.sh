@@ -7,12 +7,12 @@
 # no manual step in between, and idempotent on re-run.
 #
 # Runs via Yuruna's sshFetchAndExecute:
-#   /usr/local/lib/yuruna/fetch-and-execute.sh guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh
+#   /usr/local/lib/yuruna/fetch-and-execute.sh project/test/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh
 #
 # fetch-and-execute passes NO arguments to the fetched script, so every knob
 # below is an environment variable. They can be set on the sshExec command line
 # ahead of the fetch-and-execute call, e.g.:
-#   KENNEL_COLCON_JOBS=4 /usr/local/lib/yuruna/fetch-and-execute.sh guest/...
+#   KENNEL_COLCON_JOBS=4 /usr/local/lib/yuruna/fetch-and-execute.sh project/test/...
 #
 # Style follows guest/ubuntu.server.24/ubuntu.server.24.code.sh at Yuruna
 # 2026.08.04: set -euo pipefail, the shared retry lib, apt_retry/curl_retry for
@@ -33,7 +33,7 @@ export NONINTERACTIVE=1
 # with it. They cannot read it: fetch-and-execute drops this script into the
 # guest alone, with no checkout of the kennel repo to read. The drift check is
 # the "Assert the clone sits at the stack pin" step in
-# vm/test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml, which re-states
+# test/workload.guest.ubuntu.server.24.kennel.stack.ssh.yml, which re-states
 # the SHA independently.
 DFKI_QUAD_REPO="${DFKI_QUAD_REPO:-https://github.com/thalesasoares/dfki-quad}"
 DFKI_QUAD_COMMIT="${DFKI_QUAD_COMMIT:-dcf53c596339afd45b82f12c54b1e93e8273c2f4}"
@@ -363,7 +363,7 @@ else
         echo "NONZERO SCRIPT EXIT: colcon build failed (exit $build_rc)." >&2
         echo "  Build log: /tmp/colcon.log inside the container." >&2
         echo "  If this was an OOM, vm/guest-sizing.md section 6 says cap parallelism FIRST:" >&2
-        echo "    KENNEL_COLCON_JOBS=4 /usr/local/lib/yuruna/fetch-and-execute.sh guest/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh" >&2
+        echo "    KENNEL_COLCON_JOBS=4 /usr/local/lib/yuruna/fetch-and-execute.sh project/test/ubuntu.server.24/ubuntu.server.24.dfki-quad.sh" >&2
         exit "$build_rc"
     fi
 

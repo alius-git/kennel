@@ -4,7 +4,7 @@
 # a Yuruna disk snapshot.
 #
 # Runs on the GUEST (kennel-vm), over Yuruna's sshFetchAndExecute:
-#   /usr/local/lib/yuruna/fetch-and-execute.sh guest/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh
+#   /usr/local/lib/yuruna/fetch-and-execute.sh project/test/ubuntu.server.24/ubuntu.server.24.kennel-baseline-prep.sh
 # and equally over plain SSH, which is how `kennel-demo.sh snapshot` runs it.
 #
 # "Clean baseline" is a specific claim, and every clause of it is ASSERTED here
@@ -47,7 +47,7 @@ export DEBIAN_FRONTEND=noninteractive
 # COPY of stack/pin.lock's `commit:` -- fetch-and-execute drops this script into
 # the guest alone, with no checkout of the kennel repo to read it from. The drift
 # check is the "assert the baseline records the pin" step in
-# vm/test/workload.guest.ubuntu.server.24.kennel.baseline.ssh.yml, which
+# test/workload.guest.ubuntu.server.24.kennel.baseline.ssh.yml, which
 # re-states the SHA independently (vm/provisioning.md section 8).
 DFKI_QUAD_COMMIT="${DFKI_QUAD_COMMIT:-dcf53c596339afd45b82f12c54b1e93e8273c2f4}"
 DFKI_QUAD_DIR="${DFKI_QUAD_DIR:-$HOME/dfki-quad}"
