@@ -1,0 +1,176 @@
+/* Kennel deck theme — loaded by Slidev automatically (./style.css).
+   Navy gradient ground, amber accent, cards, tables, the counter and progress bar. */
+
+:root {
+  --k-accent: #f5b942;
+  --k-accent-2: #7dd3fc;
+  --k-text: #e8ecf3;
+  --k-muted: #9aa5b8;
+  --k-line: rgba(255, 255, 255, 0.14);
+  --k-card: rgba(255, 255, 255, 0.045);
+}
+
+/* ---- ground ------------------------------------------------------------ */
+.slidev-layout,
+.dark .slidev-layout {
+  background:
+    radial-gradient(900px 520px at 6% -10%, rgba(56, 120, 220, 0.30), transparent 60%),
+    radial-gradient(700px 420px at 100% 110%, rgba(245, 185, 66, 0.16), transparent 60%),
+    linear-gradient(160deg, #111b32 0%, #0b1120 55%, #080b14 100%);
+  color: var(--k-text);
+}
+
+/* the cover keeps its photo, dimmed from the left so the title reads */
+.slidev-layout.cover { position: relative; }
+.slidev-layout.cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, rgba(8, 11, 20, 0.95) 0%, rgba(8, 11, 20, 0.78) 45%, rgba(8, 11, 20, 0.30) 100%);
+}
+.slidev-layout.cover > * { position: relative; }
+.slidev-layout.cover h1 { color: #fff; font-size: 3.6rem; }
+.slidev-layout.cover h2 { color: var(--k-accent); font-weight: 500; }
+
+/* ---- type ---------------------------------------------------------------- */
+.slidev-layout h1 {
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.slidev-layout:not(.cover):not(.section):not(.end) h1::after {
+  content: '';
+  display: block;
+  width: 3rem;
+  height: 3px;
+  margin-top: 0.45rem;
+  border-radius: 2px;
+  background: var(--k-accent);
+}
+.slidev-layout h3 { color: #fff; font-weight: 600; }
+.slidev-layout strong { color: #fff; }
+.slidev-layout a { color: var(--k-accent-2); }
+
+.slidev-layout :not(pre) > code {
+  background: rgba(125, 211, 252, 0.12);
+  color: #cfeeff;
+  border-radius: 4px;
+  padding: 0.05em 0.35em;
+}
+
+/* section dividers: an amber bar, the subtitle muted */
+.slidev-layout.section h1 {
+  display: inline-block;
+  color: #fff;
+  border-left: 8px solid var(--k-accent);
+  padding-left: 1.2rem;
+  font-size: 2.8rem;
+  text-align: left;
+}
+.slidev-layout.section p { color: var(--k-muted); font-size: 1.15rem; }
+
+/* ---- cards ---------------------------------------------------------------- */
+.card {
+  background: var(--k-card);
+  border: 1px solid var(--k-line);
+  border-top: 3px solid var(--k-accent);
+  border-radius: 12px;
+  padding: 0.9rem 1.1rem;
+}
+.card h3 { margin-top: 0; }
+.card.stat > div:first-child { color: var(--k-accent); }
+
+/* ---- tables ------------------------------------------------------------- */
+.slidev-layout table { width: 100%; border-collapse: collapse; }
+.slidev-layout table th {
+  color: var(--k-accent);
+  font-weight: 600;
+  font-size: 0.72em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  border-bottom: 1px solid var(--k-line);
+}
+.slidev-layout table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  vertical-align: top;
+  /* Tight rows on purpose: a nine-row table has to clear the chrome band at the
+     bottom edge (the section label and the counter). */
+  padding: 0.34rem 0.7rem;
+}
+.slidev-layout table th {
+  padding: 0.2rem 0.7rem;
+}
+.slidev-layout table th:first-child,
+.slidev-layout table td:first-child { padding-left: 0; }
+.slidev-layout table tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.025); }
+
+/* ---- step chips (a left-to-right chain that cannot overflow) ------------- */
+.chain { position: relative; }
+.chip {
+  position: relative;
+  background: var(--k-card);
+  border: 1px solid var(--k-line);
+  border-left: 3px solid var(--k-accent);
+  border-radius: 8px;
+  padding: 0.5rem 0.55rem;
+}
+.chip b { color: #fff; display: block; margin-bottom: 0.15rem; }
+.chip span { color: var(--k-muted); }
+.chip:not(:last-child)::after {
+  content: '\203A';
+  position: absolute;
+  right: -0.62rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--k-accent);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+/* ---- callout ------------------------------------------------------------ */
+.note {
+  background: rgba(245, 185, 66, 0.10);
+  border: 1px solid rgba(245, 185, 66, 0.35);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+
+/* ---- screenshots -------------------------------------------------------- */
+.shot {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--k-line);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+.caption { font-size: 0.75em; color: var(--k-muted); margin-top: 0.45rem; }
+
+/* ---- section label + counter + progress (global-top.vue) ---------------- */
+.k-section {
+  position: absolute;
+  left: 1.2rem;
+  bottom: 0.7rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--k-muted);
+  opacity: 0.75;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.k-counter {
+  position: absolute;
+  right: 1.2rem;
+  bottom: 0.7rem;
+  font-size: 0.7rem;
+  color: var(--k-muted);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.k-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--k-accent);
+  opacity: 0.85;
+}
