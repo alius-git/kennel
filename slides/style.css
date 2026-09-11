@@ -105,6 +105,26 @@
 .slidev-layout table td:first-child { padding-left: 0; }
 .slidev-layout table tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.025); }
 
+/* an organisation's full name under a card title (What existed) */
+.card .org {
+  color: var(--k-accent);
+  font-size: 0.8em;
+  margin: -0.35rem 0 0.4rem;
+}
+
+/* ---- hardware strip (The numbers): a label, then a key/value grid -------- */
+.hw .card {
+  display: flex;
+  gap: 0.9rem;
+  align-items: baseline;
+  padding: 0.35rem 0.8rem;
+  border-top-width: 2px;
+}
+.hw .card > b { white-space: nowrap; min-width: 4.2rem; }
+.hw dl { display: grid; grid-template-columns: auto 1fr; gap: 0 0.7rem; margin: 0; }
+.hw dt { color: var(--k-muted); }
+.hw dd { margin: 0; }
+
 /* ---- step chips (a left-to-right chain that cannot overflow) ------------- */
 .chain { position: relative; }
 .chip {

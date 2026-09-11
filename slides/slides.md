@@ -95,7 +95,7 @@ Getting a quadruped controller running is a week of setup before the first trot
 - The written wait is wrong: at the 10-second mark the simulator was still enumerating joints
 - No pass/fail — "it looks fine" is the verdict
 - **Swapping one block** means hunting a scattered parameter, or editing code and rebuilding — some blocks have no switch at all
-- Every new lab member repeats the same week
+- Every new lab member wastes a week
 
 </div>
 
@@ -134,7 +134,7 @@ Has read about quadruped control; has never built a ROS workspace. Her laptop is
 <div class="card" v-click>
 
 ### Marcus — the instructor
-Thirty seats on Monday. On Wednesday one is hopelessly modified. Contact time is the scarce resource.
+Thirty seats on Monday. On Wednesday one is hopelessly modified. Support time is the scarce resource.
 
 </div>
 
@@ -181,7 +181,9 @@ Two proven pieces, a prototype on mock data, and no product between them
 
 <div class="card">
 
-### 🐕 The DFKI quadruped stack
+### 🐕 The quadruped stack
+<div class="org">German Research Center for Artificial Intelligence (DFKI)</div>
+
 - ROS 2 controller: gait sequencer → **MPC** → **WBC**, four QP solvers
 - Drake simulator + Meshcat viewer, in a Docker image
 - ICRA 2025: a published QP solver benchmark
@@ -211,21 +213,21 @@ Two pieces, both proven, neither aimed at this problem: a research controller me
 
 <div class="grid grid-cols-5 gap-6 mt-2">
 
-<div class="col-span-2 text-sm">
+<div class="col-span-2">
 
-- **One lab, identical everywhere** — not a week of setup per person, and not a different environment on every laptop.
-- **A pipeline you can take apart** — swap the gait sequencer, the MPC, the swing or contact logic, one block at a time, without touching the rest.
-- **A run you can repeat and check** — the same choices give the same configuration, and the verdict is read from the robot's own data.
+- **One lab**, identical everywhere
+- **A pipeline you can take apart**, one block at a time
+- **A run you can repeat** and check
 
-<div class="note mt-4">
-The objective: an easy-to-start lab where <b>every block of the control pipeline can be tested on its own</b> — and the same test can be run again tomorrow.
+<div class="note mt-6 text-sm">
+The goal: <b>test every block on its own</b> — and again tomorrow.
 </div>
 
 </div>
 
 <div class="col-span-3">
 <img src="/img/console-prototype.png" class="shot" />
-<div class="caption">the prototype's pipeline composer — six stages, and every one of them on scripted data</div>
+<div class="caption">the prototype's composer — every stage on scripted data</div>
 </div>
 
 </div>
@@ -236,6 +238,8 @@ The third piece, and the gap in one picture: the console prototype, scaffolded f
 The layout is the same one you will see live in the demo. That is the point of the DataSource seam.
 
 The three bullets are the whole thesis of the internship, and the box is the sentence to say slowly: a component of a control pipeline is only testable if you can swap it *and* trust that nothing else moved. That needs both halves — a modular pipeline, and an environment that is identical every time.
+
+The bullets in full, to say rather than show: not a week of setup per person, and not a different environment on every laptop · swap the gait sequencer, the MPC, the swing or contact logic, one block at a time, without touching the rest · the same choices give the same configuration, and the verdict is read from the robot's own data.
 -->
 
 ---
@@ -294,7 +298,8 @@ Written down before building: a PRFAQ, seven personas, ten verification scenario
 
 # How the pieces fit
 
-```mermaid {scale: 0.6}
+```mermaid {scale: 0.75}
+%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 30}}}%%
 flowchart LR
     subgraph Host["Your computer"]
         B["Browser<br/>Kennel Console"]
@@ -305,20 +310,18 @@ flowchart LR
         M["Meshcat 3D viewer"]
         R["rosbridge"]
     end
-    B -- "1. compose & send a run" --> D
+    B -- "1. compose &<br/>send a run" --> D
     D -- "2. transfer · launch · verify" --> S
     S --> M
     M -- "3. watch it walk" --> B
-    B -- "4. drive it · every panel live" --> R
+    B -- "4. drive it ·<br/>every panel live" --> R
     R --> S
 ```
 
-<div class="mt-2 text-sm opacity-80">
-The VM lives on your computer; the browser talks to it over a private network. No cloud, no account, nothing to install on the host besides the VM tools. The console never fetches off-host — the suites assert it.
-</div>
-
 <!--
 Four arrows, four steps of the daily loop. Step 2 is the part the user never types: the driver checksums the run at every hop, launches the three processes, runs ten health checks, and hands back a walking robot.
+
+Say it rather than show it: the VM lives on your computer; the browser talks to it over a private network. No cloud, no account, nothing to install on the host besides the VM tools. The console never fetches off-host — the suites assert it.
 -->
 
 ---
@@ -331,88 +334,9 @@ section: "4 · Development"
 The architecture — what the parts are, and where the seams are
 
 <!--
-⏱ 6:30 → 8:30. Three slides, all architecture: the stack's seam, Kennel's own parts, and the chain a single run travels.
+⏱ 6:30 → 8:30. One slide: the chain a single run travels. The stage plugins and Kennel's parts and seams are in the appendix, after the demo backup — go there only if asked.
 
 If anyone asks about volume rather than shape: 82 commits here and 86 on the fork, 26 pull requests, 35 issues closed of 54, ~16k lines of scripts and sequences, ~10k lines of implementation records, 422 evidence transcripts. Every tool has a record beside it and every record has its transcripts — that is why the second number is as large as the first.
--->
-
----
-
-# Every stage a plugin
-
-<div class="grid grid-cols-2 gap-8 mt-4 text-sm">
-
-<div>
-
-### Before
-The algorithms were compiled into the controller node. A stage was chosen — when it could be chosen at all — through a parameter that looked like any other.
-
-### After
-Six stages behind documented interfaces, each one a plugin:
-
-- **`<stage>.type` in the YAML picks the implementation** — one uniform key for `gs` · `mpc` · `slc` · `wbc` · `contact_logic` · `model_adaptation`
-- a loader that **fails fast** on a type it cannot resolve
-- **per-stage overlays** for parameters, with shipped examples
-
-</div>
-
-<div v-click>
-
-### What it buys
-- The contact FSM became a stage of its own; the bio-inspired gait sequencer became a selectable plugin
-- An **out-of-package plugin** — a pass-through swing-leg controller — loads through the production loader: a new stage needs no fork of the controller
-- `adding_a_stage.md`, so the next person has a path
-- Suites for the contract, the loader, the overlays, and the selection every shipped config makes
-
-
-</div>
-
-</div>
-
-<!--
-This is the half of the internship that happens inside the stack, and it is why "test every little component" is a sentence I am allowed to say.
-
-The honest bit, if asked: this landed in the fork on the modular branch. The appliance pins the commit every number in this deck was measured against, which predates it — so the demo you are about to see composes the MPC, and the other five stages are shown fixed rather than pretended. Repinning is scenario s009, designed for exactly this, and the composer needs no change to gain them: the schema already has an impl per stage.
--->
-
----
-
-# How Kennel is built
-
-<div class="grid grid-cols-2 gap-8 mt-4 text-sm">
-
-<div>
-
-### The parts
-
-- **On the host** — one HTML file, no build step and no off-host fetch; `serve.py` beside it, which reports the guest's URLs and writes run folders; and `kennel-demo.sh`, the **only** thing in the system that starts a process
-- **On the guest** — an appliance built by Yuruna sequences and frozen as a snapshot; the pinned stack in a container; the Drake viewer on `:7000` and rosbridge on `:9090`
-
-</div>
-
-<div v-click>
-
-### The seams
-
-| Seam | What it lets you change |
-|---|---|
-| `<stage>.type` | one part of the control pipeline |
-| the **run folder** | the whole experiment — it is the only contract between browser and stack |
-| `DataSource` | where the panels' data comes from: mock or live, same panels |
-| `verify.json` | nothing — it is the only thing allowed to say a run worked |
-
-<div class="note mt-3">
-The line that never moves: the console <b>configures and observes</b>. It never starts or stops a process.
-</div>
-
-</div>
-
-</div>
-
-<!--
-Three seams and a rule. Each seam is a place where one thing can be replaced without the rest noticing — which is the whole point of the internship in one slide.
-
-The rule at the bottom is why the driver exists: a browser that could start processes would be a browser you have to trust with the machine.
 -->
 
 ---
@@ -468,14 +392,19 @@ section: "5 · Results"
 Measured, not estimated
 
 <!--
-⏱ 8:30 → 10:30. Three slides. All figures from recorded transcripts on the reference host, 8 vCPU / 16 GiB guest.
+⏱ 8:30 → 10:30. Two slides. All figures from recorded transcripts on the reference host, 8 vCPU / 16 GiB guest.
 -->
 
 ---
 
 # The numbers
 
-<div class="grid grid-cols-2 gap-8 mt-2">
+<div class="hw grid grid-cols-5 gap-4 mt-1 text-xs">
+<div class="card col-span-3"><b>Host</b><dl><dt>CPU</dt><dd>AMD Ryzen 7 8845HS · 8 cores / 16 threads</dd><dt>GPU</dt><dd>Radeon 780M, integrated</dd><dt>RAM</dt><dd>32 GB DDR5 (2 × 16 GB) · 5600 MT/s</dd></dl></div>
+<div class="card col-span-2"><b>kennel-vm</b><dl><dt>vCPU</dt><dd>8</dd><dt>RAM</dt><dd>16 GiB</dd><dt>Disk</dt><dd>64 GB</dd></dl></div>
+</div>
+
+<div class="grid grid-cols-2 gap-8 mt-3">
 
 <div class="text-sm">
 
@@ -507,6 +436,8 @@ Measured, not estimated
 
 <!--
 The provision figure is the one-time cost; everything a person interacts with afterwards is under two minutes. The negative control before the launcher fix did not reproduce the race — the record says "4 of 4 green", not "the race was caught in the act".
+
+The hardware strip: the host's CPU and guest size are in vm/host-baseline.md and vm/guest-sizing.md. The OS reports 28 GiB of the 32 GB; 16 GiB is the largest round size that host can give the guest without the build swapping.
 -->
 
 ---
@@ -536,36 +467,6 @@ The provision figure is the one-time cost; everything a person interacts with af
 
 <!--
 This is the slide that answers the prototype: same layout, no recording. The post-mortem live: "WBC missed its 2 ms deadline … early contact FL −240 ms … FALL: body height — z median 0.180 m — controller latched to damping mode".
--->
-
----
-
-# Against the ten scenarios the design set
-
-<div class="text-sm">
-
-| Scenario | State | What stands behind it |
-|---|---|---|
-| s001 · cold import → walking in budget | ✅ | `run` from a powered-off VM: 1m49s |
-| s002 · compose, generate, round-trip | ✅ | byte-identical files; the composed solver proven in the running controller |
-| s007 · the seam, mock ↔ live | ✅ | one seam, both sources, no panel changed |
-| s004 · interventions, disturbance | ✅ | `scenario disturb`: **64 checks**, green twice, and the **process table identical** around every step |
-| s003 · degradation, fall, post-mortem | ✅ | `scenario diagnose`: **87 checks**, 2 bypassed — tint history green→amber→red, post-mortem pinned, verdict recorded |
-| s005 · solver comparison | 🟡 | verdicts, counters, config diff; the benchmark preset open (#72) |
-| s006 · same manifest, same experiment | 🟡 | reproducible files; run-to-run verdict comparison not yet asserted |
-| s008 · fleet, drift, reset | ⏳ | `reset` proves the baseline; fleet + drift check open (#75, #76) |
-| s009 · repin · s010 · safety gate | ⏳ | designed, not started (#74, #77) |
-
-</div>
-
-<!--
-Behind this table, if the number of checks comes up: Yuruna 28/28 on provision, 10 verify checks per run, 8 console suites on recorded-bridge fixtures, s004's 64 and s003's 87 — and 422 evidence transcripts in the repo.
-
-Every open item is an issue in the *Finish the system* milestone, in order, with its plan slot.
-
-Be plain here: five of the ten are asserted end to end by a command, two have the hard half done, three are open and named. That honesty is itself one of the results — nothing in the repo claims more than its evidence.
-
-s009 is the repin rehearsal — the scenario that would put the modular revision under the appliance.
 -->
 
 ---
@@ -624,21 +525,24 @@ section: "7 · Learnings"
 
 # What the records taught me
 
-<div class="text-sm mt-2">
+<div class="mt-4">
 
 | | Learned the hard way |
 |---|---|
-| **Waits observe, never sleep** | the "wait ~10 s" in the generated commands had *never been obeyed by anything* — every script waited on observation. It was found only by running the demo from the written steps |
-| **A check that looks right and tests the wrong thing** | graph presence as liveness (a killed node lingers 10–20 s); `topic echo --once` warning on **stdout**; a fall rule on a 0.2-s window; a counter mistaken for a solve time |
-| **Run the docs, not the scripts** | two of the five dry-run findings exist only because a repo script was used solely where the written step *is* "run this script" |
-| **Measure the negative control first** | the launcher race did not reproduce on the day; the record says "4 of 4 green after", not "caught in the act" |
-| **Tools must name what they need** | a tool that is right about what it does and silent about what it depends on fails three ways, each with a different message |
-| **Write for a reader with no context** | records, plans and rules for the next person — or the next agent — who has only the repo: ground truth by command, on a date |
+| **Waits observe, never sleep** | the documented "wait ~10 s" was wrong — and no script had ever relied on it |
+| **A check can pass and test the wrong thing** | graph presence as liveness — a killed node lingers 10–20 s |
+| **Run the docs, not the scripts** | two dry-run findings appeared only by following the written steps |
+| **Measure the negative control first** | the launcher race never reproduced — and the record says so |
+| **Write for a reader with no context** | the next person — or agent — has only the repo |
 
 </div>
 
 <!--
 Pick two to say aloud: the sleep, and the negative control. The table stays for the reader.
+
+The long versions, if asked: the "wait ~10 s" in the generated commands had never been obeyed by anything — every script waited on observation — and it was found only by running the demo from the written steps. Checks that looked right and tested the wrong thing: graph presence as liveness, `topic echo --once` warning on stdout, a fall rule on a 0.2-s window, a counter mistaken for a solve time. Two of the five dry-run findings exist only because a repo script was used solely where the written step is "run this script". The launcher race did not reproduce on the day: the record says "4 of 4 green after", not "caught in the act".
+
+Cut for time: tools must name what they need — a tool that is right about what it does and silent about what it depends on fails three ways, each with a different message.
 -->
 
 ---
@@ -650,30 +554,32 @@ Pick two to say aloud: the sleep, and the negative control. The table stays for 
 <div>
 
 ### On building
-- A number nobody can read back is a number nobody should believe — put the value where a suite can assert it
-- **Say what it is not.** Kennel is not a robot controller, and saying so early made every other claim easier to trust
-- Small issues, each ending in evidence, compound faster than big branches
-- **Design the seam before you need it.** The composer carried an implementation per stage months before the stages were plugins — so the modular revision costs it no change
+- Put every number where a suite can read it
+- **Say what it is not** — every other claim gets easier to trust
+- Small issues with evidence beat big branches
+- **Design the seam before you need it**
 
 </div>
 
 <div v-click>
 
 ### On working
-- Planning is writing: a plan good enough for a stranger to implement is a plan good enough to implement
-- The friction log is the product of a dry run — a green run teaches nothing
-- Ship the record with the code, or the record never ships
+- A plan a stranger can implement is a plan you can implement
+- A green dry run teaches nothing — the friction log is the product
+- Ship the record with the code, or it never ships
 
 </div>
 
 </div>
 
 <div class="mt-10 text-center opacity-70 text-sm" v-click>
-Thank you — and thank you to the people who reviewed every one of those 25 pull requests.
+And thank you to everyone who reviewed the pull requests.
 </div>
 
 <!--
 This is the personal slide: swap any bullet for your own words before presenting. End on the thank-you and go to the last slide.
+
+The long versions: a number nobody can read back is a number nobody should believe. Kennel is not a robot controller, and saying so early made every other claim easier to trust. Small issues, each ending in evidence, compound faster than big branches. The composer carried an implementation per stage months before the stages were plugins — so the modular revision costs it no change.
 -->
 
 ---
@@ -688,14 +594,14 @@ Kennel — github.com/alius-git/kennel
 </div>
 
 <div class="opacity-50 mt-2 text-sm">
-Backup slides follow — the walk, the live Dashboard, the Runs view, teleop.
+Backup slides follow — the demo, then an appendix for questions.
 </div>
 
 ---
 layout: image
 image: /img/meshcat-walking.png
 backgroundSize: contain
-section: "Backup"
+section: "Backup · Demo"
 ---
 
 <!--
@@ -747,3 +653,84 @@ Measured: 0.47 m/s against a 0.50 m/s command; 12.5 m in 27 s; released stick �
 
 <img src="/img/teleop.png" class="shot mt-16" />
 <div class="caption">the Interventions row over the bridge; the panels below it were still on the mock when this was taken</div>
+
+---
+section: "Appendix"
+---
+
+# Every stage a plugin
+
+<div class="grid grid-cols-2 gap-8 mt-4 text-sm">
+
+<div>
+
+### Before
+The algorithms were compiled into the controller node. A stage was chosen — when it could be chosen at all — through a parameter that looked like any other.
+
+### After
+Six stages behind documented interfaces, each one a plugin:
+
+- **`<stage>.type` in the YAML picks the implementation** — one uniform key for `gs` · `mpc` · `slc` · `wbc` · `contact_logic` · `model_adaptation`
+- a loader that **fails fast** on a type it cannot resolve
+- **per-stage overlays** for parameters, with shipped examples
+
+</div>
+
+<div v-click>
+
+### What it buys
+- The contact FSM became a stage of its own; the bio-inspired gait sequencer became a selectable plugin
+- An **out-of-package plugin** — a pass-through swing-leg controller — loads through the production loader: a new stage needs no fork of the controller
+- `adding_a_stage.md`, so the next person has a path
+- Suites for the contract, the loader, the overlays, and the selection every shipped config makes
+
+
+</div>
+
+</div>
+
+<!--
+This is the half of the internship that happens inside the stack, and it is why "test every little component" is a sentence I am allowed to say.
+
+The honest bit, if asked: this landed in the fork on the modular branch. The appliance pins the commit every number in this deck was measured against, which predates it — so the demo composed the MPC, and the other five stages were shown fixed rather than pretended. Repinning is scenario s009, designed for exactly this, and the composer needs no change to gain them: the schema already has an impl per stage.
+-->
+
+---
+
+# How Kennel is built
+
+<div class="grid grid-cols-2 gap-8 mt-4 text-sm">
+
+<div>
+
+### The parts
+
+- **On the host** — one HTML file, no build step and no off-host fetch; `serve.py` beside it, which reports the guest's URLs and writes run folders; and `kennel-demo.sh`, the **only** thing in the system that starts a process
+- **On the guest** — an appliance built by Yuruna sequences and frozen as a snapshot; the pinned stack in a container; the Drake viewer on `:7000` and rosbridge on `:9090`
+
+</div>
+
+<div v-click>
+
+### The seams
+
+| Seam | What it lets you change |
+|---|---|
+| `<stage>.type` | one part of the control pipeline |
+| the **run folder** | the whole experiment — it is the only contract between browser and stack |
+| `DataSource` | where the panels' data comes from: mock or live, same panels |
+| `verify.json` | nothing — it is the only thing allowed to say a run worked |
+
+<div class="note mt-3">
+The line that never moves: the console <b>configures and observes</b>. It never starts or stops a process.
+</div>
+
+</div>
+
+</div>
+
+<!--
+Three seams and a rule. Each seam is a place where one thing can be replaced without the rest noticing — which is the whole point of the internship in one slide.
+
+The rule at the bottom is why the driver exists: a browser that could start processes would be a browser you have to trust with the machine.
+-->
