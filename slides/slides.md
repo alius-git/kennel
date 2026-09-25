@@ -4,7 +4,7 @@ title: Kennel
 titleTemplate: '%s — a ready-to-use virtual lab for a walking Go2'
 info: |
   Kennel — final presentation of the 2026 internship, Thales Andrade Soares.
-  Problem · previous work · proposal · development · results · demo · learnings.
+  Demo · problem · previous work · proposal · development · results · learnings.
 author: Thales Andrade Soares
 colorSchema: dark
 transition: slide-left
@@ -30,7 +30,7 @@ Final presentation — 2026 internship — Thales Andrade Soares
 <!--
 ⏱ 0:00. One line: "A lab in a box. You open a browser, choose how the robot should be controlled, press one button, and a simulated Go2 walks — on any machine, the same way, every time."
 
-Then the seven parts, in one breath: the problem, what existed, what I proposed, what I built, what it measures, a live demo, what I learned.
+Then the order, in one breath: who I am, a live demo first, then the problem, what existed, what I proposed, what I built, what it measures, what I learned.
 -->
 
 ---
@@ -39,33 +39,116 @@ Then the seven parts, in one breath: the problem, what existed, what I proposed,
 
 <div class="grid grid-cols-2 gap-x-12 gap-y-3 mt-8 text-lg">
 
-<div><span class="opacity-50 mr-3">1</span> Problem statement</div>
-<div><span class="opacity-50 mr-3">5</span> Results</div>
-<div><span class="opacity-50 mr-3">2</span> Previous work</div>
-<div><span class="opacity-50 mr-3">6</span> Demo</div>
-<div><span class="opacity-50 mr-3">3</span> The proposal</div>
+<div><span class="opacity-50 mr-3">1</span> Demo</div>
+<div><span class="opacity-50 mr-3">5</span> Development</div>
+<div><span class="opacity-50 mr-3">2</span> Problem statement</div>
+<div><span class="opacity-50 mr-3">6</span> Results</div>
+<div><span class="opacity-50 mr-3">3</span> Previous work</div>
 <div><span class="opacity-50 mr-3">7</span> Learnings</div>
-<div><span class="opacity-50 mr-3">4</span> Development</div>
+<div><span class="opacity-50 mr-3">4</span> The proposal</div>
 <div></div>
 
 </div>
 
 
 <!--
-Budget: 2 · 2 · 2 · 2 · 2 · 8 · 2 = 20 minutes. The presenter view shows the clock; each section slide's notes carry the cumulative mark.
+Budget: title 0.5 · about me 1 · demo 8 · then 2 · 2 · 2 · 2 · 2 · 1.5 = 21 minutes. The presenter view shows the clock; each section slide's notes carry the cumulative mark.
+-->
+
+---
+section: ""
+---
+
+# About me
+
+<div class="grid grid-cols-5 gap-10 mt-8">
+
+<div class="col-span-2">
+
+## Thales Andrade Soares
+
+<div class="mt-4 opacity-80">
+
+Intern at **Alius LLC**, with **Alisson Sol**
+
+First-year **master's student** in robotics — **PPGEE, UFMG**
+
+</div>
+
+</div>
+
+<div class="col-span-3">
+
+### Research experience
+
+With **real robots** and **simulated environments**:
+
+- Control
+- Navigation
+- Localization
+- Obstacle avoidance
+- Fleet management systems
+
+</div>
+
+</div>
+
+<!--
+⏱ 0:30 → 1:30. Who I am, in three lines: the internship at Alius LLC with Alisson Sol, the master's at PPGEE UFMG in robotics, and the research so far — real robots and simulation, control, navigation, localization, obstacle avoidance, fleet management. Then straight into the demo.
+-->
+
+---
+section: "1 · Demo"
+---
+
+# Demo — eight minutes
+
+<div class="grid grid-cols-5 gap-6 mt-2">
+
+<div class="col-span-3 text-xs">
+
+| Min | Action | What the audience sees |
+|---|---|---|
+| 0:00 | **Compose**: flat plane, OSQP, rate 0.75 → **send to kennel-runs →** | the pipeline diagram; the run folder appears |
+| 1:00 | `kennel-demo.sh run` | transfer → launch → **`pass=10 fail=0`** → walk |
+| 3:00 | open the Meshcat URL it prints | the Go2 trotting on *this* composition |
+| 3:30 | `kennel-demo.sh teleop` → Dashboard → **connect bridge** | `mode · live`, the viewer in the 3D pane, panels moving |
+| 4:30 | joystick · change gait · **STAND** | the robot obeys; the velocity plot follows the stick |
+| 6:00 | Runs view: today's run vs the HPIPM one → **diff** | real verdicts; only the solver keys differ |
+| 7:00 | `teleop stop` · `kennel-demo.sh reset` | back to the frozen baseline in ~90 s, self-checked |
+
+</div>
+
+<div class="col-span-2 text-sm">
+
+### Before the talk
+```bash
+kennel-demo.sh up
+kennel-demo.sh console
+kennel-demo.sh status      # green
+```
+One earlier **HPIPM** run with a `verify.json` in `~/kennel-runs`, so the diff has a partner.
+
+
+</div>
+
+</div>
+
+<!--
+⏱ 1:30 → 9:30. Rate 0.75 rather than 0.5: verify drives the robot for 20 sim-seconds, so a slower rate lengthens the wait on stage. While `run` works, narrate: checksummed at every hop, a run for another pin is refused, the launcher waits for the six-node graph, ten checks, one of them proves the controller loaded *your* solver.
 -->
 
 ---
 layout: section
-section: "1 · Problem statement"
+section: "2 · Problem statement"
 ---
 
-# 1 · Problem statement
+# 2 · Problem statement
 
 Getting a quadruped controller running is a week of setup before the first trot
 
 <!--
-⏱ 0:30 → 2:30. Two slides.
+⏱ 9:30 → 11:30. Two slides.
 -->
 
 ---
@@ -113,7 +196,7 @@ The "still enumerating joints" line is a measured finding from the demo dry run 
 
 ---
 
-# Who pays the setup tax
+# The personas — who pays the setup tax
 
 <div class="grid grid-cols-3 gap-6 mt-6">
 
@@ -157,20 +240,20 @@ Thirty seats on Monday. On Wednesday one is hopelessly modified. Support time is
 </div>
 
 <!--
-Seven personas in the plan corpus; these three carry the problem. The bottom row is the PRFAQ's promise and its explicit non-claims — say them now, so the demo is judged against the right bar.
+Seven personas in the plan corpus; these three carry the problem. The bottom row is the PRFAQ's promise and its explicit non-claims — say them now, so the demo you just saw is judged against the right bar.
 -->
 
 ---
 layout: section
-section: "2 · Previous work"
+section: "3 · Previous work"
 ---
 
-# 2 · Previous work
+# 3 · Previous work
 
 Two proven pieces, a prototype on mock data, and no product between them
 
 <!--
-⏱ 2:30 → 4:30. Two slides.
+⏱ 11:30 → 13:30. Two slides.
 -->
 
 ---
@@ -235,7 +318,7 @@ The goal: <b>test every block on its own</b> — and again tomorrow.
 <!--
 The third piece, and the gap in one picture: the console prototype, scaffolded from the specification in the first week and served on the host. Every panel is fed by a scripted mock — exactly as the spec asked ("MockDataSource first, bridge later") — so it demonstrated every panel's purpose and connected to nothing.
 
-The layout is the same one you will see live in the demo. That is the point of the DataSource seam.
+The layout is the same one you saw live in the demo. That is the point of the DataSource seam.
 
 The three bullets are the whole thesis of the internship, and the box is the sentence to say slowly: a component of a control pipeline is only testable if you can swap it *and* trust that nothing else moved. That needs both halves — a modular pipeline, and an environment that is identical every time.
 
@@ -244,15 +327,15 @@ The bullets in full, to say rather than show: not a week of setup per person, an
 
 ---
 layout: section
-section: "3 · The proposal"
+section: "4 · The proposal"
 ---
 
-# 3 · The proposal
+# 4 · The proposal
 
 A stack whose parts can be substituted one at a time — and a lab that makes each test repeatable
 
 <!--
-⏱ 4:30 → 6:30. Two slides: what it is, and how it is used. No implementation here — that is the next section.
+⏱ 13:30 → 15:30. Two slides: what it is, and how it is used. No implementation here — that is the next section.
 
 Say the two moves plainly: first make the stack modular, so a part of the control pipeline can be substituted without disturbing the rest; then wrap it in a lab that is identical every time, so the substitution is the only thing that changed.
 -->
@@ -326,15 +409,15 @@ Say it rather than show it: the VM lives on your computer; the browser talks to 
 
 ---
 layout: section
-section: "4 · Development"
+section: "5 · Development"
 ---
 
-# 4 · Development
+# 5 · Development
 
 The architecture — what the parts are, and where the seams are
 
 <!--
-⏱ 6:30 → 8:30. One slide: the chain a single run travels. The stage plugins and Kennel's parts and seams are in the appendix, after the demo backup — go there only if asked.
+⏱ 15:30 → 17:30. One slide: the chain a single run travels. The stage plugins and Kennel's parts and seams are in the appendix, after the demo backup — go there only if asked.
 
 If anyone asks about volume rather than shape: 82 commits here and 86 on the fork, 26 pull requests, 35 issues closed of 54, ~16k lines of scripts and sequences, ~10k lines of implementation records, 422 evidence transcripts. Every tool has a record beside it and every record has its transcripts — that is why the second number is as large as the first.
 -->
@@ -384,15 +467,15 @@ Worth naming as it goes past: the transfer checksums every file at every hop; th
 
 ---
 layout: section
-section: "5 · Results"
+section: "6 · Results"
 ---
 
-# 5 · Results
+# 6 · Results
 
 Measured, not estimated
 
 <!--
-⏱ 8:30 → 10:30. Two slides. All figures from recorded transcripts on the reference host, 8 vCPU / 16 GiB guest.
+⏱ 17:30 → 19:30. Two slides. All figures from recorded transcripts on the reference host, 8 vCPU / 16 GiB guest.
 -->
 
 ---
@@ -420,22 +503,30 @@ Measured, not estimated
 
 </div>
 
-<div class="text-sm" v-click>
+<div class="text-sm flex flex-col gap-4" v-click>
 
-### And what they prove
+<div class="p-3 rounded bg-green-900/30 border border-green-700/50">
 
-- **Cold containers: 4 of 4 green** after the launcher waited for the graph instead of a log line — it had been 2 of 4
-- The `sleep 15` that fix removed stood in for a wait of **2–5 s**; it would have been too *short* on a slower host
-- **Teleop:** 0.47 m/s measured against 0.50 commanded; 12.5 m in 27 s; stick released → standstill in about a second
-- **Reproducible:** same composition → byte-identical config files; a run for another pin is refused
-- **Never lose 35 minutes:** the revert itself is 1–2 s; the rest of `reset` is the lab checking itself before handing it back
+### First time
+From **a week of setup** per person to **one command**: the lab is provisioned once in **~35 min**, and from then on a powered-off VM is **walking in 1m49s**.
+
+</div>
+
+<div class="p-3 rounded bg-green-900/30 border border-green-700/50">
+
+### Back to baseline
+A broken lab no longer means a rebuild: **`reset` returns to the frozen, self-checked baseline in ~1m20s** — the revert itself is 1–2 s.
+
+</div>
 
 </div>
 
 </div>
 
 <!--
-The provision figure is the one-time cost; everything a person interacts with afterwards is under two minutes. The negative control before the launcher fix did not reproduce the race — the record says "4 of 4 green", not "the race was caught in the act".
+Say the two green boxes; the table stays for the reader. The provision figure is the one-time cost; everything a person interacts with afterwards is under two minutes. The negative control before the launcher fix did not reproduce the race — the record says "4 of 4 green", not "the race was caught in the act".
+
+Cut for time, if asked: cold containers 4 of 4 green once the launcher waited for the graph instead of a log line (it had been 2 of 4); the `sleep 15` that fix removed stood in for a wait of 2–5 s. Teleop measured 0.47 m/s against 0.50 commanded, 12.5 m in 27 s, stick released → standstill in about a second. Same composition → byte-identical config files; a run for another pin is refused.
 
 The hardware strip: the host's CPU and guest size are in vm/host-baseline.md and vm/guest-sizing.md. The OS reports 28 GiB of the 32 GB; 16 GiB is the largest round size that host can give the guest without the build swapping.
 -->
@@ -470,47 +561,6 @@ This is the slide that answers the prototype: same layout, no recording. The pos
 -->
 
 ---
-section: "6 · Demo"
----
-
-# Demo — eight minutes
-
-<div class="grid grid-cols-5 gap-6 mt-2">
-
-<div class="col-span-3 text-xs">
-
-| Min | Action | What the audience sees |
-|---|---|---|
-| 0:00 | **Compose**: flat plane, OSQP, rate 0.75 → **send to kennel-runs →** | the pipeline diagram; the run folder appears |
-| 1:00 | `kennel-demo.sh run` | transfer → launch → **`pass=10 fail=0`** → walk |
-| 3:00 | open the Meshcat URL it prints | the Go2 trotting on *this* composition |
-| 3:30 | `kennel-demo.sh teleop` → Dashboard → **connect bridge** | `mode · live`, the viewer in the 3D pane, panels moving |
-| 4:30 | joystick · change gait · **STAND** | the robot obeys; the velocity plot follows the stick |
-| 6:00 | Runs view: today's run vs the HPIPM one → **diff** | real verdicts; only the solver keys differ |
-| 7:00 | `teleop stop` · `kennel-demo.sh reset` | back to the frozen baseline in ~90 s, self-checked |
-
-</div>
-
-<div class="col-span-2 text-sm">
-
-### Before the talk
-```bash
-kennel-demo.sh up
-kennel-demo.sh console
-kennel-demo.sh status      # green
-```
-One earlier **HPIPM** run with a `verify.json` in `~/kennel-runs`, so the diff has a partner.
-
-
-</div>
-
-</div>
-
-<!--
-⏱ 10:30 → 18:30. Rate 0.75 rather than 0.5: verify drives the robot for 20 sim-seconds, so a slower rate lengthens the wait on stage. While `run` works, narrate: checksummed at every hop, a run for another pin is refused, the launcher waits for the six-node graph, ten checks, one of them proves the controller loaded *your* solver.
--->
-
----
 layout: section
 section: "7 · Learnings"
 ---
@@ -518,9 +568,11 @@ section: "7 · Learnings"
 # 7 · Learnings
 
 <!--
-⏱ 18:30 → 20:00. Two slides.
+⏱ 19:30 → 21:00. One slide — "What the records taught me" is hidden (hide: true); delete that line to show it again.
 -->
 
+---
+hide: true
 ---
 
 # What the records taught me
@@ -549,37 +601,48 @@ Cut for time: tools must name what they need — a tool that is right about what
 
 # What I take with me
 
-<div class="grid grid-cols-2 gap-8 mt-6">
+<div class="grid grid-cols-3 gap-8 mt-6">
 
 <div>
 
-### On building
-- Put every number where a suite can read it
-- **Say what it is not** — every other claim gets easier to trust
-- Small issues with evidence beat big branches
-- **Design the seam before you need it**
+### On virtual machines
+- Ship the **whole environment**, the same lab on every machine
+- **Pin every version**, so each result names exactly what it ran on
+- Build once, **freeze a snapshot**, reuse it — the long build is paid once
+- **Snapshots make mistakes cheap**: break the environment, reset fast
 
 </div>
 
 <div v-click>
 
-### On working
-- A plan a stranger can implement is a plan you can implement
-- A green dry run teaches nothing — the friction log is the product
-- Ship the record with the code, or it never ships
+### On working backwards
+- Start from the **press release and FAQ**, before any code
+- **Personas and scenarios** decided what to build — and what to leave out
+- Say early **what it is not** — no real robot, no hard real-time
+- Scenarios became tests: "done" means the scenario runs
+
+</div>
+
+<div v-click>
+
+### On AI-based development
+- Use AI to **search faster**, summarise information and write **first drafts**
+- Turn repetitive tasks into **reproducible, efficient workflows**
+- **Automate the repetitive work** to spend my time on strategy and decisions
 
 </div>
 
 </div>
 
-<div class="mt-10 text-center opacity-70 text-sm" v-click>
-And thank you to everyone who reviewed the pull requests.
-</div>
 
 <!--
-This is the personal slide: swap any bullet for your own words before presenting. End on the thank-you and go to the last slide.
+This is the personal slide. The third column, AI-based development: the agents searched the pinned upstream and the records, summarised them, and drafted scripts, records and PR bodies; the verify suites and the driver verbs are the repetitive work made into workflows; what stayed mine was choosing what to build and judging the evidence.
 
-The long versions: a number nobody can read back is a number nobody should believe. Kennel is not a robot controller, and saying so early made every other claim easier to trust. Small issues, each ending in evidence, compound faster than big branches. The composer carried an implementation per stage months before the stages were plugins — so the modular revision costs it no change.
+Swap any bullet for your own words before presenting. End on the thank-you and go to the last slide.
+
+The long versions. Virtual machines: the barrier was never the controller, it was the environment around it — so the product is the environment. The appliance pins the stack commit, the OS and the tools; the provision takes 32–39 min once, and the frozen snapshot is what every session starts from and every `reset` returns to.
+
+Working backwards: the first week produced a PRFAQ, seven personas, ten verification scenarios and a design with the decisions locked — before a line of Kennel code. The PRFAQ's non-claims (no real robot from a VM, no hard real-time, not replacing the upstream stack) kept the scope honest. Scenarios s001 firstwalk, disturb and diagnose run today as `kennel-demo.sh scenario …`.
 -->
 
 ---
@@ -593,9 +656,6 @@ section: ""
 Kennel — github.com/alius-git/kennel
 </div>
 
-<div class="opacity-50 mt-2 text-sm">
-Backup slides follow — the demo, then an appendix for questions.
-</div>
 
 ---
 layout: image
